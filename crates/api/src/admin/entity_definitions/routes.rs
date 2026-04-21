@@ -8,6 +8,7 @@ use r_data_core_core::permissions::role::{PermissionType, ResourceNamespace};
 use serde::Serialize;
 use serde_json::json;
 use time::OffsetDateTime;
+use ts_rs::TS;
 use uuid::Uuid;
 
 use crate::admin::entity_definitions::conversions::entity_definition_to_schema_model;
@@ -516,12 +517,19 @@ pub fn register_routes(cfg: &mut web::ServiceConfig) {
         .service(get_entity_definition_version);
 }
 
-#[derive(Debug, Serialize, ToSchema)]
-struct EntityFieldInfo {
-    name: String,
-    r#type: String,
-    required: bool,
-    system: bool,
+/// Per-field metadata returned by `GET /entity-definitions/{type}/fields`
+#[derive(Debug, Serialize, ToSchema, TS)]
+#[ts(export)]
+pub struct EntityFieldInfo {
+    /// Field column name
+    pub name: String,
+    /// Field type (as declared in the entity definition)
+    #[serde(rename = "type")]
+    pub r#type: String,
+    /// Whether the field is required
+    pub required: bool,
+    /// Whether the field is a BE-managed system field (not user-definable)
+    pub system: bool,
 }
 
 /// List all fields for an entity definition by `entity_type`, including system fields

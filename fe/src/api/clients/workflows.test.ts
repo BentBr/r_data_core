@@ -173,7 +173,12 @@ describe('WorkflowsClient', () => {
                     successResponse([mockWorkflowSummary], { pagination: mockPagination }),
             })
 
-            const result = await client.getWorkflows()
+            const result = await client.getWorkflows({
+                page: 1,
+                per_page: 20,
+                limit: null,
+                offset: null,
+            })
 
             expect(result.data).toHaveLength(1)
             expect(result.meta?.pagination?.total).toBe(50)
@@ -190,7 +195,7 @@ describe('WorkflowsClient', () => {
                     successResponse([mockWorkflowSummary], { pagination: mockPagination }),
             })
 
-            await client.getWorkflows(3, 50)
+            await client.getWorkflows({ page: 3, per_page: 50, limit: null, offset: null })
 
             expect(mockFetch).toHaveBeenCalledWith(
                 expect.stringContaining('page=3&per_page=50'),
@@ -205,7 +210,10 @@ describe('WorkflowsClient', () => {
                     successResponse([mockWorkflowSummary], { pagination: mockPagination }),
             })
 
-            await client.getWorkflows(1, 20, 'name', 'asc')
+            await client.getWorkflows(
+                { page: 1, per_page: 20, limit: null, offset: null },
+                { sort_by: 'name', sort_order: 'asc' }
+            )
 
             expect(mockFetch).toHaveBeenCalledWith(
                 expect.stringContaining('sort_by=name&sort_order=asc'),
@@ -219,7 +227,7 @@ describe('WorkflowsClient', () => {
                 json: async () => successResponse([mockWorkflowSummary]),
             })
 
-            await client.getWorkflows(1, 20)
+            await client.getWorkflows({ page: 1, per_page: 20, limit: null, offset: null })
 
             const calledUrl: string = mockFetch.mock.calls[0][0] as string
             expect(calledUrl).not.toContain('sort_by')
@@ -234,7 +242,12 @@ describe('WorkflowsClient', () => {
                 json: async () => successResponse([summaryProviderKind]),
             })
 
-            const result = await client.getWorkflows()
+            const result = await client.getWorkflows({
+                page: 1,
+                per_page: 20,
+                limit: null,
+                offset: null,
+            })
 
             expect(result.data[0].kind).toBe('provider')
         })
@@ -299,10 +312,11 @@ describe('WorkflowsClient', () => {
         const newWorkflow = {
             name: 'New Workflow',
             description: 'A brand-new workflow',
-            kind: 'consumer' as const,
+            kind: 'consumer',
             enabled: true,
             schedule_cron: null,
             config: mockWorkflowConfig,
+            versioning_disabled: false,
         }
 
         it('should create a workflow and return uuid', async () => {
@@ -355,9 +369,12 @@ describe('WorkflowsClient', () => {
     describe('updateWorkflow', () => {
         const updatedWorkflow = {
             name: 'Updated Workflow',
-            kind: 'consumer' as const,
+            description: null,
+            kind: 'consumer',
             enabled: false,
+            schedule_cron: null,
             config: mockWorkflowConfig,
+            versioning_disabled: false,
         }
 
         it('should update a workflow and return message', async () => {
@@ -510,7 +527,12 @@ describe('WorkflowsClient', () => {
                     successResponse([mockWorkflowRun], { pagination: mockPagination }),
             })
 
-            const result = await client.getWorkflowRuns('wf-uuid-1')
+            const result = await client.getWorkflowRuns('wf-uuid-1', {
+                page: 1,
+                per_page: 20,
+                limit: null,
+                offset: null,
+            })
 
             expect(result.data).toHaveLength(1)
             expect(result.data[0].uuid).toBe('run-uuid-1')
@@ -527,7 +549,12 @@ describe('WorkflowsClient', () => {
                 json: async () => successResponse([mockWorkflowRun]),
             })
 
-            await client.getWorkflowRuns('wf-uuid-1', 2, 10)
+            await client.getWorkflowRuns('wf-uuid-1', {
+                page: 2,
+                per_page: 10,
+                limit: null,
+                offset: null,
+            })
 
             expect(mockFetch).toHaveBeenCalledWith(
                 expect.stringContaining('page=2&per_page=10'),
@@ -546,7 +573,12 @@ describe('WorkflowsClient', () => {
                     successResponse([mockWorkflowRunLog], { pagination: mockPagination }),
             })
 
-            const result = await client.getWorkflowRunLogs('run-uuid-1')
+            const result = await client.getWorkflowRunLogs('run-uuid-1', {
+                page: 1,
+                per_page: 50,
+                limit: null,
+                offset: null,
+            })
 
             expect(result.data).toHaveLength(1)
             expect(result.data[0].uuid).toBe('log-uuid-1')
@@ -563,7 +595,12 @@ describe('WorkflowsClient', () => {
                 json: async () => successResponse([mockWorkflowRunLog]),
             })
 
-            await client.getWorkflowRunLogs('run-uuid-1')
+            await client.getWorkflowRunLogs('run-uuid-1', {
+                page: 1,
+                per_page: 50,
+                limit: null,
+                offset: null,
+            })
 
             expect(mockFetch).toHaveBeenCalledWith(
                 expect.stringContaining('per_page=50'),
@@ -577,7 +614,12 @@ describe('WorkflowsClient', () => {
                 json: async () => successResponse([]),
             })
 
-            await client.getWorkflowRunLogs('run-uuid-1', 3, 100)
+            await client.getWorkflowRunLogs('run-uuid-1', {
+                page: 3,
+                per_page: 100,
+                limit: null,
+                offset: null,
+            })
 
             expect(mockFetch).toHaveBeenCalledWith(
                 expect.stringContaining('page=3&per_page=100'),
@@ -596,7 +638,12 @@ describe('WorkflowsClient', () => {
                     successResponse([mockWorkflowRun], { pagination: mockPagination }),
             })
 
-            const result = await client.getAllWorkflowRuns()
+            const result = await client.getAllWorkflowRuns({
+                page: 1,
+                per_page: 20,
+                limit: null,
+                offset: null,
+            })
 
             expect(result.data).toHaveLength(1)
             expect(result.meta?.pagination?.has_next).toBe(true)
@@ -612,7 +659,12 @@ describe('WorkflowsClient', () => {
                 json: async () => successResponse([]),
             })
 
-            await client.getAllWorkflowRuns(4, 25)
+            await client.getAllWorkflowRuns({
+                page: 4,
+                per_page: 25,
+                limit: null,
+                offset: null,
+            })
 
             expect(mockFetch).toHaveBeenCalledWith(
                 expect.stringContaining('page=4&per_page=25'),

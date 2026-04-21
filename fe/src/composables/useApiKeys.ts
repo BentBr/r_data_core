@@ -3,7 +3,7 @@ import { typedHttpClient } from '@/api/typed-client'
 import { useErrorHandler } from './useErrorHandler'
 import { useTranslations } from './useTranslations'
 import { useAuthStore } from '@/stores/auth'
-import type { ApiKey, CreateApiKeyRequest } from '@/types/schemas'
+import type { ApiKey, CreateApiKeyRequest, PaginationMeta } from '@/types/schemas'
 
 export function useApiKeys() {
     const { handleError, handleSuccess } = useErrorHandler()
@@ -20,14 +20,7 @@ export function useApiKeys() {
     const itemsPerPage = ref(10)
     const totalItems = ref(0)
     const totalPages = ref(1)
-    const paginationMeta = ref<{
-        total: number
-        page: number
-        per_page: number
-        total_pages: number
-        has_previous: boolean
-        has_next: boolean
-    } | null>(null)
+    const paginationMeta = ref<PaginationMeta | null>(null)
 
     /**
      * Load API keys with pagination
@@ -37,7 +30,12 @@ export function useApiKeys() {
         error.value = ''
 
         try {
-            const response = await typedHttpClient.getApiKeys(page, perPage)
+            const response = await typedHttpClient.getApiKeys({
+                page,
+                per_page: perPage,
+                limit: null,
+                offset: null,
+            })
             apiKeys.value = response.data
             if (response.meta?.pagination) {
                 totalItems.value = response.meta.pagination.total

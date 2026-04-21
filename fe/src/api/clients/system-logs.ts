@@ -1,36 +1,17 @@
 import { BaseTypedHttpClient } from './base'
 import type { SystemLogDto } from '@/types/generated/SystemLogDto'
-import type { SystemLogType } from '@/types/generated/SystemLogType'
-import type { SystemLogResourceType } from '@/types/generated/SystemLogResourceType'
-import type { SystemLogStatus } from '@/types/generated/SystemLogStatus'
+import type { SystemLogQuery } from '@/types/generated/SystemLogQuery'
+import type { ResponseMeta } from '@/types/schemas'
 
 export type SystemLog = SystemLogDto
 
 export interface SystemLogListResult {
     data: SystemLog[]
-    meta?: {
-        pagination?: {
-            total: number
-            page: number
-            per_page: number
-            total_pages: number
-            has_previous: boolean
-            has_next: boolean
-        }
-    }
+    meta?: ResponseMeta
 }
 
 export class SystemLogClient extends BaseTypedHttpClient {
-    async list(params: {
-        page?: number
-        page_size?: number
-        log_type?: SystemLogType
-        resource_type?: SystemLogResourceType
-        status?: SystemLogStatus
-        resource_uuid?: string
-        date_from?: string
-        date_to?: string
-    }): Promise<SystemLogListResult> {
+    async list(params: SystemLogQuery): Promise<SystemLogListResult> {
         const query = new URLSearchParams()
         if (params.page) query.set('page', String(params.page))
         if (params.page_size) query.set('page_size', String(params.page_size))

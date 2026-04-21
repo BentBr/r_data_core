@@ -7,7 +7,26 @@ import { getRefreshToken, setRefreshToken, deleteRefreshToken } from '@/utils/co
 import { useLicenseStore } from './license'
 import { useVersionStore } from './versions'
 import { useCapabilitiesStore } from './capabilities'
-import type { LoginRequest, User } from '@/types/schemas'
+import type { LoginRequest } from '@/types/schemas'
+
+/**
+ * FE-only session shape synthesised from JWT claims (sub, username, email, roles).
+ * This is NOT a BE response type — there's currently no /auth/me endpoint returning
+ * a user DTO after login/refresh. When such an endpoint is added, replace this with
+ * `UserResponse` from `@/types/generated/UserResponse` and drop the manual fields.
+ */
+interface AuthUser {
+    uuid: string
+    username: string
+    email: string
+    first_name: string
+    last_name: string
+    role_uuids: string[]
+    is_active: boolean
+    is_admin: boolean
+    created_at: string
+    updated_at: string
+}
 
 export const useAuthStore = defineStore('auth', () => {
     // Translation system
@@ -15,7 +34,7 @@ export const useAuthStore = defineStore('auth', () => {
 
     // State - access token only in memory, refresh token in secure cookie
     const access_token = ref<string | null>(null)
-    const user = ref<User | null>(null)
+    const user = ref<AuthUser | null>(null)
     const refreshTimer = ref<ReturnType<typeof setTimeout> | null>(null)
     const isLoading = ref(false)
     const error = ref<string | null>(null)

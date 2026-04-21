@@ -1,8 +1,10 @@
 import { z } from 'zod'
 import { UuidSchema, TimestampSchema } from './base'
 
-// Field constraints - API returns nested structure: { type: string, constraints: { ... } }
-// We use a permissive type to handle various constraint shapes
+// Field constraints — generated FieldConstraints is a discriminated union over field type
+// (StringConstraints | NumericConstraints | ...). This Zod schema is deliberately permissive
+// to accept any of those shapes without enumerating them; tighten to a discriminatedUnion
+// matching generated/FieldConstraints.ts if runtime validation becomes required.
 export const FieldConstraintsSchema = z
     .object({
         type: z.string().optional(),

@@ -3,8 +3,9 @@
 /**
  * Request to reassign an API key to a different user
  */
-export type ReassignApiKeyRequest = { 
-/**
- * UUID of the user to reassign the API key to
- */
-user_uuid: string, };
+export type ReassignApiKeyRequest = {
+    /**
+     * UUID of the user to reassign the API key to
+     */
+    user_uuid: string
+}

@@ -11,7 +11,7 @@ vi.mock('@/api/typed-client', () => ({
         getDslFromOptions: vi.fn().mockResolvedValue({}),
         getDslToOptions: vi.fn().mockResolvedValue({}),
         getDslTransformOptions: vi.fn().mockResolvedValue({}),
-        listEmailTemplates: (type?: string) => mockListEmailTemplates(type),
+        listEmailTemplates: (query?: { type?: string }) => mockListEmailTemplates(query),
     },
 }))
 
@@ -231,7 +231,7 @@ describe('PostRunActionsEditor', () => {
         await nextTick()
         await nextTick()
 
-        expect(mockListEmailTemplates).toHaveBeenCalledWith('workflow')
+        expect(mockListEmailTemplates).toHaveBeenCalledWith({ type: 'workflow' })
     })
 
     it('handles template loading failure gracefully', async () => {

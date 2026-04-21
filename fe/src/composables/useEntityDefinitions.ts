@@ -51,7 +51,12 @@ export function useEntityDefinitions() {
         error.value = ''
 
         try {
-            const response = await typedHttpClient.getEntityDefinitions()
+            const response = await typedHttpClient.getEntityDefinitions({
+                page: null,
+                per_page: null,
+                limit: null,
+                offset: null,
+            })
             entityDefinitions.value = response.data.map(definition => ({
                 ...definition,
                 fields: sanitizeFields(definition.fields),

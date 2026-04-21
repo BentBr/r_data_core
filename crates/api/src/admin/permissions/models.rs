@@ -140,8 +140,10 @@ pub struct CreateRoleRequest {
     /// Name of the role
     pub name: String,
     /// Optional description
+    #[serde(default)]
     pub description: Option<String>,
     /// Whether this role grants super admin privileges
+    #[serde(default)]
     pub super_admin: Option<bool>,
     /// Direct permissions for this role
     pub permissions: Vec<PermissionResponse>,
@@ -154,8 +156,10 @@ pub struct UpdateRoleRequest {
     /// Name of the role
     pub name: String,
     /// Optional description
+    #[serde(default)]
     pub description: Option<String>,
     /// Whether this role grants super admin privileges
+    #[serde(default)]
     pub super_admin: Option<bool>,
     /// Direct permissions for this role
     pub permissions: Vec<PermissionResponse>,

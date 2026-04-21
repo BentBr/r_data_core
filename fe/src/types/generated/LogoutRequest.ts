@@ -3,8 +3,9 @@
 /**
  * Request to logout with refresh token
  */
-export type LogoutRequest = { 
-/**
- * Refresh token to revoke
- */
-refresh_token: string, };
+export type LogoutRequest = {
+    /**
+     * Refresh token to revoke
+     */
+    refresh_token: string
+}

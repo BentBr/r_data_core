@@ -109,6 +109,7 @@ export function createWorkflowTemplates(): WorkflowTemplate[] {
                         type: 'send_email',
                         template_uuid: '',
                         to: [{ kind: 'field', field: 'email' }],
+                        cc: null,
                         target_status: 'email_status',
                     },
                     to: {

@@ -3,4 +3,4 @@
 /**
  * Condition for when a post-run action fires.
  */
-export type PostRunCondition = "always" | "on_success" | "on_failure";
+export type PostRunCondition = 'always' | 'on_success' | 'on_failure'

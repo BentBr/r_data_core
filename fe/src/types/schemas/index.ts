@@ -27,6 +27,7 @@ import type {
     RefreshTokenResponse,
     LogoutRequest,
 } from './auth'
+import type { Status } from '../generated/Status'
 import type {
     FieldDefinition,
     EntityDefinition,
@@ -46,7 +47,8 @@ import type {
     ReassignApiKeyResponse,
     ApiKeyCustomData,
 } from './api-key'
-import type { User, UserCustomData } from './user'
+import type { UserCustomData } from './user'
+import type { UserResponse } from '../generated/UserResponse'
 import type {
     Role,
     Permission,
@@ -67,6 +69,7 @@ export type {
     SnackbarConfig,
     DialogConfig,
     FormField,
+    Status,
     LoginRequest,
     LoginResponse,
     RefreshTokenRequest,
@@ -90,7 +93,7 @@ export type {
     ReassignApiKeyRequest,
     ReassignApiKeyResponse,
     ApiKeyCustomData,
-    User,
+    UserResponse,
     UserCustomData,
     Role,
     Permission,

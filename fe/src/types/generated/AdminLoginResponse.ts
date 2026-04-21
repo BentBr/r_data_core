@@ -3,32 +3,33 @@
 /**
  * Admin login response body
  */
-export type AdminLoginResponse = { 
-/**
- * JWT access token
- */
-access_token: string, 
-/**
- * Refresh token
- */
-refresh_token: string, 
-/**
- * User UUID
- */
-user_uuid: string, 
-/**
- * Username
- */
-username: string, 
-/**
- * Access token expiration (RFC3339 timestamp)
- */
-access_expires_at: string, 
-/**
- * Refresh token expiration (RFC3339 timestamp)
- */
-refresh_expires_at: string, 
-/**
- * Whether the default admin password is still in use (false if check is disabled)
- */
-using_default_password: boolean, };
+export type AdminLoginResponse = {
+    /**
+     * JWT access token
+     */
+    access_token: string
+    /**
+     * Refresh token
+     */
+    refresh_token: string
+    /**
+     * User UUID
+     */
+    user_uuid: string
+    /**
+     * Username
+     */
+    username: string
+    /**
+     * Access token expiration (RFC3339 timestamp)
+     */
+    access_expires_at: string
+    /**
+     * Refresh token expiration (RFC3339 timestamp)
+     */
+    refresh_expires_at: string
+    /**
+     * Whether the default admin password is still in use (false if check is disabled)
+     */
+    using_default_password: boolean
+}

@@ -18,6 +18,7 @@ use r_data_core_persistence::{RefreshTokenRepository, RefreshTokenRepositoryTrai
 use crate::admin::auth::models::{
     AdminLoginRequest, AdminLoginResponse, AdminRegisterRequest, ForgotPasswordRequest,
     LogoutRequest, RefreshTokenRequest, RefreshTokenResponse, ResetPasswordRequest,
+    UserPermissionsResponse,
 };
 use validator::Validate;
 
@@ -631,7 +632,7 @@ pub async fn admin_revoke_all_tokens(
     path = "/admin/api/v1/auth/permissions",
     tag = "admin-auth",
     responses(
-        (status = 200, description = "User permissions and allowed routes", body = serde_json::Value),
+        (status = 200, description = "User permissions and allowed routes", body = UserPermissionsResponse),
         (status = 401, description = "Unauthorized"),
         (status = 500, description = "Internal server error")
     ),
@@ -645,9 +646,8 @@ pub async fn get_user_permissions(auth: RequiredAuth) -> impl Responder {
 
     let claims = &auth.0;
 
-    // Use auth service to get user permissions
     let auth_service = AuthService::new();
-    let response = auth_service.get_user_permissions(
+    let (is_super_admin, permissions, allowed_routes) = auth_service.get_user_permissions(
         claims.is_super_admin,
         &claims.permissions,
         |namespace, perm_type| {
@@ -655,7 +655,11 @@ pub async fn get_user_permissions(auth: RequiredAuth) -> impl Responder {
         },
     );
 
-    ApiResponse::ok(response)
+    ApiResponse::ok(UserPermissionsResponse {
+        is_super_admin,
+        permissions,
+        allowed_routes,
+    })
 }
 
 /// Forgot password endpoint — initiates the password reset flow

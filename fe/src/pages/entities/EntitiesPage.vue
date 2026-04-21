@@ -215,7 +215,12 @@
         }
 
         try {
-            const response = await typedHttpClient.getEntityDefinitions()
+            const response = await typedHttpClient.getEntityDefinitions({
+                page: null,
+                per_page: null,
+                limit: null,
+                offset: null,
+            })
             entityDefinitions.value = response.data
         } catch (err) {
             console.error('Failed to load entity definitions:', err)

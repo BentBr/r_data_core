@@ -81,20 +81,6 @@ export function deleteCookie(name: string, options: CookieOptions = {}): void {
 }
 
 /**
- * Check if cookies are supported
- */
-export function areCookiesSupported(): boolean {
-    try {
-        document.cookie = 'test=1'
-        const supported = document.cookie.indexOf('test=') !== -1
-        document.cookie = 'test=1; expires=Thu, 01 Jan 1970 00:00:00 GMT'
-        return supported
-    } catch {
-        return false
-    }
-}
-
-/**
  * Set refresh token as secure cookie
  */
 export function setRefreshToken(token: string, expiresAt: Date): void {

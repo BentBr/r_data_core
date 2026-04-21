@@ -3,16 +3,17 @@
 /**
  * Individual validation violation for Symfony-style errors
  */
-export type ValidationViolation = { 
-/**
- * The field that has the validation error
- */
-field: string, 
-/**
- * The error message for this field
- */
-message: string, 
-/**
- * Optional error code (e.g., `"NOT_BLANK"`, `"NOT_NULL"`)
- */
-code: string | null, };
+export type ValidationViolation = {
+    /**
+     * The field that has the validation error
+     */
+    field: string
+    /**
+     * The error message for this field
+     */
+    message: string
+    /**
+     * Optional error code (e.g., `"NOT_BLANK"`, `"NOT_NULL"`)
+     */
+    code: string | null
+}

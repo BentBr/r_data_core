@@ -225,15 +225,12 @@
         if (props.editingUser) {
             const updateData: UpdateUserRequest = {
                 email: formData.value.email,
+                password: formData.value.password || null,
                 first_name: formData.value.first_name,
                 last_name: formData.value.last_name,
-                role_uuids: formData.value.role_uuids ?? undefined,
+                role_uuids: formData.value.role_uuids ?? null,
                 is_active: formData.value.is_active,
                 super_admin: formData.value.super_admin,
-            }
-            // Only include password if provided
-            if (formData.value.password) {
-                updateData.password = formData.value.password
             }
             emit('save', updateData)
         } else {
@@ -243,7 +240,7 @@
                 password: formData.value.password,
                 first_name: formData.value.first_name,
                 last_name: formData.value.last_name,
-                role_uuids: formData.value.role_uuids ?? undefined,
+                role_uuids: formData.value.role_uuids ?? null,
                 is_active: formData.value.is_active,
                 super_admin: formData.value.super_admin,
             }

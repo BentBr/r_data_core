@@ -1,34 +1,11 @@
+import type { DashboardStats } from '@/types/generated/DashboardStats'
 import { BaseTypedHttpClient } from './base'
 
-interface EntityTypeCount {
-    entity_type: string
-    count: number
-}
-
-interface EntityStats {
-    total: number
-    by_type: EntityTypeCount[]
-}
-
-interface WorkflowWithLatestStatus {
-    uuid: string
-    name: string
-    latest_status?: string | null
-}
-
-interface WorkflowStats {
-    total: number
-    workflows: WorkflowWithLatestStatus[]
-}
-
-export interface DashboardStats {
-    entity_definitions_count: number
-    entities: EntityStats
-    workflows: WorkflowStats
-    online_users_count: number
-}
-
-export type { EntityStats, EntityTypeCount, WorkflowStats, WorkflowWithLatestStatus }
+export type { DashboardStats } from '@/types/generated/DashboardStats'
+export type { EntityStats } from '@/types/generated/EntityStats'
+export type { EntityTypeCount } from '@/types/generated/EntityTypeCount'
+export type { WorkflowStats } from '@/types/generated/WorkflowStats'
+export type { WorkflowWithLatestStatus } from '@/types/generated/WorkflowWithLatestStatus'
 
 export class MetaClient extends BaseTypedHttpClient {
     async getDashboardStats(): Promise<DashboardStats> {

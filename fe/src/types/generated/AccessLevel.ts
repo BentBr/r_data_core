@@ -3,4 +3,4 @@
 /**
  * Access level for a permission
  */
-export type AccessLevel = "None" | "Own" | "Group" | "All";
+export type AccessLevel = 'None' | 'Own' | 'Group' | 'All'

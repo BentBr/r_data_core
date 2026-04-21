@@ -3,20 +3,21 @@
 /**
  * Refresh token response body
  */
-export type RefreshTokenResponse = { 
-/**
- * New access token
- */
-access_token: string, 
-/**
- * New refresh token
- */
-refresh_token: string, 
-/**
- * Access token expiration (RFC3339 timestamp)
- */
-access_expires_at: string, 
-/**
- * Refresh token expiration (RFC3339 timestamp)
- */
-refresh_expires_at: string, };
+export type RefreshTokenResponse = {
+    /**
+     * New access token
+     */
+    access_token: string
+    /**
+     * New refresh token
+     */
+    refresh_token: string
+    /**
+     * Access token expiration (RFC3339 timestamp)
+     */
+    access_expires_at: string
+    /**
+     * Refresh token expiration (RFC3339 timestamp)
+     */
+    refresh_expires_at: string
+}

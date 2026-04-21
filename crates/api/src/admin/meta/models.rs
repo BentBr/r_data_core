@@ -1,6 +1,7 @@
 #![deny(clippy::all, clippy::pedantic, clippy::nursery, warnings)]
 
 use serde::{Deserialize, Serialize};
+use ts_rs::TS;
 use utoipa::ToSchema;
 
 use r_data_core_persistence::dashboard_stats_repository_trait::{
@@ -10,25 +11,30 @@ use r_data_core_persistence::dashboard_stats_repository_trait::{
 };
 
 /// Entity count for a specific type
-#[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
+#[derive(Debug, Clone, Serialize, Deserialize, ToSchema, TS)]
+#[ts(export)]
 pub struct EntityTypeCount {
     /// Entity type name
     pub entity_type: String,
     /// Count of entities of this type
+    #[ts(type = "number")]
     pub count: i64,
 }
 
 /// Entity statistics
-#[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
+#[derive(Debug, Clone, Serialize, Deserialize, ToSchema, TS)]
+#[ts(export)]
 pub struct EntityStats {
     /// Total count of all entities across all types
+    #[ts(type = "number")]
     pub total: i64,
     /// Breakdown by entity type
     pub by_type: Vec<EntityTypeCount>,
 }
 
 /// Workflow with its latest run status
-#[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
+#[derive(Debug, Clone, Serialize, Deserialize, ToSchema, TS)]
+#[ts(export)]
 pub struct WorkflowWithLatestStatus {
     /// Workflow UUID
     pub uuid: String,
@@ -39,24 +45,29 @@ pub struct WorkflowWithLatestStatus {
 }
 
 /// Workflow statistics
-#[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
+#[derive(Debug, Clone, Serialize, Deserialize, ToSchema, TS)]
+#[ts(export)]
 pub struct WorkflowStats {
     /// Total count of workflows
+    #[ts(type = "number")]
     pub total: i64,
     /// List of workflows with their latest run status
     pub workflows: Vec<WorkflowWithLatestStatus>,
 }
 
 /// Dashboard statistics response
-#[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
+#[derive(Debug, Clone, Serialize, Deserialize, ToSchema, TS)]
+#[ts(export)]
 pub struct DashboardStats {
     /// Total count of entity definitions
+    #[ts(type = "number")]
     pub entity_definitions_count: i64,
     /// Entity statistics
     pub entities: EntityStats,
     /// Workflow statistics
     pub workflows: WorkflowStats,
     /// Count of online users (users with active refresh tokens)
+    #[ts(type = "number")]
     pub online_users_count: i64,
 }
 

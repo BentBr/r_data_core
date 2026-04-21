@@ -82,7 +82,12 @@ describe('RolesClient (permissions)', () => {
                 json: async () => mockResponse,
             })
 
-            const result = await client.getRoles(1, 10)
+            const result = await client.getRoles({
+                page: 1,
+                per_page: 10,
+                limit: null,
+                offset: null,
+            })
 
             expect(result.data).toBeDefined()
             expect(Array.isArray(result.data)).toBe(true)
@@ -117,7 +122,12 @@ describe('RolesClient (permissions)', () => {
                 json: async () => mockResponse,
             })
 
-            const result = await client.getRoles(1, 10)
+            const result = await client.getRoles({
+                page: 1,
+                per_page: 10,
+                limit: null,
+                offset: null,
+            })
 
             expect(result.data).toHaveLength(0)
             expect(result.meta?.pagination?.total).toBe(0)
@@ -167,6 +177,7 @@ describe('RolesClient (permissions)', () => {
             const request: CreateRoleRequest = {
                 name: 'Auditor',
                 description: 'Read-only auditing role',
+                super_admin: null,
                 permissions: [mockPermission],
             }
 
@@ -204,6 +215,7 @@ describe('RolesClient (permissions)', () => {
             const request: CreateRoleRequest = {
                 name: '',
                 description: null,
+                super_admin: null,
                 permissions: [],
             }
 
@@ -223,6 +235,7 @@ describe('RolesClient (permissions)', () => {
             const request: UpdateRoleRequest = {
                 name: 'Senior Auditor',
                 description: 'Extended read-only auditing role',
+                super_admin: null,
                 permissions: [mockPermission],
             }
 
@@ -259,6 +272,7 @@ describe('RolesClient (permissions)', () => {
             const request: UpdateRoleRequest = {
                 name: 'Updated',
                 description: null,
+                super_admin: null,
                 permissions: [],
             }
 

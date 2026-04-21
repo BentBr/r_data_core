@@ -13,11 +13,11 @@ pub struct CreateApiKeyRequest {
     /// Name of the API key
     pub name: String,
     /// Optional description for the API key
+    #[serde(default)]
     pub description: Option<String>,
     /// Number of days until expiration (default: 365)
     #[serde(default)]
-    #[ts(type = "number | null")]
-    pub expires_in_days: Option<i64>,
+    pub expires_in_days: Option<u32>,
 }
 
 /// Response containing API key information

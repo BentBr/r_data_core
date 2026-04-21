@@ -3,12 +3,13 @@
 /**
  * Admin login request body
  */
-export type AdminLoginRequest = { 
-/**
- * Username or email
- */
-username: string, 
-/**
- * Password
- */
-password: string, };
+export type AdminLoginRequest = {
+    /**
+     * Username or email
+     */
+    username: string
+    /**
+     * Password
+     */
+    password: string
+}

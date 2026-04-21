@@ -34,8 +34,8 @@ describe('useErrorHandler', () => {
         it('should handle ValidationError with field errors', () => {
             const { handleError } = useErrorHandler()
             const violations = [
-                { field: 'name', message: 'Name is required' },
-                { field: 'email', message: 'Email is invalid' },
+                { field: 'name', message: 'Name is required', code: null },
+                { field: 'email', message: 'Email is invalid', code: null },
             ]
             const error = new ValidationError('Validation failed', violations)
 
@@ -288,8 +288,8 @@ describe('useErrorHandler', () => {
         it('should extract field errors from ValidationError', () => {
             const { extractFieldErrors } = useErrorHandler()
             const violations = [
-                { field: 'name', message: 'Name is required' },
-                { field: 'email', message: 'Email is invalid' },
+                { field: 'name', message: 'Name is required', code: null },
+                { field: 'email', message: 'Email is invalid', code: null },
             ]
             const error = new ValidationError('Validation failed', violations)
 

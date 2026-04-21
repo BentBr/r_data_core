@@ -1,35 +1,19 @@
 import type { ApiKeyResponse } from '@/types/generated/ApiKeyResponse'
 import type { ApiKeyCreatedResponse } from '@/types/generated/ApiKeyCreatedResponse'
-import type { CreateApiKeyRequest, ReassignApiKeyRequest } from '@/types/schemas'
+import type { PaginationQuery } from '@/types/generated/PaginationQuery'
+import type { SortingQuery } from '@/types/generated/SortingQuery'
+import type { CreateApiKeyRequest, ReassignApiKeyRequest, ResponseMeta } from '@/types/schemas'
 import { BaseTypedHttpClient } from './base'
+import { buildListQueryString } from './query'
 
 export class ApiKeysClient extends BaseTypedHttpClient {
     async getApiKeys(
-        page = 1,
-        itemsPerPage = 10,
-        sortBy?: string | null,
-        sortOrder?: 'asc' | 'desc' | null
-    ): Promise<{
-        data: ApiKeyResponse[]
-        meta?: {
-            pagination?: {
-                total: number
-                page: number
-                per_page: number
-                total_pages: number
-                has_previous: boolean
-                has_next: boolean
-            }
-            request_id?: string
-            timestamp?: string
-            custom?: unknown
-        }
-    }> {
-        let url = `/admin/api/v1/api-keys?page=${page}&per_page=${itemsPerPage}`
-        if (sortBy && sortOrder) {
-            url += `&sort_by=${sortBy}&sort_order=${sortOrder}`
-        }
-        return this.paginatedRequest<ApiKeyResponse[]>(url)
+        pagination: PaginationQuery,
+        sorting?: SortingQuery | null
+    ): Promise<{ data: ApiKeyResponse[]; meta?: ResponseMeta }> {
+        return this.paginatedRequest<ApiKeyResponse[]>(
+            `/admin/api/v1/api-keys${buildListQueryString(pagination, sorting)}`
+        )
     }
 
     async createApiKey(data: CreateApiKeyRequest): Promise<ApiKeyCreatedResponse> {

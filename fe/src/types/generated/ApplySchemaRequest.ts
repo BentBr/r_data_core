@@ -4,9 +4,10 @@
  * Model for apply-schema request
  * Used to generate and apply SQL schema for a specific entity definition or all definitions
  */
-export type ApplySchemaRequest = { 
-/**
- * Optional UUID of specific entity definition to apply schema for
- * If not provided, schemas for all published entity definitions will be applied
- */
-uuid: string | null, };
+export type ApplySchemaRequest = {
+    /**
+     * Optional UUID of specific entity definition to apply schema for
+     * If not provided, schemas for all published entity definitions will be applied
+     */
+    uuid: string | null
+}

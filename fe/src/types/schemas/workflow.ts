@@ -1,19 +1,8 @@
-// Type exports — use generated types where possible, fallback interfaces for bigint/number compat
-
 // Workflow uses generated WorkflowDetail (kind: string — clients apply lowercase)
 export type { WorkflowDetail as Workflow } from '../generated/WorkflowDetail'
 
-// WorkflowRun: generated WorkflowRunSummary uses bigint for processed_items/failed_items
-// (Rust u64 → TS bigint), but JSON transport sends numbers. Use compatible interface.
-export interface WorkflowRun {
-    uuid: string
-    status: string
-    queued_at: string | null
-    started_at?: string | null
-    finished_at: string | null
-    processed_items?: number | null
-    failed_items?: number | null
-}
+// WorkflowRun aliases the generated WorkflowRunSummary directly.
+export type { WorkflowRunSummary as WorkflowRun } from '../generated/WorkflowRunSummary'
 
 // WorkflowRunLog uses generated WorkflowRunLogDto
 export type { WorkflowRunLogDto as WorkflowRunLog } from '../generated/WorkflowRunLogDto'

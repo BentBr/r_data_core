@@ -228,7 +228,7 @@
 
     async function loadEmailTemplates() {
         try {
-            const templates = await typedHttpClient.listEmailTemplates('workflow')
+            const templates = await typedHttpClient.listEmailTemplates({ type: 'workflow' })
             emailTemplates.value = templates
             emailTemplateItems.value = templates.map(tmpl => ({
                 title: tmpl.name,
@@ -333,7 +333,7 @@
             const updated = existing.filter((_, i) => i !== idx)
             emit('update:modelValue', {
                 ...props.modelValue,
-                cc: updated.length > 0 ? updated : undefined,
+                cc: updated.length > 0 ? updated : null,
             })
         }
     }

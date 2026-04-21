@@ -30,7 +30,12 @@ export function useEntities() {
      */
     const loadEntityDefinitions = async (): Promise<void> => {
         try {
-            const response = await typedHttpClient.getEntityDefinitions()
+            const response = await typedHttpClient.getEntityDefinitions({
+                page: null,
+                per_page: null,
+                limit: null,
+                offset: null,
+            })
             entityDefinitions.value = response.data
         } catch (err) {
             handleError(err, 'Failed to load entity definitions')

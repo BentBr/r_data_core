@@ -3,36 +3,37 @@
 /**
  * Create user request
  */
-export type CreateUserRequest = { 
-/**
- * Username
- */
-username: string, 
-/**
- * Email address
- */
-email: string, 
-/**
- * Password
- */
-password: string, 
-/**
- * First name
- */
-first_name: string, 
-/**
- * Last name
- */
-last_name: string, 
-/**
- * Role UUIDs to assign to this user (optional)
- */
-role_uuids: string[] | null, 
-/**
- * Whether user is active
- */
-is_active: boolean | null, 
-/**
- * Super admin flag
- */
-super_admin: boolean | null, };
+export type CreateUserRequest = {
+    /**
+     * Username
+     */
+    username: string
+    /**
+     * Email address
+     */
+    email: string
+    /**
+     * Password
+     */
+    password: string
+    /**
+     * First name
+     */
+    first_name: string
+    /**
+     * Last name
+     */
+    last_name: string
+    /**
+     * Role UUIDs to assign to this user (optional)
+     */
+    role_uuids: string[] | null
+    /**
+     * Whether user is active
+     */
+    is_active: boolean | null
+    /**
+     * Super admin flag
+     */
+    super_admin: boolean | null
+}

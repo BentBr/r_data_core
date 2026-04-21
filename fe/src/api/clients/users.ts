@@ -1,34 +1,18 @@
 import type { UserResponse } from '@/types/generated/UserResponse'
-import type { CreateUserRequest, UpdateUserRequest } from '@/types/schemas'
+import type { PaginationQuery } from '@/types/generated/PaginationQuery'
+import type { SortingQuery } from '@/types/generated/SortingQuery'
+import type { CreateUserRequest, UpdateUserRequest, ResponseMeta } from '@/types/schemas'
 import { BaseTypedHttpClient } from './base'
+import { buildListQueryString } from './query'
 
 export class UsersClient extends BaseTypedHttpClient {
     async getUsers(
-        page = 1,
-        itemsPerPage = 20,
-        sortBy?: string | null,
-        sortOrder?: 'asc' | 'desc' | null
-    ): Promise<{
-        data: UserResponse[]
-        meta?: {
-            pagination?: {
-                total: number
-                page: number
-                per_page: number
-                total_pages: number
-                has_previous: boolean
-                has_next: boolean
-            }
-            request_id?: string
-            timestamp?: string
-            custom?: unknown
-        }
-    }> {
-        let url = `/admin/api/v1/users?page=${page}&per_page=${itemsPerPage}`
-        if (sortBy && sortOrder) {
-            url += `&sort_by=${sortBy}&sort_order=${sortOrder}`
-        }
-        return this.paginatedRequest<UserResponse[]>(url)
+        pagination: PaginationQuery,
+        sorting?: SortingQuery | null
+    ): Promise<{ data: UserResponse[]; meta?: ResponseMeta }> {
+        return this.paginatedRequest<UserResponse[]>(
+            `/admin/api/v1/users${buildListQueryString(pagination, sorting)}`
+        )
     }
 
     async getUser(uuid: string): Promise<UserResponse> {

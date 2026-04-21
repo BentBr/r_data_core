@@ -3,32 +3,33 @@
 /**
  * Update user request
  */
-export type UpdateUserRequest = { 
-/**
- * Email address (optional)
- */
-email: string | null, 
-/**
- * Password (optional, only set if provided)
- */
-password: string | null, 
-/**
- * First name (optional)
- */
-first_name: string | null, 
-/**
- * Last name (optional)
- */
-last_name: string | null, 
-/**
- * Role UUIDs to assign to this user (optional)
- */
-role_uuids: string[] | null, 
-/**
- * Whether user is active (optional)
- */
-is_active: boolean | null, 
-/**
- * Super admin flag (optional)
- */
-super_admin: boolean | null, };
+export type UpdateUserRequest = {
+    /**
+     * Email address (optional)
+     */
+    email: string | null
+    /**
+     * Password (optional, only set if provided)
+     */
+    password: string | null
+    /**
+     * First name (optional)
+     */
+    first_name: string | null
+    /**
+     * Last name (optional)
+     */
+    last_name: string | null
+    /**
+     * Role UUIDs to assign to this user (optional)
+     */
+    role_uuids: string[] | null
+    /**
+     * Whether user is active (optional)
+     */
+    is_active: boolean | null
+    /**
+     * Super admin flag (optional)
+     */
+    super_admin: boolean | null
+}

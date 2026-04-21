@@ -11,13 +11,16 @@ use r_data_core_core::settings::{EntityVersioningSettings, WorkflowRunLogSetting
 ///
 /// This is a thin wrapper around the core `EntityVersioningSettings` type
 /// to add `OpenAPI` schema generation support.
-#[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
+#[derive(Debug, Clone, Serialize, Deserialize, ToSchema, TS)]
+#[ts(export)]
 pub struct EntityVersioningSettingsDto {
     /// Whether entity versioning is enabled
     pub enabled: bool,
     /// Maximum number of versions to keep per entity
+    #[ts(type = "number | null")]
     pub max_versions: Option<i32>,
     /// Maximum age in days for versions
+    #[ts(type = "number | null")]
     pub max_age_days: Option<i32>,
 }
 
@@ -42,13 +45,16 @@ impl From<EntityVersioningSettingsDto> for EntityVersioningSettings {
 }
 
 /// DTO for workflow run log settings (API layer wrapper)
-#[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
+#[derive(Debug, Clone, Serialize, Deserialize, ToSchema, TS)]
+#[ts(export)]
 pub struct WorkflowRunLogSettingsDto {
     /// Whether workflow run logs pruning is enabled
     pub enabled: bool,
     /// Maximum number of runs to keep per workflow
+    #[ts(type = "number | null")]
     pub max_runs: Option<i32>,
     /// Maximum age in days for workflow runs
+    #[ts(type = "number | null")]
     pub max_age_days: Option<i32>,
 }
 
@@ -73,30 +79,43 @@ impl From<WorkflowRunLogSettingsDto> for WorkflowRunLogSettings {
 }
 
 /// Request body for updating workflow run log settings
-#[derive(Deserialize, Serialize, ToSchema)]
+#[derive(Deserialize, Serialize, ToSchema, TS)]
+#[ts(export)]
 pub struct UpdateWorkflowRunLogSettingsBody {
     /// Whether pruning is enabled
+    #[serde(default)]
     pub enabled: Option<bool>,
     /// Maximum number of runs to keep per workflow
+    #[serde(default)]
+    #[ts(type = "number | null")]
     pub max_runs: Option<i32>,
     /// Maximum age in days
+    #[serde(default)]
+    #[ts(type = "number | null")]
     pub max_age_days: Option<i32>,
 }
 
 /// Request body for updating settings
-#[derive(Deserialize, Serialize, ToSchema)]
+#[derive(Deserialize, Serialize, ToSchema, TS)]
+#[ts(export)]
 pub struct UpdateSettingsBody {
     /// Whether versioning is enabled
+    #[serde(default)]
     pub enabled: Option<bool>,
     /// Maximum number of versions to keep
+    #[serde(default)]
+    #[ts(type = "number | null")]
     pub max_versions: Option<i32>,
     /// Maximum age in days
+    #[serde(default)]
+    #[ts(type = "number | null")]
     pub max_age_days: Option<i32>,
 }
 
 /// License state enumeration
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, ToSchema)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, ToSchema, TS)]
 #[serde(rename_all = "lowercase")]
+#[ts(export, rename_all = "lowercase")]
 pub enum LicenseStateDto {
     /// No license key provided
     None,
@@ -109,7 +128,8 @@ pub enum LicenseStateDto {
 }
 
 /// DTO for license status
-#[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
+#[derive(Debug, Clone, Serialize, Deserialize, ToSchema, TS)]
+#[ts(export)]
 pub struct LicenseStatusDto {
     /// License state
     pub state: LicenseStateDto,
@@ -121,14 +141,17 @@ pub struct LicenseStatusDto {
     pub license_id: Option<String>,
     /// Issue date (if license is present)
     #[serde(with = "time::serde::rfc3339::option")]
+    #[ts(type = "string | null")]
     pub issued_at: Option<time::OffsetDateTime>,
     /// Expiration date (if license is present and has expiration)
     #[serde(with = "time::serde::rfc3339::option")]
+    #[ts(type = "string | null")]
     pub expires_at: Option<time::OffsetDateTime>,
     /// License version
     pub version: Option<String>,
     /// Verification timestamp
     #[serde(with = "time::serde::rfc3339")]
+    #[ts(type = "string")]
     pub verified_at: time::OffsetDateTime,
     /// Error message (only present if state is "error" or "invalid")
     pub error_message: Option<String>,
@@ -159,14 +182,14 @@ impl From<r_data_core_services::license::service::LicenseVerificationResult> for
     }
 }
 
-/// Request body for license verification (internal API)
+/// Request body for license verification (internal API — not FE-facing)
 #[derive(Debug, Deserialize)]
 pub struct LicenseVerificationRequest {
     /// License key to verify
     pub license_key: String,
 }
 
-/// Response for license verification (internal API)
+/// Response for license verification (internal API — not FE-facing)
 #[derive(Debug, Serialize)]
 pub struct LicenseVerificationResponse {
     /// Whether the license is valid
@@ -190,23 +213,30 @@ pub struct CapabilitiesResponse {
 #[ts(export)]
 pub struct SystemLogQuery {
     /// Page number (1-based, default: 1)
+    #[serde(default)]
+    #[ts(type = "number | null")]
     pub page: Option<i64>,
     /// Items per page (default: 20, max: 100)
+    #[serde(default)]
+    #[ts(type = "number | null")]
     pub page_size: Option<i64>,
     /// Filter by log type
-    #[ts(type = "string | null")]
+    #[serde(default)]
     pub log_type: Option<SystemLogType>,
     /// Filter by resource type
-    #[ts(type = "string | null")]
+    #[serde(default)]
     pub resource_type: Option<SystemLogResourceType>,
     /// Filter by status
-    #[ts(type = "string | null")]
+    #[serde(default)]
     pub status: Option<SystemLogStatus>,
     /// Filter by resource UUID
+    #[serde(default)]
     pub resource_uuid: Option<String>,
     /// Filter logs created after this timestamp (ISO 8601)
+    #[serde(default)]
     pub date_from: Option<String>,
     /// Filter logs created before this timestamp (ISO 8601)
+    #[serde(default)]
     pub date_to: Option<String>,
 }
 
@@ -270,7 +300,8 @@ impl From<r_data_core_core::system_log::SystemLog> for SystemLogDto {
 }
 
 /// Component version information
-#[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
+#[derive(Debug, Clone, Serialize, Deserialize, ToSchema, TS)]
+#[ts(export)]
 pub struct ComponentVersionDto {
     /// Name of the component
     pub name: String,
@@ -278,11 +309,13 @@ pub struct ComponentVersionDto {
     pub version: String,
     /// Last time this component was seen (ISO 8601)
     #[serde(with = "time::serde::rfc3339")]
+    #[ts(type = "string")]
     pub last_seen_at: time::OffsetDateTime,
 }
 
 /// System versions response
-#[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
+#[derive(Debug, Clone, Serialize, Deserialize, ToSchema, TS)]
+#[ts(export)]
 pub struct SystemVersionsDto {
     /// Core/API server version
     pub core: String,

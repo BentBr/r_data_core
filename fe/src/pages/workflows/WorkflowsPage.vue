@@ -106,10 +106,10 @@
         error.value = ''
         try {
             const response = await typedHttpClient.getWorkflows(
-                page,
-                perPage,
-                sortBy.value,
-                sortOrder.value
+                { page, per_page: perPage, limit: null, offset: null },
+                sortBy.value && sortOrder.value
+                    ? { sort_by: sortBy.value, sort_order: sortOrder.value }
+                    : null
             )
             // Normalize kind from API response (Consumer/Provider) to lowercase (consumer/provider)
             items.value = response.data.map(item => ({
@@ -250,13 +250,18 @@
         }
         runsLoading.value = true
         try {
+            const runsPagination = {
+                page: runsPage.value,
+                per_page: runsPerPage.value,
+                limit: null,
+                offset: null,
+            }
             const res =
                 selectedWorkflowUuid.value === 'all'
-                    ? await typedHttpClient.getAllWorkflowRuns(runsPage.value, runsPerPage.value)
+                    ? await typedHttpClient.getAllWorkflowRuns(runsPagination)
                     : await typedHttpClient.getWorkflowRuns(
                           selectedWorkflowUuid.value,
-                          runsPage.value,
-                          runsPerPage.value
+                          runsPagination
                       )
             runs.value = res.data
             runsTotal.value = res.meta?.pagination?.total ?? res.data.length
@@ -278,11 +283,12 @@
         }
         logsLoading.value = true
         try {
-            const res = await typedHttpClient.getWorkflowRunLogs(
-                currentRunUuid.value,
-                logsPage.value,
-                logsPerPage.value
-            )
+            const res = await typedHttpClient.getWorkflowRunLogs(currentRunUuid.value, {
+                page: logsPage.value,
+                per_page: logsPerPage.value,
+                limit: null,
+                offset: null,
+            })
             logs.value = res.data
             logsTotal.value = res.meta?.pagination?.total ?? res.data.length
         } finally {

@@ -92,7 +92,9 @@ describe('DSL client', () => {
         // Backend responds with 422 Symfony-style
         const body = {
             message: 'Invalid DSL',
-            violations: [{ field: 'dsl', message: 'mapping must contain at least one field' }],
+            violations: [
+                { field: 'dsl', message: 'mapping must contain at least one field', code: null },
+            ],
         }
         vi.spyOn(global, 'fetch').mockResolvedValueOnce(
             new Response(JSON.stringify(body), {

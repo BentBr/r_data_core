@@ -3,6 +3,7 @@
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::collections::HashMap;
+use ts_rs::TS;
 use utoipa::ToSchema;
 use uuid::Uuid;
 
@@ -28,16 +29,18 @@ pub struct EntityQuery {
 }
 
 /// Kind of browse node
-#[derive(Debug, Serialize, Deserialize, ToSchema, Clone, PartialEq, Eq)]
+#[derive(Debug, Serialize, Deserialize, ToSchema, TS, Clone, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]
+#[ts(export, rename_all = "snake_case")]
 pub enum BrowseKind {
     Folder,
     File,
 }
 
 /// Node returned when browsing entities by virtual path
-#[derive(Debug, Serialize, Deserialize, ToSchema, Clone)]
+#[derive(Debug, Serialize, Deserialize, ToSchema, TS, Clone)]
 #[serde(rename_all = "snake_case")]
+#[ts(export)]
 pub struct BrowseNode {
     /// "folder" or "file"
     pub kind: BrowseKind,
@@ -46,6 +49,7 @@ pub struct BrowseNode {
     /// Full path for this item
     pub path: String,
     /// Present for files or folder-entities that exist as entities
+    #[ts(type = "string | null")]
     pub entity_uuid: Option<Uuid>,
     /// Type of the entity if present
     pub entity_type: Option<String>,
@@ -56,22 +60,29 @@ pub struct BrowseNode {
 }
 
 /// Version metadata for entity versions
-#[derive(Debug, Serialize, ToSchema)]
+#[derive(Debug, Serialize, ToSchema, TS)]
+#[ts(export)]
 pub struct VersionMeta {
     pub version_number: i32,
     #[serde(with = "time::serde::rfc3339")]
+    #[ts(type = "string")]
     pub created_at: time::OffsetDateTime,
+    #[ts(type = "string | null")]
     pub created_by: Option<Uuid>,
     pub created_by_name: Option<String>,
 }
 
 /// Version payload containing the actual entity data
-#[derive(Debug, Serialize, ToSchema)]
+#[derive(Debug, Serialize, ToSchema, TS)]
+#[ts(export)]
 pub struct VersionPayload {
     pub version_number: i32,
     #[serde(with = "time::serde::rfc3339")]
+    #[ts(type = "string")]
     pub created_at: time::OffsetDateTime,
+    #[ts(type = "string | null")]
     pub created_by: Option<Uuid>,
+    #[ts(type = "unknown")]
     pub data: serde_json::Value,
 }
 

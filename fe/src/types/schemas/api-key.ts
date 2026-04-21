@@ -1,19 +1,19 @@
 import { z } from 'zod'
 import { UuidSchema } from './base'
+import type { CreateApiKeyRequest as GeneratedCreateApiKeyRequest } from '../generated/CreateApiKeyRequest'
+import type { ReassignApiKeyRequest as GeneratedReassignApiKeyRequest } from '../generated/ReassignApiKeyRequest'
 import { API_KEY_NAME_MIN_LENGTH } from '../generated/validation'
 
 // Create API key request schema (form validation)
-// Note: satisfies z.ZodType<GeneratedCreateApiKeyRequest> not applied because the generated
-// type uses `bigint | null` for expires_in_days whereas Zod uses `number` (JS has no bigint in Zod).
 export const CreateApiKeyRequestSchema = z.object({
     name: z.string().min(API_KEY_NAME_MIN_LENGTH),
-    description: z.string().optional(),
-    expires_in_days: z.number().int().positive().optional(),
-})
+    description: z.string().nullable(),
+    expires_in_days: z.number().int().positive().nullable(),
+}) satisfies z.ZodType<GeneratedCreateApiKeyRequest>
 
 export const ReassignApiKeyRequestSchema = z.object({
     user_uuid: UuidSchema,
-})
+}) satisfies z.ZodType<GeneratedReassignApiKeyRequest>
 
 export const ReassignApiKeyResponseSchema = z.object({
     message: z.string(),

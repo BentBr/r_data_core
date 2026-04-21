@@ -1,7 +1,6 @@
 #![deny(clippy::all, clippy::pedantic, clippy::nursery, warnings)]
 
 use r_data_core_core::permissions::role::{PermissionType, ResourceNamespace};
-use serde_json::Value;
 
 /// Service for authentication and authorization operations
 pub struct AuthService;
@@ -13,22 +12,17 @@ impl AuthService {
         Self
     }
 
-    /// Get user's allowed routes and permissions
+    /// Get user's allowed routes and permissions.
     ///
-    /// # Arguments
-    /// * `is_super_admin` - Whether the user is a super admin
-    /// * `permissions` - User permissions from JWT
-    /// * `has_permission_fn` - Function to check if user has a specific permission
-    ///
-    /// # Returns
-    /// JSON value containing user permissions and allowed routes
+    /// Returns `(is_super_admin, permissions, allowed_routes)`. The API layer wraps this
+    /// in the `UserPermissionsResponse` DTO (which is TS-exported to the FE).
     #[must_use]
     pub fn get_user_permissions<F>(
         &self,
         is_super_admin: bool,
         permissions: &[String],
         has_permission_fn: F,
-    ) -> Value
+    ) -> (bool, Vec<String>, Vec<String>)
     where
         F: Fn(&ResourceNamespace, &PermissionType) -> bool,
     {
@@ -79,12 +73,7 @@ impl AuthService {
             })
             .collect();
 
-        // Build response
-        serde_json::json!({
-            "is_super_admin": is_super_admin,
-            "permissions": permissions,
-            "allowed_routes": allowed_routes,
-        })
+        (is_super_admin, permissions.to_vec(), allowed_routes)
     }
 }
 

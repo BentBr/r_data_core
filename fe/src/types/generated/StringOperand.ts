@@ -3,4 +3,6 @@
 /**
  * String operand variant used by Concat transform
  */
-export type StringOperand = { "kind": "field", field: string, } | { "kind": "const_string", value: string, };
+export type StringOperand =
+    | { kind: 'field'; field: string }
+    | { kind: 'const_string'; value: string }

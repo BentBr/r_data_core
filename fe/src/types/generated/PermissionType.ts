@@ -3,4 +3,11 @@
 /**
  * Permission types that can be granted
  */
-export type PermissionType = "Read" | "Create" | "Update" | "Delete" | "Publish" | "Admin" | "Execute";
+export type PermissionType =
+    | 'Read'
+    | 'Create'
+    | 'Update'
+    | 'Delete'
+    | 'Publish'
+    | 'Admin'
+    | 'Execute'

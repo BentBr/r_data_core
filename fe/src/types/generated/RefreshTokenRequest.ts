@@ -3,8 +3,9 @@
 /**
  * Refresh token request body
  */
-export type RefreshTokenRequest = { 
-/**
- * Refresh token
- */
-refresh_token: string, };
+export type RefreshTokenRequest = {
+    /**
+     * Refresh token
+     */
+    refresh_token: string
+}

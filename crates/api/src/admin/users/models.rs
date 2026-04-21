@@ -100,11 +100,14 @@ pub struct CreateUserRequest {
     /// Last name
     pub last_name: String,
     /// Role UUIDs to assign to this user (optional)
+    #[serde(default)]
     #[ts(type = "string[] | null")]
     pub role_uuids: Option<Vec<Uuid>>,
     /// Whether user is active
+    #[serde(default)]
     pub is_active: Option<bool>,
     /// Super admin flag
+    #[serde(default)]
     pub super_admin: Option<bool>,
 }
 
@@ -114,20 +117,27 @@ pub struct CreateUserRequest {
 pub struct UpdateUserRequest {
     /// Email address (optional)
     #[validate(regex(path = *EMAIL_RE))]
+    #[serde(default)]
     pub email: Option<String>,
     /// Password (optional, only set if provided)
     #[validate(length(min = 8))]
+    #[serde(default)]
     pub password: Option<String>,
     /// First name (optional)
+    #[serde(default)]
     pub first_name: Option<String>,
     /// Last name (optional)
+    #[serde(default)]
     pub last_name: Option<String>,
     /// Role UUIDs to assign to this user (optional)
+    #[serde(default)]
     #[ts(type = "string[] | null")]
     pub role_uuids: Option<Vec<Uuid>>,
     /// Whether user is active (optional)
+    #[serde(default)]
     pub is_active: Option<bool>,
     /// Super admin flag (optional)
+    #[serde(default)]
     pub super_admin: Option<bool>,
 }
 

@@ -64,13 +64,19 @@ describe('useRoles', () => {
                         has_previous: false,
                         has_next: false,
                     },
+                    request_id: null,
+                    timestamp: null,
+                    custom: null,
                 },
             })
 
             const { loadRoles, roles } = useRoles()
             await loadRoles()
 
-            expect(typedHttpClient.getRoles).toHaveBeenCalledWith(1, 20, undefined, undefined)
+            expect(typedHttpClient.getRoles).toHaveBeenCalledWith(
+                { page: 1, per_page: 20, limit: null, offset: null },
+                null
+            )
             expect(roles.value).toEqual(mockRoles)
         })
 
@@ -110,6 +116,7 @@ describe('useRoles', () => {
             const updateData: UpdateRoleRequest = {
                 name: 'Updated Role',
                 description: 'Updated description',
+                super_admin: null,
                 permissions: [],
             }
 
@@ -175,6 +182,7 @@ describe('useRoles', () => {
             const updateData: UpdateRoleRequest = {
                 name: 'Updated Role',
                 description: 'Updated description',
+                super_admin: null,
                 permissions: [],
             }
 
@@ -221,9 +229,10 @@ describe('useRoles', () => {
             await expect(
                 createRole({
                     name: 'Test Role',
+                    description: null,
                     permissions: [],
                     super_admin: false,
-                } as CreateRoleRequest)
+                })
             ).rejects.toThrow('HTTP 403: Forbidden')
             expect(mockHandleError).toHaveBeenCalled()
         })

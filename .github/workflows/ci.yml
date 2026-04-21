@@ -48,6 +48,83 @@ jobs:
           echo "frontend=true" >> $GITHUB_OUTPUT
 
   # ============================================================================
+  # Commit Lint - Validates Conventional Commits on every PR
+  # ============================================================================
+  commit-lint:
+    if: ${{ github.event_name == 'pull_request' }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Validate Conventional Commits
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          conventional_pattern='^(feat|fix|docs|style|refactor|perf|test|build|ci|chore|revert)(\(.+\))?(!)?: .+'
+          merge_pattern='^Merge '
+          invalid_commits=()
+          while IFS= read -r commit_sha; do
+            [[ -z "$commit_sha" ]] && continue
+            subject="$(git log -1 --format='%s' "$commit_sha")"
+            if [[ "$subject" =~ $merge_pattern ]]; then
+              continue
+            fi
+            if ! [[ "$subject" =~ $conventional_pattern ]]; then
+              invalid_commits+=("$commit_sha: $subject")
+            fi
+          done < <(git rev-list "$BASE_SHA..$HEAD_SHA")
+
+          if [[ ${#invalid_commits[@]} -gt 0 ]]; then
+            echo "::error::The following commits do not follow Conventional Commits format:"
+            for msg in "${invalid_commits[@]}"; do
+              echo "  - $msg"
+            done
+            echo ""
+            echo "Expected format: <type>[optional scope][!]: <description>"
+            echo "Types: feat, fix, docs, style, refactor, perf, test, build, ci, chore, revert"
+            echo "Examples:"
+            echo "  feat: add user authentication"
+            echo "  fix(auth): resolve token expiration issue"
+            echo "  feat!: breaking change to API"
+            exit 1
+          fi
+
+          echo "All commits follow Conventional Commits format"
+
+  # ============================================================================
+  # Branch Name Validation - Runs on every PR
+  # ============================================================================
+  branch-name:
+    if: ${{ github.event_name == 'pull_request' }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Validate branch name
+        env:
+          BRANCH_NAME: ${{ github.head_ref }}
+        run: |
+          regex='^(main|master|develop|(release-please|dependabot|renovate)(--|/).+|(feat|fix|hotfix|chore|docs|refactor|perf|test|build|ci|style|revert|release)/[a-z0-9][a-z0-9._-]*)$'
+          if [[ ! "$BRANCH_NAME" =~ $regex ]]; then
+            echo "::error::Branch name '$BRANCH_NAME' does not follow the naming convention."
+            echo ""
+            echo "Expected: <type>/<description>"
+            echo "Types: feat, fix, hotfix, chore, docs, refactor, perf, test, build, ci, style, revert, release"
+            echo "Description: lowercase alphanumeric + . _ - (must start alphanumeric; no uppercase)"
+            echo ""
+            echo "Examples:"
+            echo "  feat/user-authentication"
+            echo "  fix/token-expiration"
+            echo "  hotfix/prod-crash-2026-04"
+            echo ""
+            echo "Exempt branches: main, master, develop, release-please--*, dependabot/*, renovate/*"
+            exit 1
+          fi
+          echo "Branch name '$BRANCH_NAME' is valid"
+
+  # ============================================================================
   # Backend Jobs - Only run when backend files change
   # ============================================================================
   backend-prepare:
@@ -304,12 +381,37 @@ jobs:
         with:
           workspaces: .
 
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+          cache-dependency-path: fe/package-lock.json
+
+      - name: Cache fe/node_modules
+        id: cache-node-modules
+        uses: actions/cache@v4
+        with:
+          path: fe/node_modules
+          key: ${{ runner.os }}-node-modules-${{ hashFiles('fe/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-node-modules-
+
+      - name: Install fe dependencies
+        if: steps.cache-node-modules.outputs.cache-hit != 'true'
+        working-directory: fe
+        run: npm ci
+
       - name: Generate TS bindings
         env:
           SQLX_OFFLINE: true
         run: |
           TS_RS_EXPORT_DIR=${{ github.workspace }}/fe/src/types/generated cargo test --workspace export_bindings 2>&1
           cargo run -p r_data_core_core --bin export_validation_constants > ./fe/src/types/generated/validation.ts
+
+      - name: Format generated bindings (prettier)
+        working-directory: fe
+        run: npx prettier --write --log-level warn 'src/types/generated/**/*.ts'
 
       - name: Check for stale bindings
         run: |
@@ -380,6 +482,10 @@ jobs:
       - name: Lint
         working-directory: fe
         run: npm run lint
+
+      - name: Knip
+        working-directory: fe
+        run: npm run knip
 
   frontend-tests:
     needs: [changes, frontend-prepare]
@@ -647,6 +753,8 @@ jobs:
   ci-gate:
     needs:
       - changes
+      - branch-name
+      - commit-lint
       - backend-clippy
       - backend-format
       - backend-audit
@@ -661,6 +769,24 @@ jobs:
     if: ${{ always() }}
     runs-on: ubuntu-latest
     steps:
+      - name: Check branch name result
+        if: ${{ github.event_name == 'pull_request' }}
+        run: |
+          if [[ "${{ needs.branch-name.result }}" != "success" ]]; then
+            echo "Branch name check failed"
+            exit 1
+          fi
+          echo "Branch name check passed"
+
+      - name: Check commit lint result
+        if: ${{ github.event_name == 'pull_request' }}
+        run: |
+          if [[ "${{ needs.commit-lint.result }}" != "success" ]]; then
+            echo "Commit lint check failed"
+            exit 1
+          fi
+          echo "Commit lint check passed"
+
       - name: Check backend results
         if: ${{ needs.changes.outputs.backend == 'true' }}
         run: |

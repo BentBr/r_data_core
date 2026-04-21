@@ -1,5 +1,6 @@
 import type { AdminLoginResponse } from '@/types/generated/AdminLoginResponse'
 import type { RefreshTokenResponse } from '@/types/generated/RefreshTokenResponse'
+import type { UserPermissionsResponse } from '@/types/generated/UserPermissionsResponse'
 import type { LoginRequest, RefreshTokenRequest, LogoutRequest } from '@/types/schemas'
 import { BaseTypedHttpClient } from './base'
 
@@ -32,16 +33,8 @@ export class AuthClient extends BaseTypedHttpClient {
         })
     }
 
-    async getUserPermissions(): Promise<{
-        is_super_admin: boolean
-        permissions: string[]
-        allowed_routes: string[]
-    }> {
-        return this.request<{
-            is_super_admin: boolean
-            permissions: string[]
-            allowed_routes: string[]
-        }>('/admin/api/v1/auth/permissions')
+    async getUserPermissions(): Promise<UserPermissionsResponse> {
+        return this.request<UserPermissionsResponse>('/admin/api/v1/auth/permissions')
     }
 
     async forgotPassword(email: string): Promise<void> {

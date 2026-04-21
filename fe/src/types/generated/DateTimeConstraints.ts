@@ -3,12 +3,13 @@
 /**
  * Date/time field constraints
  */
-export type DateTimeConstraints = { 
-/**
- * Minimum allowed date
- */
-min_date: string | null, 
-/**
- * Maximum allowed date
- */
-max_date: string | null, };
+export type DateTimeConstraints = {
+    /**
+     * Minimum allowed date
+     */
+    min_date: string | null
+    /**
+     * Maximum allowed date
+     */
+    max_date: string | null
+}

@@ -1,34 +1,23 @@
 import type { RoleResponse } from '@/types/generated/RoleResponse'
-import type { CreateRoleRequest, UpdateRoleRequest, AssignRolesRequest } from '@/types/schemas'
+import type { PaginationQuery } from '@/types/generated/PaginationQuery'
+import type { SortingQuery } from '@/types/generated/SortingQuery'
+import type {
+    CreateRoleRequest,
+    UpdateRoleRequest,
+    AssignRolesRequest,
+    ResponseMeta,
+} from '@/types/schemas'
 import { BaseTypedHttpClient } from './base'
+import { buildListQueryString } from './query'
 
 export class RolesClient extends BaseTypedHttpClient {
     async getRoles(
-        page = 1,
-        itemsPerPage = 20,
-        sortBy?: string | null,
-        sortOrder?: 'asc' | 'desc' | null
-    ): Promise<{
-        data: RoleResponse[]
-        meta?: {
-            pagination?: {
-                total: number
-                page: number
-                per_page: number
-                total_pages: number
-                has_previous: boolean
-                has_next: boolean
-            }
-            request_id?: string
-            timestamp?: string
-            custom?: unknown
-        }
-    }> {
-        let url = `/admin/api/v1/roles?page=${page}&per_page=${itemsPerPage}`
-        if (sortBy && sortOrder) {
-            url += `&sort_by=${sortBy}&sort_order=${sortOrder}`
-        }
-        return this.paginatedRequest<RoleResponse[]>(url)
+        pagination: PaginationQuery,
+        sorting?: SortingQuery | null
+    ): Promise<{ data: RoleResponse[]; meta?: ResponseMeta }> {
+        return this.paginatedRequest<RoleResponse[]>(
+            `/admin/api/v1/roles${buildListQueryString(pagination, sorting)}`
+        )
     }
 
     async getRole(uuid: string): Promise<RoleResponse> {

@@ -3,20 +3,21 @@
 /**
  * Numeric field constraints
  */
-export type NumericConstraints = { 
-/**
- * Minimum allowed value
- */
-min: number | null, 
-/**
- * Maximum allowed value
- */
-max: number | null, 
-/**
- * Decimal precision for float values
- */
-precision: number | null, 
-/**
- * Whether only positive values are allowed
- */
-positive_only: boolean | null, };
+export type NumericConstraints = {
+    /**
+     * Minimum allowed value
+     */
+    min: number | null
+    /**
+     * Maximum allowed value
+     */
+    max: number | null
+    /**
+     * Decimal precision for float values
+     */
+    precision: number | null
+    /**
+     * Whether only positive values are allowed
+     */
+    positive_only: boolean | null
+}

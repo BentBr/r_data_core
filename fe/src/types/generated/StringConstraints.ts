@@ -3,20 +3,21 @@
 /**
  * String field constraints
  */
-export type StringConstraints = { 
-/**
- * Minimum string length
- */
-min_length: number | null, 
-/**
- * Maximum string length
- */
-max_length: number | null, 
-/**
- * Regex pattern for validation (e.g., "^[A-Z0-9]{2,20}$")
- */
-pattern: string | null, 
-/**
- * Custom error message when validation fails
- */
-error_message: string | null, };
+export type StringConstraints = {
+    /**
+     * Minimum string length
+     */
+    min_length: number | null
+    /**
+     * Maximum string length
+     */
+    max_length: number | null
+    /**
+     * Regex pattern for validation (e.g., "^[A-Z0-9]{2,20}$")
+     */
+    pattern: string | null
+    /**
+     * Custom error message when validation fails
+     */
+    error_message: string | null
+}

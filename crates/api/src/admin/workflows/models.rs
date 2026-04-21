@@ -89,6 +89,21 @@ pub struct WorkflowRunUpload {
     pub file: String,
 }
 
+/// Response for `POST /workflows/{uuid}/run/upload`
+#[derive(Debug, Serialize, Deserialize, ToSchema, TS)]
+#[ts(export)]
+pub struct WorkflowRunUploadResponse {
+    /// UUID of the newly-created workflow run
+    #[ts(type = "string")]
+    pub run_uuid: Uuid,
+    /// Number of items that were staged from the uploaded file
+    #[ts(type = "number")]
+    pub staged_items: i64,
+    /// Present only when the upload succeeded but the follow-up job enqueue failed
+    #[serde(default)]
+    pub warning: Option<String>,
+}
+
 #[derive(Serialize, ToSchema, TS)]
 #[ts(export)]
 pub struct WorkflowVersionMeta {

@@ -160,7 +160,7 @@ describe('useEntities', () => {
                 data: { name: '' },
             }
             const validationError = new ValidationError('Validation failed', [
-                { field: 'name', message: 'Required' },
+                { field: 'name', message: 'Required', code: null },
             ])
             mockCreateEntity.mockRejectedValue(validationError)
 

@@ -78,7 +78,12 @@ describe('UsersClient', () => {
                 json: async () => mockResponse,
             })
 
-            const result = await client.getUsers(1, 10)
+            const result = await client.getUsers({
+                page: 1,
+                per_page: 10,
+                limit: null,
+                offset: null,
+            })
 
             expect(result.data).toBeDefined()
             expect(Array.isArray(result.data)).toBe(true)
@@ -113,7 +118,10 @@ describe('UsersClient', () => {
                 json: async () => mockResponse,
             })
 
-            const result = await client.getUsers(1, 10, 'username', 'asc')
+            const result = await client.getUsers(
+                { page: 1, per_page: 10, limit: null, offset: null },
+                { sort_by: 'username', sort_order: 'asc' }
+            )
 
             expect(result.data).toBeDefined()
             expect(mockFetch).toHaveBeenCalledWith(
@@ -146,7 +154,10 @@ describe('UsersClient', () => {
                 json: async () => mockResponse,
             })
 
-            const result = await client.getUsers(1, 10, 'created_at', 'desc')
+            const result = await client.getUsers(
+                { page: 1, per_page: 10, limit: null, offset: null },
+                { sort_by: 'created_at', sort_order: 'desc' }
+            )
 
             expect(result.data).toBeDefined()
             expect(mockFetch).toHaveBeenCalledWith(
@@ -179,7 +190,10 @@ describe('UsersClient', () => {
                 json: async () => mockResponse,
             })
 
-            const result = await client.getUsers(1, 10, null, null)
+            const result = await client.getUsers(
+                { page: 1, per_page: 10, limit: null, offset: null },
+                null
+            )
 
             expect(result.data).toBeDefined()
             const url = mockFetch.mock.calls[0][0] as string
@@ -233,6 +247,9 @@ describe('UsersClient', () => {
                 password: 'securepassword123',
                 first_name: 'New',
                 last_name: 'User',
+                role_uuids: null,
+                is_active: null,
+                super_admin: null,
             }
 
             const mockResponse = {
@@ -272,6 +289,9 @@ describe('UsersClient', () => {
                 password: '123',
                 first_name: 'New',
                 last_name: 'User',
+                role_uuids: null,
+                is_active: null,
+                super_admin: null,
             }
 
             mockFetch.mockResolvedValueOnce({
@@ -289,7 +309,12 @@ describe('UsersClient', () => {
         it('should update a user successfully', async () => {
             const request: UpdateUserRequest = {
                 email: 'updated@example.com',
+                password: null,
                 first_name: 'Updated',
+                last_name: null,
+                role_uuids: null,
+                is_active: null,
+                super_admin: null,
             }
 
             const mockResponse = {
@@ -323,6 +348,12 @@ describe('UsersClient', () => {
         it('should handle 404 error when updating non-existent user', async () => {
             const request: UpdateUserRequest = {
                 email: 'updated@example.com',
+                password: null,
+                first_name: null,
+                last_name: null,
+                role_uuids: null,
+                is_active: null,
+                super_admin: null,
             }
 
             mockFetch.mockResolvedValueOnce({

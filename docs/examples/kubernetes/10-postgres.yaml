@@ -1,0 +1,100 @@
+# Headless Service — governs the StatefulSet, provides stable per-pod DNS
+# (postgres-0.postgres-headless.rdatacore.svc.cluster.local).
+apiVersion: v1
+kind: Service
+metadata:
+    name: postgres-headless
+    namespace: rdatacore
+    labels:
+        app: postgres
+spec:
+    clusterIP: None
+    ports:
+        -   name: postgres
+            port: 5432
+            targetPort: 5432
+    selector:
+        app: postgres
+---
+# ClusterIP Service — stable virtual IP for clients (DATABASE_URL points here).
+apiVersion: v1
+kind: Service
+metadata:
+    name: postgres
+    namespace: rdatacore
+    labels:
+        app: postgres
+spec:
+    type: ClusterIP
+    ports:
+        -   name: postgres
+            port: 5432
+            targetPort: 5432
+    selector:
+        app: postgres
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+    name: postgres
+    namespace: rdatacore
+spec:
+    serviceName: postgres-headless
+    replicas: 1
+    selector:
+        matchLabels:
+            app: postgres
+    template:
+        metadata:
+            labels:
+                app: postgres
+        spec:
+            containers:
+                -   name: postgres
+                    image: postgres:18-alpine
+                    ports:
+                        -   containerPort: 5432
+                            name: postgres
+                    env:
+                        -   name: POSTGRES_USER
+                            value: "rdatacore"
+                        -   name: POSTGRES_DB
+                            value: "rdata"
+                        -   name: POSTGRES_PASSWORD
+                            valueFrom:
+                                secretKeyRef:
+                                    name: rdatacore-secrets
+                                    key: POSTGRES_PASSWORD
+                        -   name: PGDATA
+                            value: "/var/lib/postgresql/data/pgdata"
+                    volumeMounts:
+                        -   name: data
+                            mountPath: /var/lib/postgresql/data
+                    readinessProbe:
+                        exec:
+                            command: [ "pg_isready", "-U", "rdatacore", "-d", "rdata" ]
+                        initialDelaySeconds: 10
+                        periodSeconds: 5
+                        timeoutSeconds: 5
+                    livenessProbe:
+                        exec:
+                            command: [ "pg_isready", "-U", "rdatacore", "-d", "rdata" ]
+                        initialDelaySeconds: 30
+                        periodSeconds: 15
+                        timeoutSeconds: 5
+                    resources:
+                        requests:
+                            cpu: "250m"
+                            memory: "512Mi"
+                        limits:
+                            cpu: "1000m"
+                            memory: "2Gi"
+    volumeClaimTemplates:
+        -   metadata:
+                name: data
+            spec:
+                accessModes: [ "ReadWriteOnce" ]
+                storageClassName: longhorn
+                resources:
+                    requests:
+                        storage: 20Gi

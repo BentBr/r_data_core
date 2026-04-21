@@ -128,7 +128,6 @@ pub enum FieldConstraints {
 /// Schema for options source in `OpenAPI` docs
 /// Defines how to populate options for `Select` and `MultiSelect` fields
 #[derive(Debug, Serialize, Deserialize, ToSchema, TS)]
-#[ts(export)]
 #[serde(tag = "type")]
 pub enum OptionsSourceSchema {
     /// Fixed list of options defined statically
@@ -155,7 +154,6 @@ pub enum OptionsSourceSchema {
 /// Schema for select options in `OpenAPI` docs
 /// Used for defining individual options in fixed option lists
 #[derive(Debug, Serialize, Deserialize, ToSchema, TS)]
-#[ts(export)]
 pub struct SelectOptionSchema {
     /// Option value (stored in database)
     pub value: String,
@@ -295,14 +293,12 @@ pub struct EntityDefinitionSchema {
 }
 
 /// Response for listing entity definitions
-#[derive(Debug, Serialize, ToSchema, TS)]
-#[ts(export)]
+#[derive(Debug, Serialize, ToSchema)]
 #[schema(title = "EntityDefinitionListResponse")]
 pub struct EntityDefinitionListResponse {
     /// List of entity definitions
     pub items: Vec<EntityDefinitionSchema>,
     /// Total number of items
-    #[ts(type = "number")]
     pub total: i64,
 }
 

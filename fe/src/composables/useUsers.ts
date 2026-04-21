@@ -22,7 +22,10 @@ export function useUsers() {
         error.value = ''
 
         try {
-            const response = await typedHttpClient.getUsers(page, perPage, sortBy, sortOrder)
+            const response = await typedHttpClient.getUsers(
+                { page, per_page: perPage, limit: null, offset: null },
+                sortBy && sortOrder ? { sort_by: sortBy, sort_order: sortOrder } : null
+            )
             users.value = response.data
             return response
         } catch (err) {

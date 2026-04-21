@@ -852,6 +852,7 @@
                 type: 'send_email',
                 template_uuid: '',
                 to: [],
+                cc: null,
                 target_status: '',
             }
         } else {

@@ -3,28 +3,29 @@
 /**
  * Request body for creating a new email template
  */
-export type CreateEmailTemplateRequest = { 
-/**
- * Display name for the template
- */
-name: string, 
-/**
- * Unique slug identifier
- */
-slug: string, 
-/**
- * Subject line (may contain template variables)
- */
-subject_template: string, 
-/**
- * HTML body (may contain template variables)
- */
-body_html_template: string, 
-/**
- * Plain-text body (may contain template variables)
- */
-body_text_template: string, 
-/**
- * JSON object describing available template variables
- */
-variables: unknown, };
+export type CreateEmailTemplateRequest = {
+    /**
+     * Display name for the template
+     */
+    name: string
+    /**
+     * Unique slug identifier
+     */
+    slug: string
+    /**
+     * Subject line (may contain template variables)
+     */
+    subject_template: string
+    /**
+     * HTML body (may contain template variables)
+     */
+    body_html_template: string
+    /**
+     * Plain-text body (may contain template variables)
+     */
+    body_text_template: string
+    /**
+     * JSON object describing available template variables
+     */
+    variables: unknown
+}

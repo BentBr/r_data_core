@@ -3,4 +3,23 @@
 /**
  * Field types available for entity definitions
  */
-export type FieldTypeSchema = "String" | "Text" | "Wysiwyg" | "Integer" | "Float" | "Boolean" | "DateTime" | "Date" | "Object" | "Array" | "Json" | "Uuid" | "ManyToOne" | "ManyToMany" | "Select" | "MultiSelect" | "Image" | "File" | "Password";
+export type FieldTypeSchema =
+    | 'String'
+    | 'Text'
+    | 'Wysiwyg'
+    | 'Integer'
+    | 'Float'
+    | 'Boolean'
+    | 'DateTime'
+    | 'Date'
+    | 'Object'
+    | 'Array'
+    | 'Json'
+    | 'Uuid'
+    | 'ManyToOne'
+    | 'ManyToMany'
+    | 'Select'
+    | 'MultiSelect'
+    | 'Image'
+    | 'File'
+    | 'Password'

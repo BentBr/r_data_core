@@ -68,6 +68,7 @@ pub enum AccessLevel {
 ///
 /// Each namespace represents a different resource type that can have permissions.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Hash, TS)]
+#[ts(export)]
 pub enum ResourceNamespace {
     /// Workflows namespace
     Workflows,

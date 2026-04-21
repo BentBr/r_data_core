@@ -31,6 +31,7 @@ pub struct PostRunSendEmail {
     /// Recipients (only `const_string` — no field refs in post-run context)
     pub to: Vec<StringOperand>,
     /// Optional CC
+    #[serde(default)]
     pub cc: Option<Vec<StringOperand>>,
     /// When to fire this action
     #[serde(default)]

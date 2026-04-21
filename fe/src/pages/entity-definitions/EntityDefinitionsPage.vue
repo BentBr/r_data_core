@@ -239,7 +239,12 @@
         error.value = ''
 
         try {
-            const response = await typedHttpClient.getEntityDefinitions()
+            const response = await typedHttpClient.getEntityDefinitions({
+                page: null,
+                per_page: null,
+                limit: null,
+                offset: null,
+            })
             // Sanitize fields to ensure constraints and ui_settings are always objects
             entityDefinitions.value = response.data.map(definition => ({
                 ...definition,

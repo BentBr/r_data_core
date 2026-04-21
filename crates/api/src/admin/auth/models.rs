@@ -8,9 +8,20 @@ use utoipa::ToSchema;
 use validator::Validate;
 
 /// Empty request body for endpoints that don't require any input
-#[derive(Debug, Deserialize, ToSchema, TS)]
-#[ts(export)]
+#[derive(Debug, Deserialize, ToSchema)]
 pub struct EmptyRequest {}
+
+/// Response body for `GET /admin/api/v1/auth/permissions`
+#[derive(Debug, Serialize, Deserialize, ToSchema, TS)]
+#[ts(export)]
+pub struct UserPermissionsResponse {
+    /// Whether the caller is a super admin (all permissions granted)
+    pub is_super_admin: bool,
+    /// Flat list of `namespace:permission_type` strings the caller holds
+    pub permissions: Vec<String>,
+    /// Router paths the caller is allowed to navigate to
+    pub allowed_routes: Vec<String>,
+}
 
 /// Refresh token request body
 #[derive(Debug, Deserialize, Serialize, ToSchema, TS)]
@@ -93,8 +104,7 @@ pub struct AdminLoginResponse {
 }
 
 /// Admin registration request body
-#[derive(Debug, Deserialize, ToSchema, Validate, TS)]
-#[ts(export)]
+#[derive(Debug, Deserialize, ToSchema, Validate)]
 pub struct AdminRegisterRequest {
     /// Username
     #[validate(length(min = 3, message = "Username must be at least 3 characters"))]
@@ -121,8 +131,7 @@ pub struct AdminRegisterRequest {
 }
 
 /// Admin registration response body
-#[derive(Debug, Serialize, ToSchema, TS)]
-#[ts(export)]
+#[derive(Debug, Serialize, ToSchema)]
 pub struct AdminRegisterResponse {
     /// User UUID
     pub uuid: String,
