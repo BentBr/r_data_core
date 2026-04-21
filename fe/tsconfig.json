@@ -39,10 +39,5 @@
         "src/**/*.tsx",
         "src/**/*.vue",
         "node_modules/@types/node/globals.d.ts"
-    ],
-    "references": [
-        {
-            "path": "./tsconfig.node.json"
-        }
     ]
 }
