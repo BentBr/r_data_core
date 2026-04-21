@@ -20,9 +20,9 @@ impl IntOrStringInt {
     fn into_i64<E: serde::de::Error>(self) -> Result<i64, E> {
         match self {
             Self::Int(n) => Ok(n),
-            Self::Str(s) => s.parse::<i64>().map_err(|_| {
-                E::custom(format!("invalid type: string \"{s}\", expected i64"))
-            }),
+            Self::Str(s) => s
+                .parse::<i64>()
+                .map_err(|_| E::custom(format!("invalid type: string \"{s}\", expected i64"))),
         }
     }
 }
