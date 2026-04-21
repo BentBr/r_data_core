@@ -82,7 +82,12 @@ describe('RolesClient', () => {
                 json: async () => mockResponse,
             })
 
-            const result = await client.getRoles(1, 10)
+            const result = await client.getRoles({
+                page: 1,
+                per_page: 10,
+                limit: null,
+                offset: null,
+            })
 
             expect(result.data).toBeDefined()
             expect(Array.isArray(result.data)).toBe(true)
@@ -117,7 +122,10 @@ describe('RolesClient', () => {
                 json: async () => mockResponse,
             })
 
-            const result = await client.getRoles(1, 10, 'name', 'asc')
+            const result = await client.getRoles(
+                { page: 1, per_page: 10, limit: null, offset: null },
+                { sort_by: 'name', sort_order: 'asc' }
+            )
 
             expect(result.data).toBeDefined()
             expect(mockFetch).toHaveBeenCalledWith(
@@ -150,7 +158,10 @@ describe('RolesClient', () => {
                 json: async () => mockResponse,
             })
 
-            const result = await client.getRoles(1, 10, 'created_at', 'desc')
+            const result = await client.getRoles(
+                { page: 1, per_page: 10, limit: null, offset: null },
+                { sort_by: 'created_at', sort_order: 'desc' }
+            )
 
             expect(result.data).toBeDefined()
             expect(mockFetch).toHaveBeenCalledWith(
@@ -183,7 +194,10 @@ describe('RolesClient', () => {
                 json: async () => mockResponse,
             })
 
-            const result = await client.getRoles(1, 10, null, null)
+            const result = await client.getRoles(
+                { page: 1, per_page: 10, limit: null, offset: null },
+                null
+            )
 
             expect(result.data).toBeDefined()
             const url = mockFetch.mock.calls[0][0] as string

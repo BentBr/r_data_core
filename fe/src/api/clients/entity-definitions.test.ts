@@ -91,7 +91,12 @@ describe('EntityDefinitionsClient', () => {
                 json: async () => mockResponse,
             })
 
-            const result = await client.getEntityDefinitions(10, 0)
+            const result = await client.getEntityDefinitions({
+                page: null,
+                per_page: null,
+                limit: 10,
+                offset: 0,
+            })
 
             expect(result.data).toBeDefined()
             expect(Array.isArray(result.data)).toBe(true)
@@ -126,7 +131,12 @@ describe('EntityDefinitionsClient', () => {
                 json: async () => mockResponse,
             })
 
-            const result = await client.getEntityDefinitions(20, 40)
+            const result = await client.getEntityDefinitions({
+                page: null,
+                per_page: null,
+                limit: 20,
+                offset: 40,
+            })
 
             expect(result.meta?.pagination?.has_previous).toBe(true)
             expect(result.meta?.pagination?.has_next).toBe(false)

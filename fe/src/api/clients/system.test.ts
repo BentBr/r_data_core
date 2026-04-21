@@ -129,6 +129,7 @@ describe('SystemClient', () => {
             const payload: EntityVersioningSettings = {
                 enabled: true,
                 max_versions: -1,
+                max_age_days: null,
             }
 
             mockFetch.mockResolvedValueOnce({
@@ -229,6 +230,7 @@ describe('SystemClient', () => {
             const payload: WorkflowRunLogSettings = {
                 enabled: true,
                 max_runs: -5,
+                max_age_days: null,
             }
 
             mockFetch.mockResolvedValueOnce({
@@ -279,6 +281,12 @@ describe('SystemClient', () => {
         it('should handle invalid license status', async () => {
             const mockStatus: LicenseStatus = {
                 state: 'invalid',
+                company: null,
+                license_type: null,
+                license_id: null,
+                issued_at: null,
+                expires_at: null,
+                version: null,
                 verified_at: '2024-06-15T12:00:00Z',
                 error_message: 'License signature mismatch',
             }
@@ -301,7 +309,14 @@ describe('SystemClient', () => {
         it('should handle missing license (none state)', async () => {
             const mockStatus: LicenseStatus = {
                 state: 'none',
+                company: null,
+                license_type: null,
+                license_id: null,
+                issued_at: null,
+                expires_at: null,
+                version: null,
                 verified_at: '2024-06-15T12:00:00Z',
+                error_message: null,
             }
 
             mockFetch.mockResolvedValueOnce({
@@ -316,7 +331,7 @@ describe('SystemClient', () => {
             const result = await client.getLicenseStatus()
 
             expect(result.state).toBe('none')
-            expect(result.company).toBeUndefined()
+            expect(result.company).toBeNull()
         })
     })
 

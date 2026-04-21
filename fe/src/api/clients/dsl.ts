@@ -1,5 +1,6 @@
 import { BaseTypedHttpClient } from './base'
 import type { DslStep, DslOptionsResponse } from '@/types/schemas'
+import type { DslValidateResponse } from '@/types/generated/DslValidateResponse'
 
 export class DslClient extends BaseTypedHttpClient {
     async getDslFromOptions(): Promise<DslOptionsResponse> {
@@ -14,9 +15,9 @@ export class DslClient extends BaseTypedHttpClient {
         return this.request<DslOptionsResponse>('/admin/api/v1/dsl/transform/options')
     }
 
-    async validateDsl(steps: DslStep[]): Promise<{ valid: boolean }> {
+    async validateDsl(steps: DslStep[]): Promise<DslValidateResponse> {
         const request = { steps }
-        return this.request<{ valid: boolean }>('/admin/api/v1/dsl/validate', {
+        return this.request<DslValidateResponse>('/admin/api/v1/dsl/validate', {
             method: 'POST',
             body: JSON.stringify(request),
         })

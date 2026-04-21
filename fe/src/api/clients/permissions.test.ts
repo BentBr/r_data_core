@@ -82,7 +82,12 @@ describe('RolesClient (permissions)', () => {
                 json: async () => mockResponse,
             })
 
-            const result = await client.getRoles(1, 10)
+            const result = await client.getRoles({
+                page: 1,
+                per_page: 10,
+                limit: null,
+                offset: null,
+            })
 
             expect(result.data).toBeDefined()
             expect(Array.isArray(result.data)).toBe(true)
@@ -117,7 +122,12 @@ describe('RolesClient (permissions)', () => {
                 json: async () => mockResponse,
             })
 
-            const result = await client.getRoles(1, 10)
+            const result = await client.getRoles({
+                page: 1,
+                per_page: 10,
+                limit: null,
+                offset: null,
+            })
 
             expect(result.data).toHaveLength(0)
             expect(result.meta?.pagination?.total).toBe(0)

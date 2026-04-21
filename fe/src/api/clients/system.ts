@@ -1,54 +1,30 @@
+import type { EntityVersioningSettingsDto } from '@/types/generated/EntityVersioningSettingsDto'
+import type { WorkflowRunLogSettingsDto } from '@/types/generated/WorkflowRunLogSettingsDto'
+import type { UpdateSettingsBody } from '@/types/generated/UpdateSettingsBody'
+import type { UpdateWorkflowRunLogSettingsBody } from '@/types/generated/UpdateWorkflowRunLogSettingsBody'
+import type { LicenseStatusDto } from '@/types/generated/LicenseStatusDto'
+import type { SystemVersionsDto } from '@/types/generated/SystemVersionsDto'
 import { BaseTypedHttpClient } from './base'
 
-export interface EntityVersioningSettings {
-    enabled: boolean
-    max_versions?: number | null
-    max_age_days?: number | null
-}
-
-export interface WorkflowRunLogSettings {
-    enabled: boolean
-    max_runs?: number | null
-    max_age_days?: number | null
-}
-
-export type LicenseState = 'none' | 'invalid' | 'error' | 'valid'
-
-export interface LicenseStatus {
-    state: LicenseState
-    company?: string | null
-    license_type?: string | null
-    license_id?: string | null
-    issued_at?: string | null
-    expires_at?: string | null
-    version?: string | null
-    verified_at: string
-    error_message?: string | null
-}
-
-export interface ComponentVersion {
-    name: string
-    version: string
-    last_seen_at: string
-}
-
-export interface SystemVersions {
-    core: string
-    worker?: ComponentVersion | null
-    maintenance?: ComponentVersion | null
-}
+// FE-facing aliases over BE-generated shapes; callers keep using short names without redeclaring.
+export type EntityVersioningSettings = EntityVersioningSettingsDto
+export type WorkflowRunLogSettings = WorkflowRunLogSettingsDto
+export type LicenseStatus = LicenseStatusDto
+export type SystemVersions = SystemVersionsDto
+export type { LicenseStateDto as LicenseState } from '@/types/generated/LicenseStateDto'
+export type { ComponentVersionDto as ComponentVersion } from '@/types/generated/ComponentVersionDto'
 
 export class SystemClient extends BaseTypedHttpClient {
-    async getEntityVersioningSettings(): Promise<EntityVersioningSettings> {
-        return this.request<EntityVersioningSettings>(
+    async getEntityVersioningSettings(): Promise<EntityVersioningSettingsDto> {
+        return this.request<EntityVersioningSettingsDto>(
             '/admin/api/v1/system/settings/entity-versioning'
         )
     }
 
     async updateEntityVersioningSettings(
-        payload: EntityVersioningSettings
-    ): Promise<EntityVersioningSettings> {
-        return this.request<EntityVersioningSettings>(
+        payload: UpdateSettingsBody
+    ): Promise<EntityVersioningSettingsDto> {
+        return this.request<EntityVersioningSettingsDto>(
             '/admin/api/v1/system/settings/entity-versioning',
             {
                 method: 'PUT',
@@ -57,16 +33,16 @@ export class SystemClient extends BaseTypedHttpClient {
         )
     }
 
-    async getWorkflowRunLogSettings(): Promise<WorkflowRunLogSettings> {
-        return this.request<WorkflowRunLogSettings>(
+    async getWorkflowRunLogSettings(): Promise<WorkflowRunLogSettingsDto> {
+        return this.request<WorkflowRunLogSettingsDto>(
             '/admin/api/v1/system/settings/workflow-run-logs'
         )
     }
 
     async updateWorkflowRunLogSettings(
-        payload: WorkflowRunLogSettings
-    ): Promise<WorkflowRunLogSettings> {
-        return this.request<WorkflowRunLogSettings>(
+        payload: UpdateWorkflowRunLogSettingsBody
+    ): Promise<WorkflowRunLogSettingsDto> {
+        return this.request<WorkflowRunLogSettingsDto>(
             '/admin/api/v1/system/settings/workflow-run-logs',
             {
                 method: 'PUT',
@@ -75,11 +51,11 @@ export class SystemClient extends BaseTypedHttpClient {
         )
     }
 
-    async getLicenseStatus(): Promise<LicenseStatus> {
-        return this.request<LicenseStatus>('/admin/api/v1/system/license')
+    async getLicenseStatus(): Promise<LicenseStatusDto> {
+        return this.request<LicenseStatusDto>('/admin/api/v1/system/license')
     }
 
-    async getSystemVersions(): Promise<SystemVersions> {
-        return this.request<SystemVersions>('/admin/api/v1/system/versions')
+    async getSystemVersions(): Promise<SystemVersionsDto> {
+        return this.request<SystemVersionsDto>('/admin/api/v1/system/versions')
     }
 }

@@ -328,10 +328,10 @@
                 `Loading API keys: page=${page}, itemsPerPage=${itemsPerPage}, sortBy=${sortBy.value}, sortOrder=${sortOrder.value}`
             )
             const response = await typedHttpClient.getApiKeys(
-                page,
-                itemsPerPage,
-                sortBy.value,
-                sortOrder.value
+                { page, per_page: itemsPerPage, limit: null, offset: null },
+                sortBy.value && sortOrder.value
+                    ? { sort_by: sortBy.value, sort_order: sortOrder.value }
+                    : null
             )
             apiKeys.value = response.data
             if (response.meta?.pagination) {

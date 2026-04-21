@@ -7,16 +7,17 @@ import type {
 import type { ApplySchemaRequest } from '@/types/generated/ApplySchemaRequest'
 import type { EntityDefinitionVersionMeta } from '@/types/generated/EntityDefinitionVersionMeta'
 import type { EntityDefinitionVersionPayload } from '@/types/generated/EntityDefinitionVersionPayload'
+import type { EntityFieldInfo } from '@/types/generated/EntityFieldInfo'
+import type { PaginationQuery } from '@/types/generated/PaginationQuery'
 import { BaseTypedHttpClient } from './base'
+import { buildListQueryString } from './query'
 
 export class EntityDefinitionsClient extends BaseTypedHttpClient {
     async getEntityDefinitions(
-        limit?: number,
-        offset = 0
+        pagination: PaginationQuery
     ): Promise<{ data: EntityDefinition[]; meta?: ResponseMeta }> {
-        const pageSize = limit ?? this.getDefaultPageSize()
         return this.paginatedRequest<EntityDefinition[]>(
-            `/admin/api/v1/entity-definitions?limit=${pageSize}&offset=${offset}`
+            `/admin/api/v1/entity-definitions${buildListQueryString(pagination)}`
         )
     }
 
@@ -56,12 +57,10 @@ export class EntityDefinitionsClient extends BaseTypedHttpClient {
         })
     }
 
-    async getEntityFields(
-        entityType: string
-    ): Promise<Array<{ name: string; type: string; required: boolean; system: boolean }>> {
-        return this.request<
-            Array<{ name: string; type: string; required: boolean; system: boolean }>
-        >(`/admin/api/v1/entity-definitions/${encodeURIComponent(entityType)}/fields`)
+    async getEntityFields(entityType: string): Promise<EntityFieldInfo[]> {
+        return this.request<EntityFieldInfo[]>(
+            `/admin/api/v1/entity-definitions/${encodeURIComponent(entityType)}/fields`
+        )
     }
 
     async listEntityDefinitionVersions(uuid: string): Promise<EntityDefinitionVersionMeta[]> {

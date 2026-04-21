@@ -1,6 +1,7 @@
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::collections::HashMap;
+use ts_rs::TS;
 use utoipa::ToSchema;
 
 /// Custom deserializer for converting string query parameters to i64
@@ -55,26 +56,35 @@ where
 ///
 /// All parameters are optional and have sensible defaults. You can mix and match these parameters
 /// as needed for your use case.
-#[derive(Debug, Deserialize, ToSchema)]
+#[derive(Debug, Serialize, Deserialize, ToSchema, TS)]
+#[ts(export)]
 pub struct PaginationQuery {
     /// Page number (1-based) - defaults to 1
     /// Use with `per_page` for page-based pagination
-    #[serde(deserialize_with = "deserialize_optional_i64", default)]
+    #[serde(default)]
+    #[serde(deserialize_with = "deserialize_optional_i64")]
+    #[ts(type = "number | null")]
     pub page: Option<i64>,
 
     /// Items per page - defaults to 20, max 100
     /// Use with `page` for page-based pagination
-    #[serde(deserialize_with = "deserialize_optional_i64", default)]
+    #[serde(default)]
+    #[serde(deserialize_with = "deserialize_optional_i64")]
+    #[ts(type = "number | null")]
     pub per_page: Option<i64>,
 
     /// Limit (alternative to `per_page`) - defaults to 20, max 100
     /// Use with `offset` for offset-based pagination
-    #[serde(deserialize_with = "deserialize_optional_i64", default)]
+    #[serde(default)]
+    #[serde(deserialize_with = "deserialize_optional_i64")]
+    #[ts(type = "number | null")]
     pub limit: Option<i64>,
 
     /// Offset (alternative to page) - defaults to 0
     /// Use with `limit` for offset-based pagination
-    #[serde(deserialize_with = "deserialize_optional_i64", default)]
+    #[serde(default)]
+    #[serde(deserialize_with = "deserialize_optional_i64")]
+    #[ts(type = "number | null")]
     pub offset: Option<i64>,
 }
 
@@ -236,11 +246,14 @@ impl PaginationQuery {
 }
 
 /// Standard sorting query parameters
-#[derive(Debug, Deserialize, ToSchema)]
+#[derive(Debug, Serialize, Deserialize, ToSchema, TS)]
+#[ts(export)]
 pub struct SortingQuery {
     /// Field to sort by
+    #[serde(default)]
     pub sort_by: Option<String>,
     /// Sort order (asc or desc)
+    #[serde(default)]
     pub sort_order: Option<String>,
 }
 

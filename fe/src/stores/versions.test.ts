@@ -66,8 +66,8 @@ describe('VersionStore', () => {
     it('should load versions with only core', async () => {
         const mockVersions: SystemVersions = {
             core: '2.0.0',
-            worker: undefined,
-            maintenance: undefined,
+            worker: null,
+            maintenance: null,
         }
 
         vi.mocked(typedHttpClient.getSystemVersions).mockResolvedValue(mockVersions)

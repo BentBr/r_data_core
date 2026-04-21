@@ -2,10 +2,17 @@ import type { WorkflowDetail } from '@/types/generated/WorkflowDetail'
 import type { WorkflowSummary } from '@/types/generated/WorkflowSummary'
 import type { WorkflowRunLogDto } from '@/types/generated/WorkflowRunLogDto'
 import type { CreateWorkflowResponse } from '@/types/generated/CreateWorkflowResponse'
+import type { CreateWorkflowRequest } from '@/types/generated/CreateWorkflowRequest'
+import type { UpdateWorkflowRequest } from '@/types/generated/UpdateWorkflowRequest'
 import type { WorkflowVersionMeta } from '@/types/generated/WorkflowVersionMeta'
 import type { WorkflowVersionPayload } from '@/types/generated/WorkflowVersionPayload'
-import type { DslOptionsResponse, WorkflowRun, WorkflowConfig, ResponseMeta } from '@/types/schemas'
+import type { WorkflowRunUploadResponse } from '@/types/generated/WorkflowRunUploadResponse'
+import type { DslValidateResponse } from '@/types/generated/DslValidateResponse'
+import type { PaginationQuery } from '@/types/generated/PaginationQuery'
+import type { SortingQuery } from '@/types/generated/SortingQuery'
+import type { DslOptionsResponse, WorkflowRun, ResponseMeta } from '@/types/schemas'
 import { BaseTypedHttpClient } from './base'
+import { buildListQueryString } from './query'
 import { useAuthStore } from '@/stores/auth'
 import { buildApiUrl } from '@/env-check'
 
@@ -15,49 +22,26 @@ export class WorkflowsClient extends BaseTypedHttpClient {
     }
 
     async getWorkflows(
-        page = 1,
-        itemsPerPage = 20,
-        sortBy?: string | null,
-        sortOrder?: 'asc' | 'desc' | null
+        pagination: PaginationQuery,
+        sorting?: SortingQuery | null
     ): Promise<{ data: WorkflowSummary[]; meta?: ResponseMeta }> {
-        let url = `/admin/api/v1/workflows?page=${page}&per_page=${itemsPerPage}`
-        if (sortBy && sortOrder) {
-            url += `&sort_by=${sortBy}&sort_order=${sortOrder}`
-        }
-        return this.paginatedRequest<WorkflowSummary[]>(url)
+        return this.paginatedRequest<WorkflowSummary[]>(
+            `/admin/api/v1/workflows${buildListQueryString(pagination, sorting)}`
+        )
     }
 
     async getWorkflow(uuid: string): Promise<WorkflowDetail> {
         return this.request<WorkflowDetail>(`/admin/api/v1/workflows/${uuid}`)
     }
 
-    async createWorkflow(data: {
-        name: string
-        description?: string | null
-        kind: 'consumer' | 'provider'
-        enabled: boolean
-        schedule_cron?: string | null
-        config: WorkflowConfig
-        versioning_disabled?: boolean
-    }): Promise<CreateWorkflowResponse> {
+    async createWorkflow(data: CreateWorkflowRequest): Promise<CreateWorkflowResponse> {
         return this.request<CreateWorkflowResponse>('/admin/api/v1/workflows', {
             method: 'POST',
             body: JSON.stringify(data),
         })
     }
 
-    async updateWorkflow(
-        uuid: string,
-        data: {
-            name: string
-            description?: string | null
-            kind: 'consumer' | 'provider'
-            enabled: boolean
-            schedule_cron?: string | null
-            config: WorkflowConfig
-            versioning_disabled?: boolean
-        }
-    ): Promise<{ message: string }> {
+    async updateWorkflow(uuid: string, data: UpdateWorkflowRequest): Promise<{ message: string }> {
         return this.request<{ message: string }>(`/admin/api/v1/workflows/${uuid}`, {
             method: 'PUT',
             body: JSON.stringify(data),
@@ -84,37 +68,31 @@ export class WorkflowsClient extends BaseTypedHttpClient {
 
     async getWorkflowRuns(
         workflowUuid: string,
-        page = 1,
-        perPage = 20
+        pagination: PaginationQuery
     ): Promise<{ data: WorkflowRun[]; meta?: ResponseMeta }> {
         return this.paginatedRequest<WorkflowRun[]>(
-            `/admin/api/v1/workflows/${workflowUuid}/runs?page=${page}&per_page=${perPage}`
+            `/admin/api/v1/workflows/${workflowUuid}/runs${buildListQueryString(pagination)}`
         )
     }
 
     async getWorkflowRunLogs(
         runUuid: string,
-        page = 1,
-        perPage = 50
+        pagination: PaginationQuery
     ): Promise<{ data: WorkflowRunLogDto[]; meta?: ResponseMeta }> {
         return this.paginatedRequest<WorkflowRunLogDto[]>(
-            `/admin/api/v1/workflows/runs/${runUuid}/logs?page=${page}&per_page=${perPage}`
+            `/admin/api/v1/workflows/runs/${runUuid}/logs${buildListQueryString(pagination)}`
         )
     }
 
     async getAllWorkflowRuns(
-        page = 1,
-        perPage = 20
+        pagination: PaginationQuery
     ): Promise<{ data: WorkflowRun[]; meta?: ResponseMeta }> {
         return this.paginatedRequest<WorkflowRun[]>(
-            `/admin/api/v1/workflows/runs?page=${page}&per_page=${perPage}`
+            `/admin/api/v1/workflows/runs${buildListQueryString(pagination)}`
         )
     }
 
-    async uploadRunFile(
-        workflowUuid: string,
-        file: File
-    ): Promise<{ run_uuid: string; staged_items: number }> {
+    async uploadRunFile(workflowUuid: string, file: File): Promise<WorkflowRunUploadResponse> {
         const form = new FormData()
         form.append('file', file)
         // Bypass JSON content-type; handle raw fetch here due to multipart
@@ -127,7 +105,6 @@ export class WorkflowsClient extends BaseTypedHttpClient {
             body: form,
         })
         if (!res.ok) {
-            // Try to extract standardized error
             try {
                 const err = await res.json()
                 if (err?.message) {
@@ -141,7 +118,7 @@ export class WorkflowsClient extends BaseTypedHttpClient {
         const json = (await res.json()) as {
             status: string
             message: string
-            data?: { run_uuid: string; staged_items: number } | null
+            data?: WorkflowRunUploadResponse | null
         }
 
         if (!json.data) {
@@ -163,8 +140,8 @@ export class WorkflowsClient extends BaseTypedHttpClient {
         return this.request<DslOptionsResponse>('/admin/api/v1/dsl/transform/options')
     }
 
-    async validateDsl(steps: import('@/types/schemas').DslStep[]): Promise<{ valid: boolean }> {
-        return this.request<{ valid: boolean }>('/admin/api/v1/dsl/validate', {
+    async validateDsl(steps: import('@/types/schemas').DslStep[]): Promise<DslValidateResponse> {
+        return this.request<DslValidateResponse>('/admin/api/v1/dsl/validate', {
             method: 'POST',
             body: JSON.stringify({ steps }),
         })

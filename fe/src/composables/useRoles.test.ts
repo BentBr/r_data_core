@@ -73,7 +73,10 @@ describe('useRoles', () => {
             const { loadRoles, roles } = useRoles()
             await loadRoles()
 
-            expect(typedHttpClient.getRoles).toHaveBeenCalledWith(1, 20, undefined, undefined)
+            expect(typedHttpClient.getRoles).toHaveBeenCalledWith(
+                { page: 1, per_page: 20, limit: null, offset: null },
+                null
+            )
             expect(roles.value).toEqual(mockRoles)
         })
 

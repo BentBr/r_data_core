@@ -8,7 +8,7 @@ use log::{error, info};
 use serde_json::json;
 use uuid::Uuid;
 
-use crate::admin::workflows::models::WorkflowRunLogDto;
+use crate::admin::workflows::models::{WorkflowRunLogDto, WorkflowRunUploadResponse};
 use crate::admin::workflows::routes::utils::handle_workflow_error;
 use crate::api_state::{ApiStateTrait, ApiStateWrapper};
 use crate::auth::auth_enum::RequiredAuth;
@@ -177,21 +177,24 @@ pub async fn run_workflow_now_upload(
             {
                 Ok(()) => {
                     info!("Successfully enqueued fetch job for uploaded workflow {workflow_uuid} (run: {run_uuid}, staged: {staged})");
-                    ApiResponse::<serde_json::Value>::ok(serde_json::json!({
-                        "run_uuid": run_uuid,
-                        "staged_items": staged
-                    }))
+                    ApiResponse::<WorkflowRunUploadResponse>::ok(WorkflowRunUploadResponse {
+                        run_uuid,
+                        staged_items: staged,
+                        warning: None,
+                    })
                 }
                 Err(e) => {
                     error!(
                         "Failed to enqueue fetch job for uploaded workflow {workflow_uuid} (run: {run_uuid}): {e}"
                     );
-                    // Still return success for the upload, but log the enqueue failure
-                    ApiResponse::<serde_json::Value>::ok(serde_json::json!({
-                        "run_uuid": run_uuid,
-                        "staged_items": staged,
-                        "warning": "Upload succeeded but job enqueue failed - items may not be processed automatically"
-                    }))
+                    ApiResponse::<WorkflowRunUploadResponse>::ok(WorkflowRunUploadResponse {
+                        run_uuid,
+                        staged_items: staged,
+                        warning: Some(
+                            "Upload succeeded but job enqueue failed - items may not be processed automatically"
+                                .to_string(),
+                        ),
+                    })
                 }
             }
         }

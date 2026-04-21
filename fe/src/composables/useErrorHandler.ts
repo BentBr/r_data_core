@@ -3,6 +3,12 @@ import { useTranslations } from './useTranslations'
 import { ValidationError } from '@/api/typed-client'
 import { HttpError } from '@/api/errors'
 
+/**
+ * FE-only return shape of `handleError` — not a BE payload.
+ * `handled` lets callers know the error was already surfaced (snackbar etc.).
+ * `fieldErrors` is a UI-friendly `field → message` map derived from the BE's
+ * `ValidationViolation[]` (generated) so form components can display per-field errors.
+ */
 export interface ErrorHandlerResult {
     handled: boolean
     fieldErrors?: Record<string, string>

@@ -79,7 +79,10 @@ describe('useUsers', () => {
         const { loadUsers, users } = useUsers()
         await loadUsers()
 
-        expect(typedHttpClient.getUsers).toHaveBeenCalledWith(1, 20, undefined, undefined)
+        expect(typedHttpClient.getUsers).toHaveBeenCalledWith(
+            { page: 1, per_page: 20, limit: null, offset: null },
+            null
+        )
         expect(users.value).toEqual(mockUsers)
     })
 

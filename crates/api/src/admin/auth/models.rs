@@ -11,6 +11,18 @@ use validator::Validate;
 #[derive(Debug, Deserialize, ToSchema)]
 pub struct EmptyRequest {}
 
+/// Response body for `GET /admin/api/v1/auth/permissions`
+#[derive(Debug, Serialize, Deserialize, ToSchema, TS)]
+#[ts(export)]
+pub struct UserPermissionsResponse {
+    /// Whether the caller is a super admin (all permissions granted)
+    pub is_super_admin: bool,
+    /// Flat list of `namespace:permission_type` strings the caller holds
+    pub permissions: Vec<String>,
+    /// Router paths the caller is allowed to navigate to
+    pub allowed_routes: Vec<String>,
+}
+
 /// Refresh token request body
 #[derive(Debug, Deserialize, Serialize, ToSchema, TS)]
 #[ts(export)]

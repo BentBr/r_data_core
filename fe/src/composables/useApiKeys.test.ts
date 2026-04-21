@@ -98,8 +98,12 @@ describe('useApiKeys', () => {
             expect(loading.value).toBe(false)
             expect(apiKeys.value).toEqual(mockApiKeys)
             expect(mockGetApiKeys).toHaveBeenCalled()
-            expect(mockGetApiKeys.mock.calls[0][0]).toBe(1)
-            expect(mockGetApiKeys.mock.calls[0][1]).toBe(10)
+            expect(mockGetApiKeys.mock.calls[0][0]).toEqual({
+                page: 1,
+                per_page: 10,
+                limit: null,
+                offset: null,
+            })
         })
 
         it('should handle loading errors', async () => {
@@ -228,8 +232,12 @@ describe('useApiKeys', () => {
 
             expect(currentPage.value).toBe(2)
             expect(mockGetApiKeys).toHaveBeenCalled()
-            expect(mockGetApiKeys.mock.calls[0][0]).toBe(2)
-            expect(mockGetApiKeys.mock.calls[0][1]).toBe(10)
+            expect(mockGetApiKeys.mock.calls[0][0]).toEqual({
+                page: 2,
+                per_page: 10,
+                limit: null,
+                offset: null,
+            })
         })
     })
 
@@ -247,8 +255,12 @@ describe('useApiKeys', () => {
             expect(currentPage.value).toBe(1)
             expect(mockGetApiKeys).toHaveBeenCalled()
             const lastCall = mockGetApiKeys.mock.calls[mockGetApiKeys.mock.calls.length - 1]
-            expect(lastCall[0]).toBe(1)
-            expect(lastCall[1]).toBe(25)
+            expect(lastCall[0]).toEqual({
+                page: 1,
+                per_page: 25,
+                limit: null,
+                offset: null,
+            })
         })
     })
 })

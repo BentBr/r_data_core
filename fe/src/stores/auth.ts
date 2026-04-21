@@ -9,6 +9,12 @@ import { useVersionStore } from './versions'
 import { useCapabilitiesStore } from './capabilities'
 import type { LoginRequest } from '@/types/schemas'
 
+/**
+ * FE-only session shape synthesised from JWT claims (sub, username, email, roles).
+ * This is NOT a BE response type — there's currently no /auth/me endpoint returning
+ * a user DTO after login/refresh. When such an endpoint is added, replace this with
+ * `UserResponse` from `@/types/generated/UserResponse` and drop the manual fields.
+ */
 interface AuthUser {
     uuid: string
     username: string
