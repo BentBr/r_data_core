@@ -1,8 +1,10 @@
 #![deny(clippy::all, clippy::pedantic, clippy::nursery, warnings)]
 
+use std::sync::Arc;
 use std::time::Duration;
 
 use log::{error, info};
+use r_data_core_services::MailService;
 use uuid::Uuid;
 
 use r_data_core_persistence::WorkflowRepository;
@@ -13,8 +15,11 @@ use crate::runtime::WorkerRuntime;
 use super::services::{build_fetch_service, build_processing_service};
 use super::state::ConsumerState;
 
-pub fn spawn_consumer_loop(runtime: &WorkerRuntime) {
-    let state = ConsumerState::from_runtime(runtime);
+pub fn spawn_consumer_loop(
+    runtime: &WorkerRuntime,
+    workflow_mail_service: Option<Arc<MailService>>,
+) {
+    let state = ConsumerState::from_runtime(runtime, workflow_mail_service);
 
     tokio::spawn(async move {
         info!(

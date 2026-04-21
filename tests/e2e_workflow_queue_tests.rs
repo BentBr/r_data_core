@@ -53,7 +53,7 @@ async fn end_to_end_workflow_processing_via_redis_queue() -> anyhow::Result<()> 
     // Use unique keys per test to avoid cross-test interference
     let fetch_key = format!("test:e2e:queue:fetch:{}", Uuid::now_v7().simple());
     let process_key = format!("test:e2e:queue:process:{}", Uuid::now_v7().simple());
-    let queue = ApalisRedisQueue::from_parts(&redis_url, &fetch_key, &process_key)
+    let queue = ApalisRedisQueue::from_parts(&redis_url, &fetch_key, &process_key, "queue:email")
         .await
         .expect("Failed to create Redis queue for e2e test");
 
@@ -191,7 +191,7 @@ async fn end_to_end_consumer_loop_processes_workflow_run() -> anyhow::Result<()>
     // Use unique keys per test to avoid cross-test interference
     let fetch_key = format!("test:e2e:consumer:fetch:{}", Uuid::now_v7().simple());
     let process_key = format!("test:e2e:consumer:process:{}", Uuid::now_v7().simple());
-    let queue = ApalisRedisQueue::from_parts(&redis_url, &fetch_key, &process_key)
+    let queue = ApalisRedisQueue::from_parts(&redis_url, &fetch_key, &process_key, "queue:email")
         .await
         .expect("Failed to create Redis queue for e2e test");
 
@@ -254,9 +254,10 @@ async fn end_to_end_consumer_loop_processes_workflow_run() -> anyhow::Result<()>
     let pool_for_consumer = pool.pool.clone();
     // Note: ApalisRedisQueue doesn't implement Clone, so we need to create a new one
     // In a real worker, the queue would be shared via Arc
-    let queue_for_consumer = ApalisRedisQueue::from_parts(&redis_url, &fetch_key, &process_key)
-        .await
-        .expect("Failed to create Redis queue for consumer");
+    let queue_for_consumer =
+        ApalisRedisQueue::from_parts(&redis_url, &fetch_key, &process_key, "queue:email")
+            .await
+            .expect("Failed to create Redis queue for consumer");
     let cache_manager_for_consumer = cache_manager.clone();
     let consumer_join_handle = tokio::spawn(async move {
         let mut iteration_count: u64 = 0;
@@ -375,7 +376,7 @@ async fn consumer_loop_processes_staged_items() -> anyhow::Result<()> {
     // Use unique keys per test to avoid cross-test interference
     let fetch_key = format!("test:e2e:staged:fetch:{}", Uuid::now_v7().simple());
     let process_key = format!("test:e2e:staged:process:{}", Uuid::now_v7().simple());
-    let queue = ApalisRedisQueue::from_parts(&redis_url, &fetch_key, &process_key)
+    let queue = ApalisRedisQueue::from_parts(&redis_url, &fetch_key, &process_key, "queue:email")
         .await
         .expect("Failed to create Redis queue for e2e test");
 
@@ -528,7 +529,7 @@ async fn post_to_workflow_endpoint_enqueues_fetch_job() -> anyhow::Result<()> {
     let fetch_key = format!("test:e2e:post:fetch:{}", Uuid::now_v7().simple());
     let process_key = format!("test:e2e:post:process:{}", Uuid::now_v7().simple());
     let queue = Arc::new(
-        ApalisRedisQueue::from_parts(&redis_url, &fetch_key, &process_key)
+        ApalisRedisQueue::from_parts(&redis_url, &fetch_key, &process_key, "queue:email")
             .await
             .expect("Failed to create Redis queue for e2e test"),
     );
@@ -608,6 +609,8 @@ async fn post_to_workflow_endpoint_enqueues_fetch_job() -> anyhow::Result<()> {
         dashboard_stats_service,
         queue: queue.clone(), // Use our custom queue with unique keys
         license_service,
+        password_reset_service: None,
+        system_log_service: None,
     };
 
     let app_data = web::Data::new(ApiStateWrapper::new(api_state));

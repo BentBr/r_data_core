@@ -7,6 +7,7 @@ pub mod database;
 pub mod license;
 pub mod loader;
 pub mod log;
+pub mod mail;
 pub mod queue;
 pub mod workflow;
 
@@ -18,6 +19,7 @@ pub use cache::CacheConfig;
 pub use database::DatabaseConfig;
 pub use license::LicenseConfig;
 pub use log::LogConfig;
+pub use mail::{parse_smtp_dsn, MailConfig, SmtpConfig};
 pub use queue::QueueConfig;
 pub use workflow::WorkflowConfig;
 

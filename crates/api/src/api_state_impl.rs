@@ -7,7 +7,8 @@ use crate::api_state::ApiStateTrait;
 use r_data_core_core::cache::CacheManager;
 use r_data_core_services::{
     AdminUserService, ApiKeyService, DashboardStatsService, DynamicEntityService,
-    EntityDefinitionService, LicenseService, RoleService, WorkflowService,
+    EntityDefinitionService, LicenseService, PasswordResetService, RoleService, SystemLogService,
+    WorkflowService,
 };
 use r_data_core_workflow::data::job_queue::apalis_redis::ApalisRedisQueue;
 
@@ -51,6 +52,12 @@ pub struct ApiState {
 
     /// Queue client for producing jobs
     pub queue: Arc<ApalisRedisQueue>,
+
+    /// Password reset service (only available when system mail is configured)
+    pub password_reset_service: Option<PasswordResetService>,
+
+    /// System log service for recording audit events
+    pub system_log_service: Option<Arc<SystemLogService>>,
 }
 
 // Implement ApiStateTrait for ApiState to allow API crate routes to use it
@@ -111,5 +118,17 @@ impl ApiStateTrait for ApiState {
 
     fn license_service_ref(&self) -> &dyn std::any::Any {
         &self.license_service
+    }
+
+    fn password_reset_service_ref(&self) -> Option<&dyn std::any::Any> {
+        self.password_reset_service
+            .as_ref()
+            .map(|s| s as &dyn std::any::Any)
+    }
+
+    fn system_log_service_ref(&self) -> Option<&dyn std::any::Any> {
+        self.system_log_service
+            .as_ref()
+            .map(|s| s as &dyn std::any::Any)
     }
 }

@@ -1,0 +1,98 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            SELECT\n                uuid,\n                name,\n                slug,\n                template_type AS \"template_type: EmailTemplateType\",\n                subject_template,\n                body_html_template,\n                body_text_template,\n                variables,\n                created_at,\n                updated_at,\n                created_by,\n                updated_by\n            FROM email_templates\n            WHERE slug = $1\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "uuid",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "name",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 2,
+        "name": "slug",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 3,
+        "name": "template_type: EmailTemplateType",
+        "type_info": {
+          "Custom": {
+            "name": "email_template_type",
+            "kind": {
+              "Enum": [
+                "system",
+                "workflow"
+              ]
+            }
+          }
+        }
+      },
+      {
+        "ordinal": 4,
+        "name": "subject_template",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 5,
+        "name": "body_html_template",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 6,
+        "name": "body_text_template",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 7,
+        "name": "variables",
+        "type_info": "Jsonb"
+      },
+      {
+        "ordinal": 8,
+        "name": "created_at",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 9,
+        "name": "updated_at",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 10,
+        "name": "created_by",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 11,
+        "name": "updated_by",
+        "type_info": "Uuid"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      true
+    ]
+  },
+  "hash": "893e31f0ee20ff01a4510b85551c584e73be689c9b52320c8687edcf3ca2fd81"
+}

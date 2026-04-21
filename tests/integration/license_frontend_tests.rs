@@ -85,6 +85,8 @@ async fn setup_test_app_with_license_config(
         )),
         license_service: Arc::new(LicenseService::new(license_config.clone(), cache_manager.clone())),
         queue: test_queue_client_async().await,
+        password_reset_service: None,
+        system_log_service: None,
     };
 
     let app = test::init_service(

@@ -271,7 +271,8 @@ async fn test_delete_entity_definition_with_records() -> Result<()> {
     mock_repo.expect_count_view_records().returning(|_| Ok(10)); // 10 records exist
 
     let service = EntityDefinitionService::new_without_cache(Arc::new(mock_repo));
-    let result = service.delete_entity_definition(&uuid).await;
+    let actor_uuid = Uuid::now_v7();
+    let result = service.delete_entity_definition(&uuid, actor_uuid).await;
 
     assert!(result.is_err());
     if let Err(r_data_core_core::error::Error::Validation(msg)) = result {
@@ -304,7 +305,8 @@ async fn test_delete_entity_definition_success() -> Result<()> {
         .returning(|_| Ok(()));
 
     let service = EntityDefinitionService::new_without_cache(Arc::new(mock_repo));
-    let result = service.delete_entity_definition(&uuid).await;
+    let actor_uuid = Uuid::now_v7();
+    let result = service.delete_entity_definition(&uuid, actor_uuid).await;
 
     assert!(result.is_ok());
 

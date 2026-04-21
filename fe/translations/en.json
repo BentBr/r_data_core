@@ -21,6 +21,24 @@
                 "authentication_required": "Authentication required"
             }
         },
+        "forgot_password": {
+            "title": "Forgot Password",
+            "email_label": "Email Address",
+            "submit": "Send Reset Link",
+            "success": "If an account with that email exists, a password reset link has been sent.",
+            "not_available": "Password reset is not available. Please contact your administrator."
+        },
+        "reset_password": {
+            "title": "Reset Password",
+            "new_password": "New Password",
+            "confirm_password": "Confirm Password",
+            "submit": "Reset Password",
+            "success": "Password reset successfully. Redirecting to login...",
+            "invalid_token": "This reset link is invalid or has expired.",
+            "invalid_link": "Invalid reset link. Please request a new one.",
+            "passwords_mismatch": "Passwords do not match.",
+            "password_too_short": "Password must be at least 8 characters."
+        },
         "default_password_warning": "Security Warning: The default admin password is still in use. Please change it immediately for security.",
         "default_password_warning_dismiss": "Dismiss",
         "mobile_warning": "The admin interface of RDataCore is not meant to be used mobile!",
@@ -141,6 +159,10 @@
                     "entity_export": {
                         "title": "Export entities",
                         "description": "Read existing entities and push them to an external API endpoint."
+                    },
+                    "email_notification": {
+                        "title": "Email Notification",
+                        "description": "Accept data via API and send notification emails"
                     }
                 }
             },
@@ -156,7 +178,8 @@
                 "build_path": "build path",
                 "resolve_entity_path": "resolve entity path",
                 "get_or_create_entity": "get or create entity",
-                "authenticate": "authenticate"
+                "authenticate": "authenticate",
+                "send_email": "send email"
             },
             "summary": {
                 "step": "{from}. {transform}. {to}.",
@@ -182,7 +205,8 @@
                     "build_path": "Builds a path into {target}",
                     "resolve_entity_path": "Looks up an existing {entityType} entity path",
                     "get_or_create_entity": "Finds or creates a {entityType} entity",
-                    "authenticate": "Authenticates against {entityType} entities"
+                    "authenticate": "Authenticates against {entityType} entities",
+                    "send_email": "Send email via template"
                 },
                 "to": {
                     "entity": "Writes results into platform entities",
@@ -190,7 +214,8 @@
                     "next_step": "Passes normalized fields to the next workflow step",
                     "api": "Exposes the result as {format} through the workflow API",
                     "download": "Produces a {format} download",
-                    "push": "Pushes {format} to {uri}"
+                    "push": "Pushes {format} to {uri}",
+                    "email": "Email results via template"
                 }
             },
             "from": "From",
@@ -298,7 +323,41 @@
             "auth_token_expiry_hint": "Optional: override default token expiry",
             "auth_extra_claims": "Extra Claims",
             "auth_claim_name": "Claim Name",
-            "auth_entity_field": "Entity Field"
+            "auth_entity_field": "Entity Field",
+            "send_email_template": "Email Template",
+            "send_email_to": "To (Recipients)",
+            "send_email_cc": "CC (Optional)",
+            "send_email_target_status": "Target Status Field",
+            "add_recipient": "Add Recipient",
+            "add_cc_recipient": "Add CC Recipient",
+            "hints": {
+                "send_email": {
+                    "template_uuid": "Select a workflow email template. Manage templates under System > Email Templates.",
+                    "to": "Recipients from workflow data fields or constant email addresses.",
+                    "cc": "Optional CC recipients, same format as To.",
+                    "target_status": "Field name to store the send result (e.g. 'queued', 'mail_not_configured'). Subsequent steps can read this field.",
+                    "template_variables": "Template variables (populated automatically from the normalized fields in this step):",
+                    "info": "Sends one email per item processed. Use as a mid-pipeline notification — the workflow continues after queuing the email. Template variables are filled from the normalized context (all fields from the 'from' mapping + prior transforms)."
+                },
+                "email_to": {
+                    "template_uuid": "Select a workflow email template. Manage templates under System > Email Templates.",
+                    "to": "Recipients from workflow data fields or constant email addresses.",
+                    "cc": "Optional CC recipients, same format as To.",
+                    "mapping": "Map output fields to template variables. Left = produced field, right = template variable name.",
+                    "info": "Sends one email per item as the final output of this step. Use when the email IS the result (e.g. sending a report). For mid-pipeline notifications, use the Send Email transform instead."
+                }
+            },
+            "post_run": {
+                "title": "Post-Run Actions",
+                "info": "These actions execute once after all items are processed. Use them for summary notifications, reports, or alerts.",
+                "action": "Action",
+                "send_email": "Send Email",
+                "add_email_action": "Add Post-Run Email",
+                "condition": "Condition",
+                "condition_hint": "When this action should fire.",
+                "available_run_vars": "Available run context variables:",
+                "no_actions": "No post-run actions configured."
+            }
         },
         "create": {
             "button": "Create Workflow",
@@ -939,6 +998,53 @@
     "system": {
         "admin": {
             "title": "System Administration"
+        },
+        "tabs": {
+            "settings": "Settings",
+            "email_templates": "Email Templates",
+            "logs": "System Logs"
+        },
+        "email_templates": {
+            "title": "Email Templates",
+            "create": "Create Template",
+            "edit": "Edit Template",
+            "name": "Name",
+            "slug": "Slug",
+            "slug_auto_hint": "Auto-generated from name. Workflows reference templates by UUID, not slug.",
+            "variables_auto_hint": "Auto-detected from template text. Add descriptions for documentation.",
+            "no_variables_detected": "No {{variables}} detected in the template text. Use {{variable_name}} syntax in subject, HTML, or plain text body.",
+            "variable_description_placeholder": "Enter description...",
+            "type": "Type",
+            "subject": "Subject Template",
+            "body_html": "HTML Body Template",
+            "body_text": "Plain Text Body Template",
+            "variables": "Available Variables",
+            "variable_key": "Variable",
+            "variable_description": "Description",
+            "save": "Save",
+            "delete": "Delete",
+            "confirm_delete": "Are you sure you want to delete this template?",
+            "system_template_notice": "System templates can be edited but not deleted.",
+            "created": "Template created successfully",
+            "updated": "Template updated successfully",
+            "deleted": "Template deleted successfully"
+        },
+        "logs": {
+            "title": "System Logs",
+            "timestamp": "Timestamp",
+            "type": "Type",
+            "resource": "Resource",
+            "summary": "Summary",
+            "status": "Status",
+            "actor": "Actor",
+            "details": "Details",
+            "filter_type": "Filter by Type",
+            "filter_resource": "Filter by Resource",
+            "filter_status": "Filter by Status",
+            "filter_date_from": "From date",
+            "filter_date_to": "To date",
+            "email_preview": "Email Preview",
+            "no_logs": "No log entries found"
         },
         "versioning": {
             "section_title": "Entity Versioning",

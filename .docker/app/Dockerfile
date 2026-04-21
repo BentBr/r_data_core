@@ -73,6 +73,8 @@ LABEL org.opencontainers.image.title="r-data-core-runtime" \
 RUN apt-get update && apt-get install -y --no-install-recommends \
     ca-certificates \
     libssl3 \
+    curl \
+    procps \
     && rm -rf /var/lib/apt/lists/*
 
 # Create non-root user

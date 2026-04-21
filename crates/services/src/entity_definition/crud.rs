@@ -2,6 +2,7 @@
 
 use r_data_core_core::entity_definition::definition::EntityDefinition;
 use r_data_core_core::error::Result;
+use r_data_core_core::system_log::SystemLogResourceType;
 use uuid::Uuid;
 
 use super::EntityDefinitionService;
@@ -145,6 +146,17 @@ impl EntityDefinitionService {
             log::warn!("Failed to cache new entity definition by UUID: {e}");
         }
 
+        if let Some(ref log) = self.system_log {
+            log.log_entity_created(
+                Some(definition.created_by),
+                SystemLogResourceType::EntityDefinition,
+                uuid,
+                &format!("Entity definition '{}' created", definition.entity_type),
+                Some(serde_json::json!({"entity_type": definition.entity_type})),
+            )
+            .await;
+        }
+
         Ok(uuid)
     }
 
@@ -217,6 +229,18 @@ impl EntityDefinitionService {
             }
         }
 
+        if let Some(ref log) = self.system_log {
+            let actor = definition.updated_by;
+            log.log_entity_updated(
+                actor,
+                SystemLogResourceType::EntityDefinition,
+                *uuid,
+                &format!("Entity definition '{}' updated", definition.entity_type),
+                Some(serde_json::json!({"entity_type": definition.entity_type})),
+            )
+            .await;
+        }
+
         Ok(())
     }
 
@@ -224,7 +248,7 @@ impl EntityDefinitionService {
     ///
     /// # Errors
     /// Returns an error if the entity definition is not found, has existing entities, or deletion fails
-    pub async fn delete_entity_definition(&self, uuid: &Uuid) -> Result<()> {
+    pub async fn delete_entity_definition(&self, uuid: &Uuid, actor_uuid: Uuid) -> Result<()> {
         // Check number of records in the entity table
         let Some(def) = self.repository.get_by_uuid(uuid).await? else {
             return Err(r_data_core_core::error::Error::NotFound(format!(
@@ -252,6 +276,17 @@ impl EntityDefinitionService {
         // Invalidate cache entries after successful deletion
         self.invalidate_entity_definition_cache(&entity_type, uuid)
             .await?;
+
+        if let Some(ref log) = self.system_log {
+            log.log_entity_deleted(
+                Some(actor_uuid),
+                SystemLogResourceType::EntityDefinition,
+                *uuid,
+                &format!("Entity definition '{entity_type}' deleted"),
+                Some(serde_json::json!({"entity_type": entity_type})),
+            )
+            .await;
+        }
 
         Ok(())
     }

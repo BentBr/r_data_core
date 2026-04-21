@@ -155,8 +155,6 @@ pub fn get_nested(input: &Value, path: &str) -> Option<Value> {
             Value::Object(map) => {
                 if let Some(v) = map.get(key) {
                     current = v;
-                } else {
-                    return None;
                 }
             }
             _ => return None,
@@ -223,6 +221,7 @@ pub const LITERAL_PREFIX: &str = "@literal:";
 ///
 /// # Returns
 /// `Some(Value)` if the source is a literal value, `None` if it's a field reference
+#[must_use]
 pub fn parse_literal_value(source: &str) -> Option<Value> {
     if !source.starts_with(LITERAL_PREFIX) {
         return None;

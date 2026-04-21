@@ -403,11 +403,18 @@ async fn update_entity_definition(
 async fn delete_entity_definition(
     data: web::Data<ApiStateWrapper>,
     path: web::Path<PathUuid>,
-    _: RequiredAuth,
+    auth: RequiredAuth,
 ) -> impl Responder {
+    let actor_uuid = match Uuid::parse_str(&auth.0.sub) {
+        Ok(u) => u,
+        Err(e) => {
+            error!("Failed to parse UUID from claims: {e}");
+            return ApiResponse::<()>::internal_error("Invalid authentication");
+        }
+    };
     match data
         .entity_definition_service()
-        .delete_entity_definition(&path.uuid)
+        .delete_entity_definition(&path.uuid, actor_uuid)
         .await
     {
         Ok(()) => ApiResponse::ok(json!({

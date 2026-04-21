@@ -1,6 +1,6 @@
 [package]
 name = "r_data_core_services"
-version = "0.4.8"
+version = "0.4.9"
 edition = "2021"
 description = "Services crate of - A Master Data Managebent backend providing efficient data handling and distribution with custom entities and workflows"
 authors = ["Bent Brüggemann <mail@bent-brueggemann.de>"]
@@ -30,6 +30,10 @@ tokio = { version = "1.37.0", features = ["macros", "rt-multi-thread"] }
 reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls"] }
 base64 = "0.22"
 sha2 = "0.10.9"
+hex = "0.4"
+rand = "0.9.0"
+lettre = { version = "0.11", default-features = false, features = ["tokio1-rustls-tls", "smtp-transport", "builder"] }
+handlebars = "6"
 
 [dev-dependencies]
 mockall = "0.12"

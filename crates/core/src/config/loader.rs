@@ -4,8 +4,8 @@ use dotenvy::dotenv;
 use std::env;
 
 use crate::config::{
-    ApiConfig, AppConfig, CacheConfig, DatabaseConfig, LicenseConfig, LogConfig, MaintenanceConfig,
-    QueueConfig, WorkerConfig, WorkflowConfig,
+    ApiConfig, AppConfig, CacheConfig, DatabaseConfig, LicenseConfig, LogConfig, MailConfig,
+    MaintenanceConfig, QueueConfig, WorkerConfig, WorkflowConfig,
 };
 use crate::error::Result;
 use crate::utils;
@@ -117,6 +117,7 @@ pub fn load_app_config() -> Result<AppConfig> {
     let cache = get_cache_config();
     let queue = get_queue_config()?;
     let license = get_license_config();
+    let mail = get_mail_config();
 
     Ok(AppConfig {
         environment,
@@ -130,6 +131,12 @@ pub fn load_app_config() -> Result<AppConfig> {
         log,
         queue,
         license,
+        mail,
+        frontend_base_url: env::var("FRONTEND_BASE_URL").ok().filter(|s| !s.is_empty()),
+        password_reset_throttle_seconds: env::var("PASSWORD_RESET_THROTTLE_SECONDS")
+            .unwrap_or_else(|_| "60".to_string())
+            .parse()
+            .unwrap_or(60),
     })
 }
 
@@ -242,6 +249,7 @@ pub fn load_worker_config() -> Result<WorkerConfig> {
     let queue = get_queue_config()?;
     let cache = get_cache_config();
     let license = get_license_config();
+    let mail = get_mail_config();
 
     Ok(WorkerConfig {
         job_queue_update_interval_secs,
@@ -255,6 +263,7 @@ pub fn load_worker_config() -> Result<WorkerConfig> {
         queue,
         cache,
         license,
+        mail,
     })
 }
 
@@ -269,83 +278,85 @@ pub fn load_maintenance_config() -> Result<MaintenanceConfig> {
         .unwrap_or_else(|_| "true".to_string())
         .parse()
         .unwrap_or(true);
-
-    let version_purger_cron = env::var("VERSION_PURGER_CRON")
-        .map_err(|_| crate::error::Error::Config("VERSION_PURGER_CRON not set".to_string()))?;
-    utils::validate_cron(&version_purger_cron).map_err(|e| {
-        crate::error::Error::Config(format!(
-            "Invalid VERSION_PURGER_CRON '{version_purger_cron}': {e}",
-        ))
-    })?;
-
-    let refresh_token_cleanup_cron = env::var("REFRESH_TOKEN_CLEANUP_CRON").map_err(|_| {
-        crate::error::Error::Config("REFRESH_TOKEN_CLEANUP_CRON not set".to_string())
-    })?;
-    utils::validate_cron(&refresh_token_cleanup_cron).map_err(|e| {
-        crate::error::Error::Config(format!(
-            "Invalid REFRESH_TOKEN_CLEANUP_CRON '{refresh_token_cleanup_cron}': {e}",
-        ))
-    })?;
-
-    let workflow_run_logs_purger_cron =
-        env::var("WORKFLOW_RUN_LOGS_PURGER_CRON").map_err(|_| {
-            crate::error::Error::Config("WORKFLOW_RUN_LOGS_PURGER_CRON not set".to_string())
-        })?;
-    utils::validate_cron(&workflow_run_logs_purger_cron).map_err(|e| {
-        crate::error::Error::Config(format!(
-            "Invalid WORKFLOW_RUN_LOGS_PURGER_CRON '{workflow_run_logs_purger_cron}': {e}",
-        ))
-    })?;
-
-    let (outbox_purger_cron, outbox_retention_days) = if outbox_enabled {
-        let outbox_purger_cron = env::var("OUTBOX_PURGER_CRON")
-            .map_err(|_| crate::error::Error::Config("OUTBOX_PURGER_CRON not set".to_string()))?;
-        utils::validate_cron(&outbox_purger_cron).map_err(|e| {
-            crate::error::Error::Config(format!(
-                "Invalid OUTBOX_PURGER_CRON '{outbox_purger_cron}': {e}",
-            ))
-        })?;
-
-        let outbox_retention_days: u32 = env::var("OUTBOX_RETENTION_DAYS")
-            .unwrap_or_else(|_| "30".to_string())
-            .parse()
-            .map_err(|_| {
-                crate::error::Error::Config(
-                    "OUTBOX_RETENTION_DAYS must be a valid number".to_string(),
-                )
-            })?;
-
-        (Some(outbox_purger_cron), Some(outbox_retention_days))
-    } else {
-        (None, None)
-    };
-
-    // Prefer dedicated MAINTENANCE_*, then WORKER_*, then general DATABASE_* where sensible
-    let connection_string = env::var("MAINTENANCE_DATABASE_URL")
-        .map_err(|_| crate::error::Error::Config("MAINTENANCE_DATABASE_URL not set".to_string()))?;
-
-    let max_connections: u32 = env::var("MAINTENANCE_DATABASE_MAX_CONNECTIONS")
-        .unwrap_or_else(|_| "10".to_string())
-        .parse()
-        .unwrap_or(10);
-
-    let connection_timeout: u64 = env::var("MAINTENANCE_DATABASE_CONNECTION_TIMEOUT")
-        .unwrap_or_else(|_| "30".to_string())
-        .parse()
-        .unwrap_or(30);
-
-    let database = DatabaseConfig {
-        connection_string,
-        max_connections,
-        connection_timeout,
-    };
+    let version_purger_cron = load_required_cron("VERSION_PURGER_CRON")?;
+    let refresh_token_cleanup_cron = load_required_cron("REFRESH_TOKEN_CLEANUP_CRON")?;
+    let workflow_run_logs_purger_cron = load_required_cron("WORKFLOW_RUN_LOGS_PURGER_CRON")?;
+    let (outbox_purger_cron, outbox_retention_days) =
+        load_outbox_maintenance_config(outbox_enabled)?;
+    let system_logs_purger_cron = load_required_cron("SYSTEM_LOGS_PURGER_CRON")?;
+    let system_logs_retention_days = load_retention_days("SYSTEM_LOGS_RETENTION_DAYS", 90_u64)?;
+    let database = load_maintenance_database_config()?;
 
     let cache = get_cache_config();
     let redis_url = env::var("REDIS_URL")
         .map_err(|_| crate::error::Error::Config("REDIS_URL not set".to_string()))?;
     let license = get_license_config();
+    let api = load_maintenance_api_config()?;
 
-    let api = ApiConfig {
+    Ok(MaintenanceConfig {
+        outbox_enabled,
+        version_purger_cron,
+        refresh_token_cleanup_cron,
+        workflow_run_logs_purger_cron,
+        system_logs_purger_cron,
+        system_logs_retention_days,
+        outbox_purger_cron,
+        outbox_retention_days,
+        database,
+        cache,
+        redis_url,
+        license,
+        api,
+    })
+}
+
+fn load_required_cron(name: &str) -> Result<String> {
+    let cron =
+        env::var(name).map_err(|_| crate::error::Error::Config(format!("{name} not set")))?;
+    utils::validate_cron(&cron)
+        .map_err(|e| crate::error::Error::Config(format!("Invalid {name} '{cron}': {e}")))?;
+    Ok(cron)
+}
+
+fn load_retention_days<T>(name: &str, default: T) -> Result<T>
+where
+    T: std::str::FromStr + ToString + Copy,
+{
+    env::var(name)
+        .unwrap_or_else(|_| default.to_string())
+        .parse()
+        .map_err(|_| crate::error::Error::Config(format!("{name} must be a valid number")))
+}
+
+fn load_outbox_maintenance_config(outbox_enabled: bool) -> Result<(Option<String>, Option<u32>)> {
+    if !outbox_enabled {
+        return Ok((None, None));
+    }
+
+    let outbox_purger_cron = load_required_cron("OUTBOX_PURGER_CRON")?;
+    let outbox_retention_days = load_retention_days("OUTBOX_RETENTION_DAYS", 30_u32)?;
+
+    Ok((Some(outbox_purger_cron), Some(outbox_retention_days)))
+}
+
+fn load_maintenance_database_config() -> Result<DatabaseConfig> {
+    Ok(DatabaseConfig {
+        connection_string: env::var("MAINTENANCE_DATABASE_URL").map_err(|_| {
+            crate::error::Error::Config("MAINTENANCE_DATABASE_URL not set".to_string())
+        })?,
+        max_connections: env::var("MAINTENANCE_DATABASE_MAX_CONNECTIONS")
+            .unwrap_or_else(|_| "10".to_string())
+            .parse()
+            .unwrap_or(10),
+        connection_timeout: env::var("MAINTENANCE_DATABASE_CONNECTION_TIMEOUT")
+            .unwrap_or_else(|_| "30".to_string())
+            .parse()
+            .unwrap_or(30),
+    })
+}
+
+fn load_maintenance_api_config() -> Result<ApiConfig> {
+    Ok(ApiConfig {
         host: env::var("API_HOST")
             .map_err(|_| crate::error::Error::Config("API_HOST not set".to_string()))?,
         port: env::var("API_PORT")
@@ -377,20 +388,6 @@ pub fn load_maintenance_config() -> Result<MaintenanceConfig> {
             .unwrap_or_else(|_| "true".to_string())
             .parse()
             .unwrap_or(true),
-    };
-
-    Ok(MaintenanceConfig {
-        outbox_enabled,
-        version_purger_cron,
-        refresh_token_cleanup_cron,
-        workflow_run_logs_purger_cron,
-        outbox_purger_cron,
-        outbox_retention_days,
-        database,
-        cache,
-        redis_url,
-        license,
-        api,
     })
 }
 
@@ -427,9 +424,38 @@ fn get_queue_config() -> Result<QueueConfig> {
             .unwrap_or_else(|_| "queue:workflows:fetch".to_string()),
         process_key: env::var("QUEUE_PROCESS_KEY")
             .unwrap_or_else(|_| "queue:workflows:process".to_string()),
+        email_key: env::var("QUEUE_EMAIL_KEY").unwrap_or_else(|_| "queue:email".to_string()),
     };
 
     Ok(config)
+}
+
+fn get_mail_config() -> MailConfig {
+    let system = std::env::var("SYSTEM_SMTP_DSN")
+        .ok()
+        .filter(|s| !s.is_empty())
+        .and_then(|dsn| {
+            crate::config::mail::parse_smtp_dsn(&dsn)
+                .map_err(|e| {
+                    log::warn!("Failed to parse SYSTEM_SMTP_DSN: {e}");
+                    e
+                })
+                .ok()
+        });
+
+    let workflow = std::env::var("WORKFLOW_SMTP_DSN")
+        .ok()
+        .filter(|s| !s.is_empty())
+        .and_then(|dsn| {
+            crate::config::mail::parse_smtp_dsn(&dsn)
+                .map_err(|e| {
+                    log::warn!("Failed to parse WORKFLOW_SMTP_DSN: {e}");
+                    e
+                })
+                .ok()
+        });
+
+    MailConfig { system, workflow }
 }
 
 fn get_license_config() -> LicenseConfig {

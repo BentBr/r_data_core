@@ -1,6 +1,7 @@
 use regex::Regex;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
+use ts_rs::TS;
 use utoipa::ToSchema;
 
 #[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
@@ -19,6 +20,8 @@ pub enum Transform {
     GetOrCreateEntity(GetOrCreateEntityTransform),
     /// Authenticate credentials against entity data and issue an entity JWT
     Authenticate(AuthenticateTransform),
+    /// Send an email via SMTP using the workflow mail service
+    SendEmail(SendEmailTransform),
 }
 
 /// Arithmetic transform allows setting a target field to the result of left (op) right.
@@ -71,8 +74,9 @@ pub enum Operand {
 }
 
 /// String operand variant used by Concat transform
-#[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
+#[derive(Debug, Clone, Serialize, Deserialize, ToSchema, TS)]
 #[serde(tag = "kind", rename_all = "snake_case")]
+#[ts(export)]
 pub enum StringOperand {
     Field { field: String },
     ConstString { value: String },
@@ -148,6 +152,20 @@ pub struct AuthenticateTransform {
     pub token_expiry_seconds: Option<u64>,
 }
 
+/// Send an email via SMTP using a workflow email template
+#[derive(Debug, Clone, Serialize, Deserialize, ToSchema, TS)]
+#[ts(export)]
+pub struct SendEmailTransform {
+    /// UUID of a workflow email template
+    pub template_uuid: String,
+    /// Recipients: field refs or constant email addresses
+    pub to: Vec<StringOperand>,
+    /// Optional CC recipients
+    pub cc: Option<Vec<StringOperand>>,
+    /// Normalized field to store send result (`"queued"`, `"mail_not_configured"`, or error)
+    pub target_status: String,
+}
+
 pub(crate) fn validate_transform(
     idx: usize,
     t: &Transform,
@@ -166,6 +184,7 @@ pub(crate) fn validate_transform(
         Transform::Authenticate(auth) => {
             validate_authenticate_transform(idx, auth, safe_field)?;
         }
+        Transform::SendEmail(se) => validate_send_email_transform(idx, se, safe_field)?,
         Transform::None => {}
     }
     Ok(())
@@ -358,6 +377,49 @@ fn validate_authenticate_transform(
     Ok(())
 }
 
+fn validate_send_email_transform(
+    idx: usize,
+    se: &SendEmailTransform,
+    safe_field: &Regex,
+) -> r_data_core_core::error::Result<()> {
+    if se.template_uuid.trim().is_empty() {
+        return Err(r_data_core_core::error::Error::Validation(format!(
+            "DSL step {idx}: transform.send_email.template_uuid must not be empty"
+        )));
+    }
+    if se.to.is_empty() {
+        return Err(r_data_core_core::error::Error::Validation(format!(
+            "DSL step {idx}: transform.send_email.to must not be empty"
+        )));
+    }
+    for (i, operand) in se.to.iter().enumerate() {
+        if let StringOperand::Field { field } = operand {
+            if !safe_field.is_match(field) {
+                return Err(r_data_core_core::error::Error::Validation(format!(
+                    "DSL step {idx}: transform.send_email.to[{i}] field path must be safe"
+                )));
+            }
+        }
+    }
+    if let Some(ref cc) = se.cc {
+        for (i, operand) in cc.iter().enumerate() {
+            if let StringOperand::Field { field } = operand {
+                if !safe_field.is_match(field) {
+                    return Err(r_data_core_core::error::Error::Validation(format!(
+                        "DSL step {idx}: transform.send_email.cc[{i}] field path must be safe"
+                    )));
+                }
+            }
+        }
+    }
+    if !safe_field.is_match(&se.target_status) {
+        return Err(r_data_core_core::error::Error::Validation(format!(
+            "DSL step {idx}: transform.send_email.target_status must be a safe identifier"
+        )));
+    }
+    Ok(())
+}
+
 fn validate_operand(
     idx: usize,
     side: &str,
@@ -392,4 +454,127 @@ fn validate_operand(
         }
     }
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use regex::Regex;
+
+    fn safe_field() -> Regex {
+        Regex::new(r"^[A-Za-z_][A-Za-z0-9_.]*$").unwrap()
+    }
+
+    #[test]
+    fn valid_send_email_transform() {
+        let t = Transform::SendEmail(SendEmailTransform {
+            template_uuid: "550e8400-e29b-41d4-a716-446655440000".to_string(),
+            to: vec![StringOperand::Field {
+                field: "user.email".to_string(),
+            }],
+            cc: None,
+            target_status: "email_status".to_string(),
+        });
+        assert!(validate_transform(0, &t, &safe_field()).is_ok());
+    }
+
+    #[test]
+    fn send_email_empty_to_fails() {
+        let t = Transform::SendEmail(SendEmailTransform {
+            template_uuid: "some-uuid".to_string(),
+            to: vec![],
+            cc: None,
+            target_status: "status".to_string(),
+        });
+        assert!(validate_transform(0, &t, &safe_field()).is_err());
+    }
+
+    #[test]
+    fn send_email_unsafe_target_status_fails() {
+        let t = Transform::SendEmail(SendEmailTransform {
+            template_uuid: "some-uuid".to_string(),
+            to: vec![StringOperand::ConstString {
+                value: "a@b.com".to_string(),
+            }],
+            cc: None,
+            target_status: "bad field!".to_string(),
+        });
+        assert!(validate_transform(0, &t, &safe_field()).is_err());
+    }
+
+    #[test]
+    fn send_email_empty_template_uuid_fails() {
+        let t = Transform::SendEmail(SendEmailTransform {
+            template_uuid: "  ".to_string(),
+            to: vec![StringOperand::ConstString {
+                value: "a@b.com".to_string(),
+            }],
+            cc: None,
+            target_status: "status".to_string(),
+        });
+        assert!(validate_transform(0, &t, &safe_field()).is_err());
+    }
+
+    #[test]
+    fn send_email_with_const_recipients() {
+        let t = Transform::SendEmail(SendEmailTransform {
+            template_uuid: "uuid-123".to_string(),
+            to: vec![StringOperand::ConstString {
+                value: "admin@example.com".to_string(),
+            }],
+            cc: Some(vec![StringOperand::ConstString {
+                value: "cc@example.com".to_string(),
+            }]),
+            target_status: "result".to_string(),
+        });
+        assert!(validate_transform(0, &t, &safe_field()).is_ok());
+    }
+
+    #[test]
+    fn send_email_unsafe_field_in_to_fails() {
+        let t = Transform::SendEmail(SendEmailTransform {
+            template_uuid: "uuid-123".to_string(),
+            to: vec![StringOperand::Field {
+                field: "bad field!".to_string(),
+            }],
+            cc: None,
+            target_status: "status".to_string(),
+        });
+        assert!(validate_transform(0, &t, &safe_field()).is_err());
+    }
+
+    #[test]
+    fn send_email_unsafe_field_in_cc_fails() {
+        let t = Transform::SendEmail(SendEmailTransform {
+            template_uuid: "uuid-123".to_string(),
+            to: vec![StringOperand::ConstString {
+                value: "a@b.com".to_string(),
+            }],
+            cc: Some(vec![StringOperand::Field {
+                field: "bad!field".to_string(),
+            }]),
+            target_status: "status".to_string(),
+        });
+        assert!(validate_transform(0, &t, &safe_field()).is_err());
+    }
+
+    #[test]
+    fn send_email_mixed_operand_types() {
+        let t = Transform::SendEmail(SendEmailTransform {
+            template_uuid: "uuid-123".to_string(),
+            to: vec![
+                StringOperand::Field {
+                    field: "user.email".to_string(),
+                },
+                StringOperand::ConstString {
+                    value: "admin@example.com".to_string(),
+                },
+            ],
+            cc: Some(vec![StringOperand::ConstString {
+                value: "cc@test.com".to_string(),
+            }]),
+            target_status: "email_result".to_string(),
+        });
+        assert!(validate_transform(0, &t, &safe_field()).is_ok());
+    }
 }

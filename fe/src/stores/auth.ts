@@ -6,6 +6,7 @@ import { useTranslations } from '@/composables/useTranslations'
 import { getRefreshToken, setRefreshToken, deleteRefreshToken } from '@/utils/cookies'
 import { useLicenseStore } from './license'
 import { useVersionStore } from './versions'
+import { useCapabilitiesStore } from './capabilities'
 import type { LoginRequest, User } from '@/types/schemas'
 
 export const useAuthStore = defineStore('auth', () => {
@@ -123,6 +124,10 @@ export const useAuthStore = defineStore('auth', () => {
             // Load system versions after login
             const versionStore = useVersionStore()
             void versionStore.loadVersions()
+
+            // Load system capabilities after login
+            const capabilitiesStore = useCapabilitiesStore()
+            void capabilitiesStore.fetchCapabilities()
 
             if (env.enableApiLogging) {
                 console.log('[Auth] Login successful:', {

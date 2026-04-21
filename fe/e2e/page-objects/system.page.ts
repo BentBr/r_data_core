@@ -50,6 +50,41 @@ export class SystemPage {
         await this.runLogsSaveBtn.click()
     }
 
+    // Tab navigation
+    async clickTab(tabName: 'settings' | 'email-templates' | 'logs'): Promise<void> {
+        await this.page
+            .getByRole('tab', { name: new RegExp(tabName.replace('-', ' '), 'i') })
+            .click()
+    }
+
+    // Email Templates tab
+    async expectEmailTemplatesTab(): Promise<void> {
+        await expect(this.page.getByTestId('email-template-list')).toBeVisible({ timeout: 10_000 })
+    }
+
+    async expectSystemTemplateExists(name: string): Promise<void> {
+        await expect(this.page.getByText(name)).toBeVisible()
+    }
+
+    async clickEditTemplate(name: string): Promise<void> {
+        const row = this.page.getByRole('row').filter({ hasText: name })
+        await row.getByTestId('edit-template-btn').click()
+    }
+
+    async expectTemplateEditorOpen(): Promise<void> {
+        await expect(this.page.getByTestId('email-template-editor')).toBeVisible()
+    }
+
+    // System Logs tab
+    async expectSystemLogsTab(): Promise<void> {
+        await expect(this.page.getByTestId('system-logs-viewer')).toBeVisible({ timeout: 10_000 })
+    }
+
+    async expectLogEntries(): Promise<void> {
+        const table = this.page.getByTestId('system-logs-table')
+        await expect(table).toBeVisible()
+    }
+
     // Assertions
     async expectLicenseLoaded(): Promise<void> {
         await expect(this.licenseCard).toBeVisible()

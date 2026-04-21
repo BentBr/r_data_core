@@ -5,6 +5,7 @@ pub mod entity_persistence;
 pub mod item_processing;
 pub mod outbox;
 pub mod output_handling;
+pub mod post_run;
 pub mod service;
 pub mod transform_execution;
 pub mod value_formatting;

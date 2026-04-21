@@ -214,7 +214,10 @@ pub async fn delete_workflow(
     }
 
     let uuid = path.into_inner();
-    let res = state.workflow_service().delete(uuid).await;
+    let Some(actor_uuid) = auth.user_uuid() else {
+        return ApiResponse::<()>::internal_error("No authentication claims found");
+    };
+    let res = state.workflow_service().delete(uuid, actor_uuid).await;
     match res {
         Ok(()) => ApiResponse::<()>::message("Deleted"),
         Err(e) => handle_workflow_error(e),

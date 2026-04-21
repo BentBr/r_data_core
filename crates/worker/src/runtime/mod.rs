@@ -15,10 +15,12 @@ use r_data_core_services::LicenseService;
 use r_data_core_workflow::data::job_queue::apalis_redis::ApalisRedisQueue;
 
 pub mod consumer;
+pub mod email;
 pub mod outbox;
 pub mod scheduler;
 
 use crate::runtime::consumer::spawn_consumer_loop;
+use crate::runtime::email::{bootstrap_email_runtime, spawn_email_consumer_loop, EmailRuntime};
 use crate::runtime::outbox::spawn_outbox_recovery_loop;
 use crate::runtime::scheduler::start_scheduler;
 
@@ -42,6 +44,7 @@ pub(crate) struct WorkerRuntime {
 
 pub(crate) struct WorkerBootstrap {
     pub(crate) runtime: WorkerRuntime,
+    pub(crate) email_runtime: EmailRuntime,
     pub(crate) repo: WorkflowRepository,
     pub(crate) scheduler: JobScheduler,
     pub(crate) scheduled_workflows: Arc<Mutex<std::collections::HashMap<Uuid, (Uuid, String)>>>,
@@ -59,7 +62,11 @@ pub async fn run() -> r_data_core_core::error::Result<()> {
     let bootstrap = bootstrap_worker().await?;
     let _scheduler = start_scheduler(&bootstrap).await?;
 
-    spawn_consumer_loop(&bootstrap.runtime);
+    spawn_consumer_loop(
+        &bootstrap.runtime,
+        bootstrap.email_runtime.workflow_mail_service(),
+    );
+    spawn_email_consumer_loop(&bootstrap.email_runtime);
     spawn_outbox_recovery_loop(&bootstrap.runtime);
 
     // Park forever.
@@ -107,6 +114,7 @@ async fn bootstrap_worker() -> r_data_core_core::error::Result<WorkerBootstrap> 
             &queue_cfg.redis_url,
             &queue_cfg.fetch_key,
             &queue_cfg.process_key,
+            &queue_cfg.email_key,
         )
         .await?,
     );
@@ -128,23 +136,23 @@ async fn bootstrap_worker() -> r_data_core_core::error::Result<WorkerBootstrap> 
     } else {
         None
     };
-
     let runtime = WorkerRuntime {
         pool: pool.clone(),
-        queue,
+        queue: queue.clone(),
         queue_fetch_key: queue_cfg.fetch_key.clone(),
         cache_manager,
         outbox_repo,
         outbox_retry_policy,
         job_queue_update_interval_secs: config.job_queue_update_interval_secs,
         outbox_stale_lease_secs: config.outbox_stale_lease_secs,
-        outbox_db_url: config.database.connection_string,
+        outbox_db_url: config.database.connection_string.clone(),
         jwt_secret: std::env::var("JWT_SECRET").ok(),
         jwt_expiration: std::env::var("JWT_EXPIRATION")
             .ok()
             .and_then(|v| v.parse().ok())
             .unwrap_or(86_400),
     };
+    let email_runtime = bootstrap_email_runtime(&config, pool.clone(), queue);
 
     let scheduler = JobScheduler::new().await.map_err(|e| {
         r_data_core_core::error::Error::Config(format!("Failed to create job scheduler: {e}"))
@@ -152,6 +160,7 @@ async fn bootstrap_worker() -> r_data_core_core::error::Result<WorkerBootstrap> 
 
     Ok(WorkerBootstrap {
         runtime,
+        email_runtime,
         repo: WorkflowRepository::new(pool),
         scheduler,
         scheduled_workflows: Arc::new(Mutex::new(std::collections::HashMap::new())),

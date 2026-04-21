@@ -1,0 +1,39 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            INSERT INTO email_templates (\n                name, slug, template_type, subject_template,\n                body_html_template, body_text_template, variables, created_by\n            )\n            VALUES ($1, $2, $3, $4, $5, $6, $7, $8)\n            RETURNING uuid\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "uuid",
+        "type_info": "Uuid"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Varchar",
+        "Varchar",
+        {
+          "Custom": {
+            "name": "email_template_type",
+            "kind": {
+              "Enum": [
+                "system",
+                "workflow"
+              ]
+            }
+          }
+        },
+        "Text",
+        "Text",
+        "Text",
+        "Jsonb",
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "aaf016207ce439356cf11926d09dc765c4dee594980e871920cbeca0edba2ceb"
+}

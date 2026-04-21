@@ -1,0 +1,25 @@
+{
+    "steps": [{
+        "from": {
+            "type": "format",
+            "source": { "source_type": "api", "config": {}, "auth": null },
+            "format": { "format_type": "json", "options": {} },
+            "mapping": { "email": "email" }
+        },
+        "transform": { "type": "none" },
+        "to": {
+            "type": "format",
+            "output": { "mode": "api" },
+            "format": { "format_type": "json", "options": {} },
+            "mapping": {}
+        }
+    }],
+    "on_complete": {
+        "actions": [{
+            "type": "send_email",
+            "template_uuid": "550e8400-e29b-41d4-a716-446655440000",
+            "to": [{ "kind": "const_string", "value": "admin@example.com" }],
+            "condition": "on_success"
+        }]
+    }
+}

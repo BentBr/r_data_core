@@ -29,6 +29,6 @@ export type {
 }
 
 export type WorkflowTemplate = {
-    id: 'api_ingest' | 'remote_pull' | 'entity_export'
+    id: 'api_ingest' | 'remote_pull' | 'entity_export' | 'email_notification'
     steps: DslStep[]
 }

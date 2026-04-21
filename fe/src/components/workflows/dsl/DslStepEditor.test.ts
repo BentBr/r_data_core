@@ -4,6 +4,14 @@ import { nextTick } from 'vue'
 import DslStepEditor from './DslStepEditor.vue'
 import type { DslStep } from './contracts'
 
+vi.mock('@/stores/capabilities', () => ({
+    useCapabilitiesStore: () => ({
+        workflowMailConfigured: false,
+        systemMailConfigured: false,
+        isLoaded: true,
+    }),
+}))
+
 vi.mock('@/composables/useTranslations', () => ({
     useTranslations: () => ({ t: (k: string) => k }),
 }))

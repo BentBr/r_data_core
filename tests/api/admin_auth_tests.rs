@@ -9,13 +9,15 @@ mod tests {
     use r_data_core_api::{configure_app, ApiState, ApiStateWrapper};
     use r_data_core_core::cache::CacheManager;
     use r_data_core_core::config::{CacheConfig, LicenseConfig};
+    use r_data_core_core::system_log::{SystemLogResourceType, SystemLogType};
     use r_data_core_persistence::{
         AdminUserRepository, AdminUserRepositoryTrait, ApiKeyRepository, CreateAdminUserParams,
-        DashboardStatsRepository, EntityDefinitionRepository,
+        DashboardStatsRepository, EntityDefinitionRepository, SystemLogFilter, SystemLogRepository,
+        SystemLogRepositoryTrait,
     };
     use r_data_core_services::{
         AdminUserService, ApiKeyService, DashboardStatsService, EntityDefinitionService,
-        LicenseService, RoleService,
+        LicenseService, RoleService, SystemLogService,
     };
     use r_data_core_test_support::{
         clear_test_db, create_test_admin_user, make_workflow_service, setup_test_db,
@@ -136,6 +138,8 @@ mod tests {
             )),
             queue: test_queue_client_async().await,
             license_service,
+            password_reset_service: None,
+            system_log_service: None,
         };
 
         let app = test::init_service(
@@ -290,6 +294,249 @@ mod tests {
             serde_json::json!(false),
             "Response should have false using_default_password when check is disabled"
         );
+
+        clear_test_db(&pool).await?;
+        Ok(())
+    }
+
+    #[allow(clippy::future_not_send)]
+    async fn setup_test_app_with_logging() -> r_data_core_core::error::Result<(
+        impl actix_web::dev::Service<
+            actix_http::Request,
+            Response = actix_web::dev::ServiceResponse,
+            Error = actix_web::Error,
+        >,
+        r_data_core_test_support::TestDatabase,
+    )> {
+        let pool = setup_test_db().await;
+        clear_test_db(&pool).await?;
+
+        let cache_config = CacheConfig {
+            entity_definition_ttl: 0,
+            api_key_ttl: 600,
+            enabled: true,
+            ttl: 3600,
+            max_size: 1000,
+        };
+        let cache_manager = Arc::new(CacheManager::new(cache_config));
+
+        let api_key_repo = ApiKeyRepository::new(Arc::new(pool.pool.clone()));
+        let admin_user_repo = AdminUserRepository::new(Arc::new(pool.pool.clone()));
+        let entity_def_repo = Arc::new(EntityDefinitionRepository::new(pool.pool.clone()));
+
+        let license_config = LicenseConfig::default();
+        let license_service = Arc::new(LicenseService::new(license_config, cache_manager.clone()));
+
+        let system_log_repo = SystemLogRepository::new(pool.pool.clone());
+        let system_log_service = Arc::new(SystemLogService::new(Arc::new(system_log_repo)));
+
+        let api_state = ApiState {
+            db_pool: pool.pool.clone(),
+            api_config: r_data_core_core::config::ApiConfig {
+                host: "0.0.0.0".to_string(),
+                port: 8888,
+                use_tls: false,
+                jwt_secret: "test_secret".to_string(),
+                jwt_expiration: 3600,
+                enable_docs: true,
+                cors_origins: vec![],
+                check_default_admin_password: false,
+            },
+            role_service: RoleService::new(pool.pool.clone(), cache_manager.clone(), Some(0)),
+            cache_manager: cache_manager.clone(),
+            api_key_service: ApiKeyService::from_repository(api_key_repo),
+            admin_user_service: AdminUserService::from_repository(admin_user_repo),
+            entity_definition_service: EntityDefinitionService::new_without_cache(entity_def_repo),
+            dynamic_entity_service: None,
+            workflow_service: make_workflow_service(&pool),
+            dashboard_stats_service: DashboardStatsService::new(Arc::new(
+                DashboardStatsRepository::new(pool.pool.clone()),
+            )),
+            queue: test_queue_client_async().await,
+            license_service,
+            password_reset_service: None,
+            system_log_service: Some(system_log_service),
+        };
+
+        let app = test::init_service(
+            App::new()
+                .app_data(web::Data::new(ApiStateWrapper::new(api_state)))
+                .configure(configure_app),
+        )
+        .await;
+
+        Ok((app, pool))
+    }
+
+    #[tokio::test]
+    #[serial]
+    async fn test_login_creates_auth_log_entry() -> r_data_core_core::error::Result<()> {
+        let (app, pool) = setup_test_app_with_logging().await?;
+
+        // Create a test user
+        let test_user_uuid = create_test_admin_user(&pool).await?;
+        let test_user = AdminUserRepository::new(Arc::new(pool.pool.clone()))
+            .find_by_uuid(&test_user_uuid)
+            .await?
+            .unwrap();
+
+        // Login
+        let login_req = test::TestRequest::post()
+            .uri("/admin/api/v1/auth/login")
+            .set_json(serde_json::json!({
+                "username": test_user.username,
+                "password": "adminadmin"
+            }))
+            .to_request();
+
+        let resp = test::call_service(&app, login_req).await;
+        assert_eq!(resp.status(), StatusCode::OK);
+
+        // Verify system log entry was created
+        let log_repo = SystemLogRepository::new(pool.pool.clone());
+        let (logs, _) = log_repo
+            .list_paginated(
+                10,
+                0,
+                &SystemLogFilter {
+                    log_type: Some(SystemLogType::AuthEvent),
+                    resource_type: Some(SystemLogResourceType::AdminUser),
+                    ..Default::default()
+                },
+            )
+            .await?;
+
+        assert!(
+            logs.iter().any(|l| l.summary.contains("logged in")),
+            "Should have a 'logged in' system log entry"
+        );
+
+        // Check the details contain action: login
+        let login_log = logs
+            .iter()
+            .find(|l| l.summary.contains("logged in"))
+            .unwrap();
+        let details = login_log.details.as_ref().unwrap();
+        assert_eq!(details["action"], "login");
+
+        clear_test_db(&pool).await?;
+        Ok(())
+    }
+
+    #[tokio::test]
+    #[serial]
+    async fn test_failed_login_creates_auth_log_entry() -> r_data_core_core::error::Result<()> {
+        let (app, pool) = setup_test_app_with_logging().await?;
+
+        // Create a test user
+        let test_user_uuid = create_test_admin_user(&pool).await?;
+        let test_user = AdminUserRepository::new(Arc::new(pool.pool.clone()))
+            .find_by_uuid(&test_user_uuid)
+            .await?
+            .unwrap();
+
+        // Login with wrong password
+        let login_req = test::TestRequest::post()
+            .uri("/admin/api/v1/auth/login")
+            .set_json(serde_json::json!({
+                "username": test_user.username,
+                "password": "wrong_password"
+            }))
+            .to_request();
+
+        let resp = test::call_service(&app, login_req).await;
+        assert_eq!(resp.status(), StatusCode::UNAUTHORIZED);
+
+        // Verify failed login log entry
+        let log_repo = SystemLogRepository::new(pool.pool.clone());
+        let (logs, _) = log_repo
+            .list_paginated(
+                10,
+                0,
+                &SystemLogFilter {
+                    log_type: Some(SystemLogType::AuthEvent),
+                    ..Default::default()
+                },
+            )
+            .await?;
+
+        assert!(
+            logs.iter().any(|l| l.summary.contains("Login failed")),
+            "Should have a 'Login failed' system log entry"
+        );
+
+        let fail_log = logs
+            .iter()
+            .find(|l| l.summary.contains("Login failed"))
+            .unwrap();
+        let details = fail_log.details.as_ref().unwrap();
+        assert_eq!(details["action"], "login");
+        assert_eq!(details["reason"], "invalid_credentials");
+
+        clear_test_db(&pool).await?;
+        Ok(())
+    }
+
+    #[tokio::test]
+    #[serial]
+    async fn test_refresh_creates_auth_log_entry() -> r_data_core_core::error::Result<()> {
+        let (app, pool) = setup_test_app_with_logging().await?;
+
+        // Create a test user and login to get tokens
+        let test_user_uuid = create_test_admin_user(&pool).await?;
+        let test_user = AdminUserRepository::new(Arc::new(pool.pool.clone()))
+            .find_by_uuid(&test_user_uuid)
+            .await?
+            .unwrap();
+
+        let login_req = test::TestRequest::post()
+            .uri("/admin/api/v1/auth/login")
+            .set_json(serde_json::json!({
+                "username": test_user.username,
+                "password": "adminadmin"
+            }))
+            .to_request();
+
+        let resp = test::call_service(&app, login_req).await;
+        assert_eq!(resp.status(), StatusCode::OK);
+        let body: serde_json::Value = test::read_body_json(resp).await;
+        let refresh_token = body["data"]["refresh_token"].as_str().unwrap().to_string();
+
+        // Refresh the token
+        let refresh_req = test::TestRequest::post()
+            .uri("/admin/api/v1/auth/refresh")
+            .set_json(serde_json::json!({
+                "refresh_token": refresh_token
+            }))
+            .to_request();
+
+        let resp = test::call_service(&app, refresh_req).await;
+        assert_eq!(resp.status(), StatusCode::OK);
+
+        // Verify refresh log entry
+        let log_repo = SystemLogRepository::new(pool.pool.clone());
+        let (logs, _) = log_repo
+            .list_paginated(
+                10,
+                0,
+                &SystemLogFilter {
+                    log_type: Some(SystemLogType::AuthEvent),
+                    ..Default::default()
+                },
+            )
+            .await?;
+
+        assert!(
+            logs.iter().any(|l| l.summary.contains("Token refreshed")),
+            "Should have a 'Token refreshed' system log entry"
+        );
+
+        let refresh_log = logs
+            .iter()
+            .find(|l| l.summary.contains("Token refreshed"))
+            .unwrap();
+        let details = refresh_log.details.as_ref().unwrap();
+        assert_eq!(details["action"], "refresh");
 
         clear_test_db(&pool).await?;
         Ok(())

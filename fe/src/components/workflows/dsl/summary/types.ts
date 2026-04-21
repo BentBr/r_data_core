@@ -33,11 +33,13 @@ export type TransformSummaryMap = {
     resolve_entity_path: Extract<Transform, { type: 'resolve_entity_path' }>
     get_or_create_entity: Extract<Transform, { type: 'get_or_create_entity' }>
     authenticate: Extract<Transform, { type: 'authenticate' }>
+    send_email: Extract<Transform, { type: 'send_email' }>
 }
 
 export type NonFormatToSummaryMap = {
     entity: Extract<NonFormatTo, { type: 'entity' }>
     next_step: Extract<NonFormatTo, { type: 'next_step' }>
+    email: Extract<NonFormatTo, { type: 'email' }>
 }
 
 export type StepStats = Array<{ label: string; value: string }>

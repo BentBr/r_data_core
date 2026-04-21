@@ -14,6 +14,7 @@ use r_data_core_services::RoleService;
 use r_data_core_test_support::{clear_test_db, create_test_admin_user, setup_test_db};
 use serial_test::serial;
 use std::sync::Arc;
+use uuid::Uuid;
 
 use super::common::create_test_role;
 
@@ -299,7 +300,8 @@ async fn test_cache_invalidation_on_role_deletion() -> Result<()> {
     assert_eq!(roles1.len(), 1, "Should have 1 role");
 
     // Delete the role - should invalidate all related caches
-    role_service.delete_role(role_uuid).await?;
+    let actor_uuid = Uuid::now_v7();
+    role_service.delete_role(role_uuid, actor_uuid).await?;
 
     // Access after deletion - should return empty (role deleted, cache invalidated)
     let roles2 = role_service

@@ -146,9 +146,7 @@ async fn test_api_key_cache_invalidation_on_revoke() -> Result<()> {
 
     // Revoke the key
     let mut mock_repo2 = MockApiKeyRepo::new();
-    let mut api_key_clone2 = api_key.clone();
-    api_key_clone2.is_active = false; // Mark as inactive after revoke
-    let api_key_for_revoke = api_key_clone2.clone();
+    let api_key_for_revoke = api_key.clone(); // Key is still active before revoke
     mock_repo2
         .expect_get_by_uuid()
         .with(eq(key_uuid))

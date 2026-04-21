@@ -11,6 +11,9 @@ import { EntitiesClient } from './entities'
 import { SystemClient } from './system'
 import { RolesClient } from './roles'
 import { MetaClient } from './meta'
+import { CapabilitiesClient } from './capabilities'
+import { EmailTemplateClient } from './email-templates'
+import { SystemLogClient } from './system-logs'
 
 /**
  * Main typed HTTP client that combines all domain-specific clients
@@ -27,6 +30,9 @@ export class TypedHttpClient extends BaseTypedHttpClient {
     private systemClient = new SystemClient()
     private rolesClient = new RolesClient()
     private metaClient = new MetaClient()
+    private capabilitiesClient = new CapabilitiesClient()
+    private emailTemplateClient = new EmailTemplateClient()
+    private systemLogClient = new SystemLogClient()
 
     // Entity Definitions
     async getEntityDefinitions(
@@ -190,6 +196,14 @@ export class TypedHttpClient extends BaseTypedHttpClient {
         return this.authClient.getUserPermissions(...args)
     }
 
+    async forgotPassword(...args: Parameters<AuthClient['forgotPassword']>) {
+        return this.authClient.forgotPassword(...args)
+    }
+
+    async resetPassword(...args: Parameters<AuthClient['resetPassword']>) {
+        return this.authClient.resetPassword(...args)
+    }
+
     // Users
     async getUsers(...args: Parameters<UsersClient['getUsers']>) {
         return this.usersClient.getUsers(...args)
@@ -322,6 +336,41 @@ export class TypedHttpClient extends BaseTypedHttpClient {
     async getDashboardStats(...args: Parameters<MetaClient['getDashboardStats']>) {
         return this.metaClient.getDashboardStats(...args)
     }
+
+    // Capabilities
+    async getCapabilities(...args: Parameters<CapabilitiesClient['getCapabilities']>) {
+        return this.capabilitiesClient.getCapabilities(...args)
+    }
+
+    // Email Templates
+    async listEmailTemplates(...args: Parameters<EmailTemplateClient['list']>) {
+        return this.emailTemplateClient.list(...args)
+    }
+
+    async getEmailTemplateByUuid(...args: Parameters<EmailTemplateClient['getByUuid']>) {
+        return this.emailTemplateClient.getByUuid(...args)
+    }
+
+    async createEmailTemplate(...args: Parameters<EmailTemplateClient['create']>) {
+        return this.emailTemplateClient.create(...args)
+    }
+
+    async updateEmailTemplate(...args: Parameters<EmailTemplateClient['update']>) {
+        return this.emailTemplateClient.update(...args)
+    }
+
+    async deleteEmailTemplate(...args: Parameters<EmailTemplateClient['delete']>) {
+        return this.emailTemplateClient.delete(...args)
+    }
+
+    // System Logs
+    async listSystemLogs(...args: Parameters<SystemLogClient['list']>) {
+        return this.systemLogClient.list(...args)
+    }
+
+    async getSystemLogByUuid(...args: Parameters<SystemLogClient['getByUuid']>) {
+        return this.systemLogClient.getByUuid(...args)
+    }
 }
 
 // Export individual clients for direct use if needed
@@ -334,3 +383,6 @@ export { UsersClient } from './users'
 export { EntitiesClient } from './entities'
 export { RolesClient } from './roles'
 export { MetaClient } from './meta'
+export { CapabilitiesClient } from './capabilities'
+export { EmailTemplateClient } from './email-templates'
+export { SystemLogClient } from './system-logs'

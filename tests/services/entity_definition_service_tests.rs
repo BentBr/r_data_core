@@ -427,7 +427,10 @@ async fn test_delete_entity_definition_success() -> Result<()> {
     let service = EntityDefinitionService::new_without_cache(Arc::new(mock_repo));
 
     // Act
-    let result = service.delete_entity_definition(&test_uuid).await;
+    let actor_uuid = Uuid::now_v7();
+    let result = service
+        .delete_entity_definition(&test_uuid, actor_uuid)
+        .await;
 
     // Assert
     assert!(result.is_ok());
@@ -459,7 +462,10 @@ async fn test_delete_entity_definition_with_records() -> Result<()> {
     let service = EntityDefinitionService::new_without_cache(Arc::new(mock_repo));
 
     // Act
-    let result = service.delete_entity_definition(&test_uuid).await;
+    let actor_uuid = Uuid::now_v7();
+    let result = service
+        .delete_entity_definition(&test_uuid, actor_uuid)
+        .await;
 
     // Assert
     assert!(result.is_err());
@@ -491,7 +497,10 @@ async fn test_delete_entity_definition_not_found() -> Result<()> {
     let service = EntityDefinitionService::new_without_cache(Arc::new(mock_repo));
 
     // Act
-    let result = service.delete_entity_definition(&test_uuid).await;
+    let actor_uuid = Uuid::now_v7();
+    let result = service
+        .delete_entity_definition(&test_uuid, actor_uuid)
+        .await;
 
     // Assert
     assert!(result.is_err());

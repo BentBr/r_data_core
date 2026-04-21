@@ -11,4 +11,6 @@ pub struct QueueConfig {
     pub fetch_key: String,
     /// Redis key for process jobs
     pub process_key: String,
+    /// Redis key for outbound e-mail jobs
+    pub email_key: String,
 }

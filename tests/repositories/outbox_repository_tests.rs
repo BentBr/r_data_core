@@ -13,7 +13,7 @@ use r_data_core_services::workflow::outbox::{
 };
 use r_data_core_test_support::create_test_admin_user;
 use r_data_core_workflow::data::job_queue::JobQueue;
-use r_data_core_workflow::data::jobs::{FetchAndStageJob, ProcessRawItemJob};
+use r_data_core_workflow::data::jobs::{FetchAndStageJob, ProcessRawItemJob, SendEmailJob};
 use r_data_core_workflow::data::WorkflowKind;
 use sqlx::postgres::PgListener;
 use sqlx::Row;
@@ -89,6 +89,16 @@ impl JobQueue for RecordingQueue {
         _job: ProcessRawItemJob,
     ) -> r_data_core_core::error::Result<()> {
         Ok(())
+    }
+
+    async fn enqueue_email(&self, _job: SendEmailJob) -> r_data_core_core::error::Result<()> {
+        Ok(())
+    }
+
+    async fn blocking_pop_email(&self) -> r_data_core_core::error::Result<SendEmailJob> {
+        Err(r_data_core_core::error::Error::Unknown(
+            "email queue not implemented for RecordingQueue".to_string(),
+        ))
     }
 }
 

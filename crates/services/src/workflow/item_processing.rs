@@ -1,8 +1,10 @@
 #![deny(clippy::all, clippy::pedantic, clippy::nursery, warnings)]
 
 use crate::dynamic_entity::DynamicEntityService;
-use crate::workflow::output_handling::{handle_entity_output, handle_format_push_output};
-use crate::workflow::transform_execution::{execute_async_transform, JwtConfig};
+use crate::workflow::output_handling::{
+    handle_email_output, handle_entity_output, handle_format_push_output,
+};
+use crate::workflow::transform_execution::{execute_async_transform, JwtConfig, MailContext};
 use r_data_core_persistence::OutboxRepository;
 use r_data_core_persistence::WorkflowRepositoryTrait;
 use r_data_core_workflow::dsl::{DslProgram, ToDef, Transform};
@@ -16,6 +18,8 @@ pub struct WorkflowItemContext<'a> {
     pub outbox_repository: Option<&'a OutboxRepository>,
     pub repo: &'a Arc<dyn WorkflowRepositoryTrait>,
     pub jwt: &'a JwtConfig<'a>,
+    pub mail: &'a MailContext<'a>,
+    pub workflow_name: Option<&'a str>,
     pub versioning_disabled: bool,
 }
 
@@ -110,6 +114,7 @@ async fn execute_steps_with_async_transforms(
             Transform::ResolveEntityPath(_)
                 | Transform::GetOrCreateEntity(_)
                 | Transform::Authenticate(_)
+                | Transform::SendEmail(_)
         ) {
             if let Some(de_service) = ctx.dynamic_entity_service {
                 if let Err(e) = execute_async_transform(
@@ -118,6 +123,7 @@ async fn execute_steps_with_async_transforms(
                     de_service,
                     run_uuid,
                     ctx.jwt,
+                    ctx.mail,
                 )
                 .await
                 {
@@ -184,6 +190,14 @@ async fn process_outputs(
             handle_format_push_output(&to_def, &produced, workflow_uuid, item_uuid, run_uuid, ctx)
                 .await?;
         if !push_ok {
+            entity_ops_ok = false;
+            break;
+        }
+
+        // Handle Email outputs
+        let email_ok =
+            handle_email_output(&to_def, &produced, run_uuid, ctx.mail, ctx.workflow_name).await?;
+        if !email_ok {
             entity_ops_ok = false;
             break;
         }

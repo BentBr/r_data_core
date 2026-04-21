@@ -1,6 +1,8 @@
 #![deny(clippy::all, clippy::pedantic, clippy::nursery, warnings)]
 
-use r_data_core_services::workflow::transform_execution::{execute_async_transform, JwtConfig};
+use r_data_core_services::workflow::transform_execution::{
+    execute_async_transform, JwtConfig, MailContext,
+};
 use r_data_core_test_support::setup_test_db;
 use r_data_core_workflow::dsl::{DslProgram, Transform};
 use serde_json::json;
@@ -149,6 +151,10 @@ async fn test_execute_async_transform_resolve_entity_path() -> r_data_core_core:
     let run_uuid = Uuid::now_v7();
 
     // Execute async transform
+    let mail = MailContext {
+        service: None,
+        queue: None,
+    };
     execute_async_transform(
         &transform,
         &mut normalized,
@@ -158,6 +164,7 @@ async fn test_execute_async_transform_resolve_entity_path() -> r_data_core_core:
             secret: None,
             expiration: 86400,
         },
+        &mail,
     )
     .await?;
 
@@ -235,6 +242,10 @@ async fn test_execute_async_transform_resolve_entity_path_not_found(
     let run_uuid = Uuid::now_v7();
 
     // Execute async transform - should use fallback entity
+    let mail = MailContext {
+        service: None,
+        queue: None,
+    };
     execute_async_transform(
         &transform,
         &mut normalized,
@@ -244,6 +255,7 @@ async fn test_execute_async_transform_resolve_entity_path_not_found(
             secret: None,
             expiration: 86400,
         },
+        &mail,
     )
     .await?;
 
@@ -296,6 +308,10 @@ async fn test_execute_async_transform_get_or_create_entity() -> r_data_core_core
     let run_uuid = Uuid::now_v7();
 
     // Execute async transform
+    let mail = MailContext {
+        service: None,
+        queue: None,
+    };
     execute_async_transform(
         &transform,
         &mut normalized,
@@ -305,6 +321,7 @@ async fn test_execute_async_transform_get_or_create_entity() -> r_data_core_core
             secret: None,
             expiration: 86400,
         },
+        &mail,
     )
     .await?;
 
@@ -334,6 +351,7 @@ async fn test_execute_async_transform_get_or_create_entity() -> r_data_core_core
             secret: None,
             expiration: 86400,
         },
+        &mail,
     )
     .await?;
 
@@ -413,6 +431,10 @@ async fn test_step_by_step_execution_resolve_then_build_path() -> r_data_core_co
 
     // Step 0: Execute async transform (ResolveEntityPath)
     assert!(matches!(transform_0, Transform::ResolveEntityPath(_)));
+    let mail = MailContext {
+        service: None,
+        queue: None,
+    };
     execute_async_transform(
         transform_0,
         &mut normalized_0,
@@ -422,6 +444,7 @@ async fn test_step_by_step_execution_resolve_then_build_path() -> r_data_core_co
             secret: None,
             expiration: 86400,
         },
+        &mail,
     )
     .await?;
 
@@ -477,6 +500,68 @@ async fn test_step_by_step_execution_resolve_then_build_path() -> r_data_core_co
     assert_eq!(
         produced_1.get("submission_path").and_then(|v| v.as_str()),
         Some(format!("{entity_path}/submission").as_str())
+    );
+
+    Ok(())
+}
+
+/// Test that `SendEmail` transform sets `target_status` to `"mail_not_configured"`
+/// when neither a mail service nor a queue is provided in `MailContext`.
+#[tokio::test]
+async fn test_send_email_transform_no_mail_configured() -> r_data_core_core::error::Result<()> {
+    let pool = setup_test_db().await;
+    let entity_type = "test_send_email_no_mail";
+    let _entity_def = create_test_entity_definition(&pool, entity_type).await?;
+
+    let repo = DynamicEntityRepository::new(pool.pool.clone());
+    let de_service = DynamicEntityService::new(
+        Arc::new(repo)
+            as Arc<dyn r_data_core_persistence::DynamicEntityRepositoryTrait + Send + Sync>,
+        Arc::new(EntityDefinitionService::new_without_cache(Arc::new(
+            EntityDefinitionRepository::new(pool.pool.clone()),
+        ))),
+    );
+
+    let transform =
+        Transform::SendEmail(r_data_core_workflow::dsl::transform::SendEmailTransform {
+            template_uuid: "550e8400-e29b-41d4-a716-446655440000".to_string(),
+            to: vec![r_data_core_workflow::dsl::StringOperand::ConstString {
+                value: "test@example.com".to_string(),
+            }],
+            cc: None,
+            target_status: "email_status".to_string(),
+        });
+
+    let mut normalized = json!({
+        "email": "test@example.com",
+        "name": "Test User"
+    });
+
+    let run_uuid = Uuid::now_v7();
+
+    // MailContext with neither service nor queue configured
+    let mail = MailContext {
+        service: None,
+        queue: None,
+    };
+    execute_async_transform(
+        &transform,
+        &mut normalized,
+        &de_service,
+        run_uuid,
+        &JwtConfig {
+            secret: None,
+            expiration: 86400,
+        },
+        &mail,
+    )
+    .await?;
+
+    // When mail is not configured the status field must be set to "mail_not_configured"
+    assert_eq!(
+        normalized.get("email_status").and_then(|v| v.as_str()),
+        Some("mail_not_configured"),
+        "expected email_status == 'mail_not_configured' when no mail service/queue is set"
     );
 
     Ok(())

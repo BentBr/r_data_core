@@ -134,6 +134,23 @@ pub struct AdminRegisterResponse {
     pub message: String,
 }
 
+/// Forgot password request body
+#[derive(Debug, Deserialize, ToSchema)]
+pub struct ForgotPasswordRequest {
+    /// Email address to send password reset link to
+    pub email: String,
+}
+
+/// Reset password request body
+#[derive(Debug, Deserialize, ToSchema)]
+pub struct ResetPasswordRequest {
+    /// Password reset token
+    pub token: String,
+
+    /// New password
+    pub new_password: String,
+}
+
 #[cfg(test)]
 mod tests {
     use r_data_core_core::validation::constraints;

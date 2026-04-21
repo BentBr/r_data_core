@@ -19,6 +19,8 @@ pub trait ApiStateTrait: Send + Sync + 'static {
     fn queue_ref(&self) -> &dyn std::any::Any;
     fn dashboard_stats_service_ref(&self) -> &dyn std::any::Any;
     fn license_service_ref(&self) -> &dyn std::any::Any;
+    fn password_reset_service_ref(&self) -> Option<&dyn std::any::Any>;
+    fn system_log_service_ref(&self) -> Option<&dyn std::any::Any>;
 
     /// Get `API` config - helper method that downcasts from `api_config_ref`
     fn api_config(&self) -> &r_data_core_core::config::ApiConfig {
@@ -101,6 +103,20 @@ pub trait ApiStateTrait: Send + Sync + 'static {
             .downcast_ref::<std::sync::Arc<r_data_core_services::LicenseService>>()
             .expect("ApiState must provide LicenseService")
     }
+
+    /// Get password reset service - returns `None` if not configured
+    fn password_reset_service(&self) -> Option<&r_data_core_services::PasswordResetService> {
+        self.password_reset_service_ref()?
+            .downcast_ref::<r_data_core_services::PasswordResetService>()
+    }
+
+    /// Get system log service - returns `None` if not configured
+    fn system_log_service(
+        &self,
+    ) -> Option<&std::sync::Arc<r_data_core_services::SystemLogService>> {
+        self.system_log_service_ref()?
+            .downcast_ref::<std::sync::Arc<r_data_core_services::SystemLogService>>()
+    }
 }
 
 /// Wrapper type to allow `web::Data` extraction for `ApiStateTrait`
@@ -158,6 +174,14 @@ impl ApiStateTrait for ApiStateWrapper {
 
     fn license_service_ref(&self) -> &dyn std::any::Any {
         self.0.license_service_ref()
+    }
+
+    fn password_reset_service_ref(&self) -> Option<&dyn std::any::Any> {
+        self.0.password_reset_service_ref()
+    }
+
+    fn system_log_service_ref(&self) -> Option<&dyn std::any::Any> {
+        self.0.system_log_service_ref()
     }
 }
 

@@ -109,6 +109,8 @@ pub async fn setup_app_with_entities() -> anyhow::Result<(
         dashboard_stats_service,
         queue: test_queue_client_async().await,
         license_service,
+        password_reset_service: None,
+        system_log_service: None,
     };
 
     let app_data = web::Data::new(ApiStateWrapper::new(api_state));

@@ -280,6 +280,8 @@ mod tests {
             dashboard_stats_service,
             queue: r_data_core_test_support::test_queue_client_async().await,
             license_service,
+            password_reset_service: None,
+            system_log_service: None,
         };
 
         // Build test app

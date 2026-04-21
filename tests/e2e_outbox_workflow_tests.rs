@@ -38,13 +38,16 @@ async fn end_to_end_workflow_outbox_dispatches_into_redis_and_processes_run() ->
 
     let fetch_key = format!("test:e2e:outbox:fetch:{}", Uuid::now_v7().simple());
     let process_key = format!("test:e2e:outbox:process:{}", Uuid::now_v7().simple());
+    let email_key = format!("test:e2e:outbox:email:{}", Uuid::now_v7().simple());
 
-    let queue_for_consumer = ApalisRedisQueue::from_parts(&redis_url, &fetch_key, &process_key)
-        .await
-        .expect("Failed to create consumer queue");
-    let queue_for_outbox = ApalisRedisQueue::from_parts(&redis_url, &fetch_key, &process_key)
-        .await
-        .expect("Failed to create outbox queue");
+    let queue_for_consumer =
+        ApalisRedisQueue::from_parts(&redis_url, &fetch_key, &process_key, &email_key)
+            .await
+            .expect("Failed to create consumer queue");
+    let queue_for_outbox =
+        ApalisRedisQueue::from_parts(&redis_url, &fetch_key, &process_key, &email_key)
+            .await
+            .expect("Failed to create outbox queue");
 
     let creator_uuid = create_test_admin_user(&pool).await?;
     let entity_type = unique_entity_type("outbox_e2e_entity");

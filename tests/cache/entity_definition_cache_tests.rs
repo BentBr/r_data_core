@@ -296,7 +296,8 @@ async fn test_cache_invalidation_on_delete() -> Result<()> {
         .returning(|_| Ok(()));
 
     let service2 = EntityDefinitionService::new(Arc::new(mock_repo2), cache_manager.clone());
-    service2.delete_entity_definition(&uuid).await?;
+    let actor_uuid = Uuid::now_v7();
+    service2.delete_entity_definition(&uuid, actor_uuid).await?;
 
     // After delete, cache should be invalidated - querying should return NotFound
     let mut mock_repo3 = MockEntityDefinitionRepo::new();
