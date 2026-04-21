@@ -1,25 +1,30 @@
-use serde::{Deserialize, Serialize};
+use serde::{Deserialize, Deserializer, Serialize};
 use serde_json::Value;
 use std::collections::HashMap;
 use ts_rs::TS;
 use utoipa::ToSchema;
 
-/// Custom deserializer for converting string query parameters to i64
-fn deserialize_optional_i64<'de, D>(deserializer: D) -> Result<Option<i64>, D::Error>
-where
-    D: serde::Deserializer<'de>,
-{
-    use serde::de::Error;
+/// Helper that accepts either a plain integer (e.g. from JSON) or a string-encoded
+/// integer (e.g. from a URL query string) and yields an `i64`. Used only by
+/// `PaginationQuery`'s manual `Deserialize` impl — kept as a struct-level helper so no
+/// field carries `#[serde(deserialize_with = ...)]` (which ts-rs cannot introspect and
+/// emits a warning for).
+#[derive(Debug, Deserialize)]
+#[serde(untagged)]
+enum IntOrStringInt {
+    Int(i64),
+    Str(String),
+}
 
-    let value = Option::<String>::deserialize(deserializer)?;
-    value.map_or_else(
-        || Ok(None),
-        |s| {
-            s.parse::<i64>().map(Some).map_err(|_| {
-                D::Error::custom(format!("invalid type: string \"{s}\", expected i64"))
-            })
-        },
-    )
+impl IntOrStringInt {
+    fn into_i64<E: serde::de::Error>(self) -> Result<i64, E> {
+        match self {
+            Self::Int(n) => Ok(n),
+            Self::Str(s) => s.parse::<i64>().map_err(|_| {
+                E::custom(format!("invalid type: string \"{s}\", expected i64"))
+            }),
+        }
+    }
 }
 
 /// Custom deserializer for converting string query parameters to bool
@@ -56,36 +61,51 @@ where
 ///
 /// All parameters are optional and have sensible defaults. You can mix and match these parameters
 /// as needed for your use case.
-#[derive(Debug, Serialize, Deserialize, ToSchema, TS)]
+#[derive(Debug, Serialize, ToSchema, TS)]
 #[ts(export)]
 pub struct PaginationQuery {
     /// Page number (1-based) - defaults to 1
     /// Use with `per_page` for page-based pagination
-    #[serde(default)]
-    #[serde(deserialize_with = "deserialize_optional_i64")]
     #[ts(type = "number | null")]
     pub page: Option<i64>,
 
     /// Items per page - defaults to 20, max 100
     /// Use with `page` for page-based pagination
-    #[serde(default)]
-    #[serde(deserialize_with = "deserialize_optional_i64")]
     #[ts(type = "number | null")]
     pub per_page: Option<i64>,
 
     /// Limit (alternative to `per_page`) - defaults to 20, max 100
     /// Use with `offset` for offset-based pagination
-    #[serde(default)]
-    #[serde(deserialize_with = "deserialize_optional_i64")]
     #[ts(type = "number | null")]
     pub limit: Option<i64>,
 
     /// Offset (alternative to page) - defaults to 0
     /// Use with `limit` for offset-based pagination
-    #[serde(default)]
-    #[serde(deserialize_with = "deserialize_optional_i64")]
     #[ts(type = "number | null")]
     pub offset: Option<i64>,
+}
+
+impl<'de> Deserialize<'de> for PaginationQuery {
+    fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        #[derive(Deserialize)]
+        struct Raw {
+            #[serde(default)]
+            page: Option<IntOrStringInt>,
+            #[serde(default)]
+            per_page: Option<IntOrStringInt>,
+            #[serde(default)]
+            limit: Option<IntOrStringInt>,
+            #[serde(default)]
+            offset: Option<IntOrStringInt>,
+        }
+        let raw = Raw::deserialize(deserializer)?;
+        Ok(Self {
+            page: raw.page.map(IntOrStringInt::into_i64).transpose()?,
+            per_page: raw.per_page.map(IntOrStringInt::into_i64).transpose()?,
+            limit: raw.limit.map(IntOrStringInt::into_i64).transpose()?,
+            offset: raw.offset.map(IntOrStringInt::into_i64).transpose()?,
+        })
+    }
 }
 
 impl PaginationQuery {
