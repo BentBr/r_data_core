@@ -12,11 +12,9 @@ use tokio_cron_scheduler::JobScheduler;
 use r_data_core_core::cache::CacheManager;
 use r_data_core_core::config::MaintenanceConfig;
 use r_data_core_worker::registrars::{
-    LicenseVerificationRegistrar, LicenseVerificationRegistrar, OutboxPurgerRegistrar,
-    PasswordResetCleanupRegistrar, RefreshTokenCleanupRegistrar, RefreshTokenCleanupRegistrar,
-    StatisticsCollectionRegistrar, StatisticsCollectionRegistrar, SystemLogsPurgerRegistrar,
-    TaskRegistrar, TaskRegistrar, VersionPurgerRegistrar, VersionPurgerRegistrar,
-    WorkflowRunLogsPurgerRegistrar, WorkflowRunLogsPurgerRegistrar,
+    LicenseVerificationRegistrar, OutboxPurgerRegistrar, PasswordResetCleanupRegistrar,
+    RefreshTokenCleanupRegistrar, StatisticsCollectionRegistrar, SystemLogsPurgerRegistrar,
+    TaskRegistrar, VersionPurgerRegistrar, WorkflowRunLogsPurgerRegistrar,
 };
 
 /// Current version from Cargo.toml
