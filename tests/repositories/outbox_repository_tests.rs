@@ -7,9 +7,8 @@ use std::sync::{
 
 use httpmock::{Method::POST, MockServer};
 use r_data_core_persistence::{OutboxRepository, WorkflowRepository};
-use r_data_core_services::workflow::outbox::claim_and_dispatch_workflow_outbox;
 use r_data_core_services::workflow::outbox::{
-    dispatch_workflow_push_outbox, enqueue_workflow_push_outbox,
+    DispatchWorkflowOutboxBatchUseCase, WorkflowOutboxDispatcher, enqueue_workflow_push_outbox,
 };
 use r_data_core_test_support::create_test_admin_user;
 use r_data_core_workflow::data::job_queue::JobQueue;
@@ -329,7 +328,8 @@ async fn workflow_push_outbox_dispatches_http_request_and_marks_delivered() -> a
     assert_eq!(claimed.len(), 1);
     assert_eq!(claimed[0].uuid, outbox_uuid);
 
-    dispatch_workflow_push_outbox(&outbox_repo, &claimed[0], Some("push-test-worker"), None)
+    WorkflowOutboxDispatcher::new(None, &outbox_repo, Some("push-test-worker"), None)
+        .dispatch_push_record(&claimed[0])
         .await?;
 
     push_mock.assert_async().await;
@@ -468,7 +468,8 @@ async fn workflow_push_outbox_retries_on_http_error() -> anyhow::Result<()> {
 
     let claimed = outbox_repo.claim_due(10, "push-retry-worker").await?;
     assert_eq!(claimed.len(), 1);
-    dispatch_workflow_push_outbox(&outbox_repo, &claimed[0], Some("push-retry-worker"), None)
+    WorkflowOutboxDispatcher::new(None, &outbox_repo, Some("push-retry-worker"), None)
+        .dispatch_push_record(&claimed[0])
         .await?;
 
     push_mock.assert_async().await;
@@ -563,8 +564,16 @@ async fn workflow_outbox_worker_reclaims_stale_processing_rows() -> anyhow::Resu
     .await?;
 
     let queue = RecordingQueue::new();
-    let dispatched =
-        claim_and_dispatch_workflow_outbox(&queue, &outbox_repo, "reclaim-worker", 10).await?;
+    let dispatched = DispatchWorkflowOutboxBatchUseCase::new(
+        &queue,
+        &outbox_repo,
+        "reclaim-worker",
+        10,
+        300,
+        None,
+    )
+    .run_once()
+    .await?;
     assert_eq!(dispatched, 1);
     assert_eq!(queue.fetch_count().await, 1);
 
@@ -638,8 +647,16 @@ async fn workflow_outbox_worker_retries_when_queue_enqueue_fails() -> anyhow::Re
         .await?;
 
     let queue = RecordingQueue::with_fetch_failure();
-    let dispatched =
-        claim_and_dispatch_workflow_outbox(&queue, &outbox_repo, "retry-worker", 10).await?;
+    let dispatched = DispatchWorkflowOutboxBatchUseCase::new(
+        &queue,
+        &outbox_repo,
+        "retry-worker",
+        10,
+        300,
+        None,
+    )
+    .run_once()
+    .await?;
     assert_eq!(dispatched, 1);
 
     let row = sqlx::query(
@@ -722,8 +739,16 @@ async fn workflow_outbox_worker_dead_letters_permanent_queue_failures() -> anyho
         .await?;
 
     let queue = RecordingQueue::with_permanent_fetch_failure();
-    let dispatched =
-        claim_and_dispatch_workflow_outbox(&queue, &outbox_repo, "permanent-worker", 10).await?;
+    let dispatched = DispatchWorkflowOutboxBatchUseCase::new(
+        &queue,
+        &outbox_repo,
+        "permanent-worker",
+        10,
+        300,
+        None,
+    )
+    .run_once()
+    .await?;
     assert_eq!(dispatched, 1);
 
     let row = sqlx::query(
@@ -784,13 +809,9 @@ async fn workflow_push_outbox_dead_letters_on_client_error() -> anyhow::Result<(
 
     let claimed = outbox_repo.claim_due(10, "push-dead-letter-worker").await?;
     assert_eq!(claimed.len(), 1);
-    dispatch_workflow_push_outbox(
-        &outbox_repo,
-        &claimed[0],
-        Some("push-dead-letter-worker"),
-        None,
-    )
-    .await?;
+    WorkflowOutboxDispatcher::new(None, &outbox_repo, Some("push-dead-letter-worker"), None)
+        .dispatch_push_record(&claimed[0])
+        .await?;
 
     push_mock.assert_async().await;
     let row = sqlx::query(
@@ -849,7 +870,9 @@ async fn workflow_push_outbox_retries_on_rate_limit_error() -> anyhow::Result<()
 
     let claimed = outbox_repo.claim_due(10, "push-429-worker").await?;
     assert_eq!(claimed.len(), 1);
-    dispatch_workflow_push_outbox(&outbox_repo, &claimed[0], Some("push-429-worker"), None).await?;
+    WorkflowOutboxDispatcher::new(None, &outbox_repo, Some("push-429-worker"), None)
+        .dispatch_push_record(&claimed[0])
+        .await?;
 
     push_mock.assert_async().await;
     let row = sqlx::query(
@@ -900,7 +923,9 @@ async fn workflow_push_outbox_dead_letters_invalid_auth_config() -> anyhow::Resu
 
     let claimed = outbox_repo.claim_due(10, "push-auth-worker").await?;
     assert_eq!(claimed.len(), 1);
-    dispatch_workflow_push_outbox(&outbox_repo, &claimed[0], Some("push-auth-worker"), None).await?;
+    WorkflowOutboxDispatcher::new(None, &outbox_repo, Some("push-auth-worker"), None)
+        .dispatch_push_record(&claimed[0])
+        .await?;
 
     let row = sqlx::query(
         r"

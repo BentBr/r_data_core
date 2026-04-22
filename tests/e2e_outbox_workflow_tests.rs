@@ -3,7 +3,7 @@
 use httpmock::{Method::GET, MockServer};
 use r_data_core_core::config::CacheConfig;
 use r_data_core_persistence::{DynamicEntityRepository, OutboxRepository, WorkflowRepository};
-use r_data_core_services::workflow::outbox::claim_and_dispatch_workflow_outbox;
+use r_data_core_services::workflow::outbox::DispatchWorkflowOutboxBatchUseCase;
 use r_data_core_services::{WorkflowRepositoryAdapter, WorkflowService};
 use r_data_core_test_support::{
     create_test_admin_user, create_test_entity_definition, spawn_test_consumer_loop,
@@ -108,7 +108,15 @@ async fn end_to_end_workflow_outbox_dispatches_into_redis_and_processes_run() ->
         fetch_key: fetch_key.clone(),
     });
 
-    claim_and_dispatch_workflow_outbox(&queue_for_outbox, &outbox_repo, "outbox-e2e-worker", 10)
+    DispatchWorkflowOutboxBatchUseCase::new(
+        &queue_for_outbox,
+        &outbox_repo,
+        "outbox-e2e-worker",
+        10,
+        300,
+        None,
+    )
+    .run_once()
         .await?;
 
     let mut attempts = 0usize;

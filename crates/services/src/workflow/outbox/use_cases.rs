@@ -7,7 +7,7 @@ use r_data_core_workflow::data::job_queue::JobQueue;
 use r_data_core_workflow::data::jobs::FetchAndStageJob;
 use uuid::Uuid;
 
-use super::dispatch::{claim_and_dispatch_workflow_outbox_with_stale_lease, dispatch_workflow_fetch_job};
+use super::dispatch::WorkflowOutboxDispatcher;
 use super::OutboxRetryPolicy;
 
 /// Use case for enqueuing workflow fetch runs with optional outbox support.
@@ -50,16 +50,13 @@ impl<'a> EnqueueWorkflowFetchUseCase<'a> {
                 .repo
                 .insert_run_queued_with_fetch_outbox(workflow_uuid, trigger_id)
                 .await?;
-            dispatch_workflow_fetch_job(
-                self.queue,
+            WorkflowOutboxDispatcher::new(
+                Some(self.queue),
                 outbox_repo,
-                workflow_uuid,
-                run_uuid,
-                outbox_uuid,
-                1,
                 None,
                 self.outbox_retry_policy,
             )
+            .dispatch_fetch_run(workflow_uuid, run_uuid, outbox_uuid, 1)
             .await?;
             let _ = self
                 .repo
@@ -113,16 +110,13 @@ impl<'a> EnqueueWorkflowFetchUseCase<'a> {
             let outbox_uuid = outbox_repo
                 .insert_workflow_fetch_enqueue(workflow_uuid, run_uuid)
                 .await?;
-            dispatch_workflow_fetch_job(
-                self.queue,
+            WorkflowOutboxDispatcher::new(
+                Some(self.queue),
                 outbox_repo,
-                workflow_uuid,
-                run_uuid,
-                outbox_uuid,
-                1,
                 None,
                 self.outbox_retry_policy,
             )
+            .dispatch_fetch_run(workflow_uuid, run_uuid, outbox_uuid, 1)
             .await?;
             let _ = self
                 .repo
@@ -195,14 +189,29 @@ impl<'a> DispatchWorkflowOutboxBatchUseCase<'a> {
     /// # Errors
     /// Returns an error if claiming or dispatching fails.
     pub async fn run_once(&self) -> r_data_core_core::error::Result<usize> {
-        claim_and_dispatch_workflow_outbox_with_stale_lease(
-            self.queue,
+        let stale_before =
+            time::OffsetDateTime::now_utc() - time::Duration::seconds(self.stale_lease_secs);
+        let _ = self
+            .outbox_repository
+            .requeue_stale_processing(stale_before)
+            .await?;
+
+        let records = self
+            .outbox_repository
+            .claim_due(self.batch_size, self.worker_id)
+            .await?;
+        let dispatcher = WorkflowOutboxDispatcher::new(
+            Some(self.queue),
             self.outbox_repository,
-            self.worker_id,
-            self.batch_size,
-            self.stale_lease_secs,
+            Some(self.worker_id),
             self.outbox_retry_policy,
-        )
-        .await
+        );
+        let mut dispatched = 0usize;
+        for record in records {
+            dispatcher.dispatch_record(&record).await?;
+            dispatched = dispatched.saturating_add(1);
+        }
+
+        Ok(dispatched)
     }
 }

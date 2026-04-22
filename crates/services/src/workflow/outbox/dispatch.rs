@@ -1,7 +1,6 @@
 #![deny(clippy::all, clippy::pedantic, clippy::nursery, warnings)]
 
 use base64::Engine as _;
-use time::OffsetDateTime;
 use uuid::Uuid;
 
 use r_data_core_core::outbox::{
@@ -22,8 +21,7 @@ use super::payload::{
 use super::policy::{workflow_outbox_retry_at, OutboxRetryPolicy};
 use super::support::{is_permanent_outbox_failure, parse_http_method, workflow_push_fingerprint};
 use super::{
-    validate_workflow_push_outbox_size, WORKFLOW_OUTBOX_MAX_ATTEMPTS,
-    WORKFLOW_OUTBOX_STALE_LEASE_SECS, WORKFLOW_PUSH_OUTBOX_MAX_DATA_BYTES,
+    validate_workflow_push_outbox_size, WORKFLOW_OUTBOX_MAX_ATTEMPTS, WORKFLOW_PUSH_OUTBOX_MAX_DATA_BYTES,
 };
 
 /// Dispatcher component responsible for outbox record delivery and state transitions.
@@ -323,26 +321,6 @@ impl<'a> WorkflowOutboxDispatcher<'a> {
     }
 }
 
-/// Dispatch a single workflow fetch outbox record to Redis.
-///
-/// # Errors
-/// Returns an error if the Redis enqueue or database status update fails.
-#[allow(clippy::too_many_arguments)]
-pub async fn dispatch_workflow_fetch_job(
-    queue: &dyn JobQueue,
-    outbox_repo: &OutboxRepository,
-    workflow_uuid: Uuid,
-    run_uuid: Uuid,
-    outbox_uuid: Uuid,
-    attempt_count: i32,
-    locked_by: Option<&str>,
-    retry_policy: Option<&OutboxRetryPolicy>,
-) -> r_data_core_core::error::Result<()> {
-    WorkflowOutboxDispatcher::new(Some(queue), outbox_repo, locked_by, retry_policy)
-        .dispatch_fetch_run(workflow_uuid, run_uuid, outbox_uuid, attempt_count)
-        .await
-}
-
 /// Enqueue a workflow push delivery in the outbox.
 ///
 /// # Errors
@@ -403,87 +381,6 @@ pub async fn enqueue_workflow_push_outbox(
             &fingerprint,
         )
         .await
-}
-
-/// Dispatch a single workflow outbox record.
-///
-/// # Errors
-/// Returns an error if the underlying queue, push or database operation fails.
-pub async fn dispatch_workflow_outbox(
-    queue: Option<&dyn JobQueue>,
-    outbox_repo: &OutboxRepository,
-    record: &OutboxMessageRecord,
-    locked_by: Option<&str>,
-    retry_policy: Option<&OutboxRetryPolicy>,
-) -> r_data_core_core::error::Result<()> {
-    WorkflowOutboxDispatcher::new(queue, outbox_repo, locked_by, retry_policy)
-        .dispatch_record(record)
-        .await?;
-    Ok(())
-}
-
-/// Dispatch a single workflow push outbox record to its HTTP destination.
-///
-/// # Errors
-/// Returns an error if the HTTP push or database status update fails.
-#[allow(clippy::too_many_lines)]
-pub async fn dispatch_workflow_push_outbox(
-    outbox_repo: &OutboxRepository,
-    record: &OutboxMessageRecord,
-    locked_by: Option<&str>,
-    retry_policy: Option<&OutboxRetryPolicy>,
-) -> r_data_core_core::error::Result<()> {
-    WorkflowOutboxDispatcher::new(None, outbox_repo, locked_by, retry_policy)
-        .dispatch_push_record(record)
-        .await
-}
-
-/// Claim and dispatch due workflow fetch outbox rows.
-///
-/// # Errors
-/// Returns an error if claiming or dispatching fails.
-pub async fn claim_and_dispatch_workflow_outbox(
-    queue: &dyn JobQueue,
-    outbox_repo: &OutboxRepository,
-    worker_id: &str,
-    batch_size: i64,
-) -> r_data_core_core::error::Result<usize> {
-    claim_and_dispatch_workflow_outbox_with_stale_lease(
-        queue,
-        outbox_repo,
-        worker_id,
-        batch_size,
-        WORKFLOW_OUTBOX_STALE_LEASE_SECS,
-        None,
-    )
-    .await
-}
-
-/// Claim and dispatch due workflow fetch outbox rows with a configurable stale lease.
-///
-/// # Errors
-/// Returns an error if claiming or dispatching fails.
-pub async fn claim_and_dispatch_workflow_outbox_with_stale_lease(
-    queue: &dyn JobQueue,
-    outbox_repo: &OutboxRepository,
-    worker_id: &str,
-    batch_size: i64,
-    stale_lease_secs: i64,
-    retry_policy: Option<&OutboxRetryPolicy>,
-) -> r_data_core_core::error::Result<usize> {
-    let stale_before = OffsetDateTime::now_utc() - time::Duration::seconds(stale_lease_secs);
-    let _ = outbox_repo.requeue_stale_processing(stale_before).await?;
-
-    let records = outbox_repo.claim_due(batch_size, worker_id).await?;
-    let dispatcher =
-        WorkflowOutboxDispatcher::new(Some(queue), outbox_repo, Some(worker_id), retry_policy);
-    let mut dispatched = 0usize;
-    for record in records {
-        dispatcher.dispatch_record(&record).await?;
-        dispatched = dispatched.saturating_add(1);
-    }
-
-    Ok(dispatched)
 }
 
 /// Convert a fetched outbox record into a simplified state view.
