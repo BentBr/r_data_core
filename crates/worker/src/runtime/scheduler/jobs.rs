@@ -32,7 +32,8 @@ pub(super) async fn schedule_workflow_job(
             let workflow_service = {
                 let base = WorkflowService::new(Arc::new(WorkflowRepositoryAdapter::new(
                     WorkflowRepository::new(pool.clone()),
-                )));
+                )))
+                .with_queue(Some(queue.clone()));
                 if let Some(outbox_repo) = outbox_repo.clone() {
                     let base = base.with_outbox_repository(outbox_repo);
                     if let Some(policy) = outbox_retry_policy {
@@ -45,7 +46,7 @@ pub(super) async fn schedule_workflow_job(
                 }
             };
             let _ = workflow_service
-                .enqueue_run_for_fetch(workflow_id, queue.as_ref(), Some(external_trigger_id))
+                .enqueue_run_for_fetch(workflow_id, Some(external_trigger_id))
                 .await;
         })
     })

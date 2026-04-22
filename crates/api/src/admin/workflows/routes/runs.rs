@@ -72,7 +72,7 @@ pub async fn run_workflow_now(
     match state.workflow_service().get(uuid).await {
         Ok(Some(_)) => match state
             .workflow_service()
-            .enqueue_run_for_fetch(uuid, state.queue().as_ref(), None)
+            .enqueue_run_for_fetch(uuid, None)
             .await
         {
             Ok(run_uuid) => {
@@ -149,7 +149,7 @@ pub async fn run_workflow_now_upload(
         Ok((run_uuid, staged)) => {
             if let Err(e) = state
                 .workflow_service()
-                .dispatch_fetch_for_existing_run(workflow_uuid, run_uuid, state.queue().as_ref())
+                .dispatch_fetch_for_existing_run(workflow_uuid, run_uuid)
                 .await
             {
                 log::warn!(

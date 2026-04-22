@@ -8,7 +8,6 @@ use cron::Schedule;
 use r_data_core_core::system_log::SystemLogResourceType;
 use r_data_core_persistence::OutboxRepository;
 use r_data_core_persistence::WorkflowRepositoryTrait;
-use r_data_core_workflow::data::job_queue::JobQueue;
 use r_data_core_workflow::data::requests::{CreateWorkflowRequest, UpdateWorkflowRequest};
 use r_data_core_workflow::data::Workflow;
 use std::str::FromStr;
@@ -455,9 +454,13 @@ impl WorkflowService {
     pub async fn enqueue_run_for_fetch(
         &self,
         workflow_uuid: Uuid,
-        queue: &dyn JobQueue,
         trigger_id: Option<Uuid>,
     ) -> r_data_core_core::error::Result<Uuid> {
+        let Some(queue) = self.queue.as_deref() else {
+            return Err(r_data_core_core::error::Error::Config(
+                "WorkflowService queue is not configured".to_string(),
+            ));
+        };
         EnqueueWorkflowFetchUseCase::new(
             &self.repo,
             queue,
@@ -476,8 +479,12 @@ impl WorkflowService {
         &self,
         workflow_uuid: Uuid,
         run_uuid: Uuid,
-        queue: &dyn JobQueue,
     ) -> r_data_core_core::error::Result<()> {
+        let Some(queue) = self.queue.as_deref() else {
+            return Err(r_data_core_core::error::Error::Config(
+                "WorkflowService queue is not configured".to_string(),
+            ));
+        };
         EnqueueWorkflowFetchUseCase::new(
             &self.repo,
             queue,

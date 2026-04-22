@@ -340,7 +340,7 @@ async fn enqueue_run_for_api(
 ) -> Result<Uuid, HttpResponse> {
     let run_uuid = match state
         .workflow_service()
-        .enqueue_run_for_fetch(workflow_uuid, state.queue().as_ref(), None)
+        .enqueue_run_for_fetch(workflow_uuid, None)
         .await
     {
         Ok(result) => result,

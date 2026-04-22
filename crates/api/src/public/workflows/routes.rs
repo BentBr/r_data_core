@@ -425,7 +425,7 @@ pub async fn post_workflow_ingest(
 
     if let Err(e) = state
         .workflow_service()
-        .dispatch_fetch_for_existing_run(uuid, run_uuid, state.queue().as_ref())
+        .dispatch_fetch_for_existing_run(uuid, run_uuid)
         .await
     {
         log::warn!("Failed to dispatch fetch job for workflow {uuid} (run: {run_uuid}): {e}");

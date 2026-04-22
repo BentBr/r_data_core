@@ -165,6 +165,9 @@ pub async fn build_api_state(
         Arc::new(entity_definition_service.clone()),
     );
 
+    // Initialise queue client
+    let queue_client = create_queue_client(config).await?;
+
     let workflow_repo = WorkflowRepository::new(pool.clone());
     let workflow_adapter = WorkflowRepositoryAdapter::new(workflow_repo);
     let workflow_mail_service =
@@ -184,6 +187,7 @@ pub async fn build_api_state(
         config.api.jwt_expiration,
     );
     workflow_service = workflow_service
+        .with_queue(Some(queue_client.clone()))
         .with_mail_service(workflow_mail_service)
         .with_system_log(system_log_service.clone());
     if config.outbox_enabled {
@@ -209,9 +213,6 @@ pub async fn build_api_state(
 
     // Initialise licence service
     let license_service = LicenseService::new(config.license.clone(), cache_manager.clone());
-
-    // Initialise queue client
-    let queue_client = create_queue_client(config).await?;
 
     // Initialise password reset service if system mail is configured
     let password_reset_service = config.mail.system.as_ref().map_or_else(
