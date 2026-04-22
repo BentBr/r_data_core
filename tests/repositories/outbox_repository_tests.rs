@@ -248,9 +248,10 @@ async fn outbox_status_updates_respect_claim_owner() -> anyhow::Result<()> {
     .execute(&pool.pool)
     .await?;
 
-    outbox_repo
+    let wrong_owner_result = outbox_repo
         .mark_delivered(outbox_uuid, Some("different-worker"))
-        .await?;
+        .await;
+    assert!(wrong_owner_result.is_err());
 
     let status_after_wrong_owner: String =
         sqlx::query_scalar("SELECT status::text FROM outbox_messages WHERE uuid = $1")
@@ -259,14 +260,15 @@ async fn outbox_status_updates_respect_claim_owner() -> anyhow::Result<()> {
             .await?;
     assert_eq!(status_after_wrong_owner, "processing");
 
-    outbox_repo
+    let unowned_retry_result = outbox_repo
         .mark_retry(
             outbox_uuid,
             "retry should not apply without a lock owner",
             OffsetDateTime::now_utc(),
             None,
         )
-        .await?;
+        .await;
+    assert!(unowned_retry_result.is_err());
 
     let status_after_unowned_retry: String =
         sqlx::query_scalar("SELECT status::text FROM outbox_messages WHERE uuid = $1")
@@ -808,6 +810,119 @@ async fn workflow_push_outbox_dead_letters_on_client_error() -> anyhow::Result<(
     assert_eq!(status, "dead_letter");
     assert_eq!(attempt_count, 1);
     assert!(last_error.as_deref().is_some_and(|msg| msg.contains("404")));
+
+    Ok(())
+}
+
+#[tokio::test]
+async fn workflow_push_outbox_retries_on_rate_limit_error() -> anyhow::Result<()> {
+    let Some(pool) = maybe_setup_test_db().await else {
+        return Ok(());
+    };
+    let outbox_repo = OutboxRepository::new(pool.pool.clone());
+
+    let server = MockServer::start_async().await;
+    let push_mock = server
+        .mock_async(|when, then| {
+            when.method(POST).path("/push");
+            then.status(429);
+        })
+        .await;
+
+    let workflow_uuid = Uuid::now_v7();
+    let run_uuid = Uuid::now_v7();
+    let item_uuid = Uuid::now_v7();
+    let data_bytes = serde_json::to_vec(&serde_json::json!({"hello": "rate-limit"}))?;
+    let outbox_uuid = enqueue_workflow_push_outbox(
+        &outbox_repo,
+        workflow_uuid,
+        run_uuid,
+        item_uuid,
+        "uri",
+        serde_json::json!({ "uri": server.url("/push") }),
+        None,
+        Some(r_data_core_workflow::data::adapters::destination::HttpMethod::Post),
+        "json",
+        &data_bytes,
+    )
+    .await?;
+
+    let claimed = outbox_repo.claim_due(10, "push-429-worker").await?;
+    assert_eq!(claimed.len(), 1);
+    dispatch_workflow_push_outbox(&outbox_repo, &claimed[0], Some("push-429-worker"), None).await?;
+
+    push_mock.assert_async().await;
+    let row = sqlx::query(
+        r"
+        SELECT status::text AS status, attempt_count, last_error
+        FROM outbox_messages
+        WHERE uuid = $1
+        ",
+    )
+    .bind(outbox_uuid)
+    .fetch_one(&pool.pool)
+    .await?;
+
+    let status: String = row.try_get("status")?;
+    let attempt_count: i32 = row.try_get("attempt_count")?;
+    let last_error: Option<String> = row.try_get("last_error")?;
+    assert_eq!(status, "retry");
+    assert_eq!(attempt_count, 1);
+    assert!(last_error.as_deref().is_some_and(|msg| msg.contains("429")));
+
+    Ok(())
+}
+
+#[tokio::test]
+async fn workflow_push_outbox_dead_letters_invalid_auth_config() -> anyhow::Result<()> {
+    let Some(pool) = maybe_setup_test_db().await else {
+        return Ok(());
+    };
+    let outbox_repo = OutboxRepository::new(pool.pool.clone());
+
+    let workflow_uuid = Uuid::now_v7();
+    let run_uuid = Uuid::now_v7();
+    let item_uuid = Uuid::now_v7();
+    let data_bytes = serde_json::to_vec(&serde_json::json!({"hello": "world"}))?;
+    let outbox_uuid = enqueue_workflow_push_outbox(
+        &outbox_repo,
+        workflow_uuid,
+        run_uuid,
+        item_uuid,
+        "uri",
+        serde_json::json!({ "uri": "http://example.com/push" }),
+        Some(serde_json::json!({ "type": "bearer" })),
+        Some(r_data_core_workflow::data::adapters::destination::HttpMethod::Post),
+        "json",
+        &data_bytes,
+    )
+        .await?;
+
+    let claimed = outbox_repo.claim_due(10, "push-auth-worker").await?;
+    assert_eq!(claimed.len(), 1);
+    dispatch_workflow_push_outbox(&outbox_repo, &claimed[0], Some("push-auth-worker"), None).await?;
+
+    let row = sqlx::query(
+        r"
+        SELECT status::text AS status, attempt_count, last_error
+        FROM outbox_messages
+        WHERE uuid = $1
+        ",
+    )
+    .bind(outbox_uuid)
+    .fetch_one(&pool.pool)
+    .await?;
+
+    let status: String = row.try_get("status")?;
+    let attempt_count: i32 = row.try_get("attempt_count")?;
+    let last_error: Option<String> = row.try_get("last_error")?;
+    assert_eq!(status, "dead_letter");
+    assert_eq!(attempt_count, 1);
+    assert!(
+        last_error
+            .as_deref()
+            .is_some_and(|msg| msg.contains("Invalid workflow push auth configuration"))
+    );
 
     Ok(())
 }

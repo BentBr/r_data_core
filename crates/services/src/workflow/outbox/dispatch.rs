@@ -265,22 +265,38 @@ pub async fn dispatch_workflow_push_outbox(
     };
 
     let destination_auth = match payload.destination_auth {
-        Some(auth) => Some(serde_json::from_value::<AuthConfig>(auth).map_err(|e| {
-            r_data_core_core::error::Error::Validation(format!(
-                "Invalid workflow push auth configuration: {e}"
-            ))
-        })?),
+        Some(auth) => match serde_json::from_value::<AuthConfig>(auth) {
+            Ok(parsed) => Some(parsed),
+            Err(e) => {
+                outbox_repo
+                    .mark_dead_letter(
+                        record.uuid,
+                        &format!("Invalid workflow push auth configuration: {e}"),
+                        locked_by,
+                    )
+                    .await?;
+                return Ok(());
+            }
+        },
         None => None,
     };
-    let auth_provider = destination_auth
+    let auth_provider = match destination_auth
         .as_ref()
         .map(create_auth_provider)
         .transpose()
-        .map_err(|e| {
-            r_data_core_core::error::Error::Config(format!(
-                "Failed to create auth provider for workflow push: {e}"
-            ))
-        })?;
+    {
+        Ok(provider) => provider,
+        Err(e) => {
+            outbox_repo
+                .mark_dead_letter(
+                    record.uuid,
+                    &format!("Failed to create auth provider for workflow push: {e}"),
+                    locked_by,
+                )
+                .await?;
+            return Ok(());
+        }
+    };
     let method = payload
         .method
         .as_deref()

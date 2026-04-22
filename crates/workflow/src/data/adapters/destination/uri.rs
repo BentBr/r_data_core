@@ -64,6 +64,11 @@ impl DataDestination for UriDestination {
         })?;
         let status = response.status();
         if status.is_client_error() {
+            if status.as_u16() == 408 || status.as_u16() == 429 {
+                return Err(r_data_core_core::error::Error::Api(format!(
+                    "HTTP transient client error: {status}"
+                )));
+            }
             return Err(r_data_core_core::error::Error::Validation(format!(
                 "HTTP client error: {status}"
             )));

@@ -315,7 +315,12 @@ impl OutboxRepository {
             },
         );
 
-        query.execute(&self.pool).await.map_err(Error::Database)?;
+        let result = query.execute(&self.pool).await.map_err(Error::Database)?;
+        if result.rows_affected() == 0 {
+            return Err(Error::Unknown(format!(
+                "Outbox transition to delivered affected no rows for {uuid}",
+            )));
+        }
         Ok(())
     }
 
@@ -371,7 +376,12 @@ impl OutboxRepository {
             },
         );
 
-        query.execute(&self.pool).await.map_err(Error::Database)?;
+        let result = query.execute(&self.pool).await.map_err(Error::Database)?;
+        if result.rows_affected() == 0 {
+            return Err(Error::Unknown(format!(
+                "Outbox transition to retry affected no rows for {uuid}",
+            )));
+        }
         Ok(())
     }
 
@@ -424,7 +434,12 @@ impl OutboxRepository {
             },
         );
 
-        query.execute(&self.pool).await.map_err(Error::Database)?;
+        let result = query.execute(&self.pool).await.map_err(Error::Database)?;
+        if result.rows_affected() == 0 {
+            return Err(Error::Unknown(format!(
+                "Outbox transition to dead_letter affected no rows for {uuid}",
+            )));
+        }
         Ok(())
     }
 
