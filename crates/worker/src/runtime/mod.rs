@@ -9,7 +9,7 @@ use tokio_cron_scheduler::JobScheduler;
 use uuid::Uuid;
 
 use r_data_core_core::config::load_worker_config;
-use r_data_core_persistence::{ComponentVersionRepository, WorkflowRepository};
+use r_data_core_persistence::{ComponentVersionRepository, OutboxRepository, WorkflowRepository};
 use r_data_core_services::bootstrap::{init_cache_manager, init_logger_with_default, init_pg_pool};
 use r_data_core_services::LicenseService;
 use r_data_core_workflow::data::job_queue::apalis_redis::ApalisRedisQueue;
@@ -95,6 +95,9 @@ async fn bootstrap_worker() -> r_data_core_core::error::Result<WorkerBootstrap> 
     .map_err(|e| {
         r_data_core_core::error::Error::Config(format!("Failed to initialize database pool: {e}"))
     })?;
+    if config.outbox_enabled {
+        OutboxRepository::ensure_table_exists(&pool).await?;
+    }
 
     let cache_manager =
         init_cache_manager(config.cache.clone(), Some(&config.queue.redis_url)).await;

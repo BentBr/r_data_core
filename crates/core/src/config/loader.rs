@@ -20,9 +20,9 @@ pub fn load_app_config() -> Result<AppConfig> {
 
     let environment = env::var("APP_ENV").unwrap_or_else(|_| "development".to_string());
     let outbox_enabled = env::var("OUTBOX_ENABLED")
-        .unwrap_or_else(|_| "true".to_string())
+        .unwrap_or_else(|_| "false".to_string())
         .parse()
-        .unwrap_or(true);
+        .unwrap_or(false);
     let outbox_retry_base_delay_secs = env::var("OUTBOX_RETRY_BASE_DELAY_SECS")
         .unwrap_or_else(|_| "1".to_string())
         .parse::<i64>()
@@ -162,9 +162,9 @@ pub fn load_worker_config() -> Result<WorkerConfig> {
         ));
     }
     let outbox_enabled = env::var("OUTBOX_ENABLED")
-        .unwrap_or_else(|_| "true".to_string())
+        .unwrap_or_else(|_| "false".to_string())
         .parse()
-        .unwrap_or(true);
+        .unwrap_or(false);
     let outbox_retry_base_delay_secs = env::var("OUTBOX_RETRY_BASE_DELAY_SECS")
         .unwrap_or_else(|_| "1".to_string())
         .parse::<i64>()
@@ -275,9 +275,9 @@ pub fn load_maintenance_config() -> Result<MaintenanceConfig> {
     // Ensure .env is loaded for binaries that only use MaintenanceConfig
     dotenv().ok();
     let outbox_enabled = env::var("OUTBOX_ENABLED")
-        .unwrap_or_else(|_| "true".to_string())
+        .unwrap_or_else(|_| "false".to_string())
         .parse()
-        .unwrap_or(true);
+        .unwrap_or(false);
     let version_purger_cron = load_required_cron("VERSION_PURGER_CRON")?;
     let refresh_token_cleanup_cron = load_required_cron("REFRESH_TOKEN_CLEANUP_CRON")?;
     let workflow_run_logs_purger_cron = load_required_cron("WORKFLOW_RUN_LOGS_PURGER_CRON")?;

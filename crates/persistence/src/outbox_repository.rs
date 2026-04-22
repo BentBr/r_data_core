@@ -29,6 +29,25 @@ impl OutboxRepository {
         Self { pool }
     }
 
+    /// Ensure the required outbox table exists before outbox workers/services start.
+    ///
+    /// # Errors
+    /// Returns an error when `outbox_messages` is missing.
+    pub async fn ensure_table_exists(pool: &PgPool) -> Result<()> {
+        let relation: Option<String> =
+            sqlx::query_scalar("SELECT to_regclass('public.outbox_messages')::text")
+                .fetch_one(pool)
+                .await
+                .map_err(Error::Database)?;
+        if relation.is_none() {
+            return Err(Error::Config(
+                "OUTBOX_ENABLED=true but table 'outbox_messages' is missing. Run migrations first."
+                    .to_string(),
+            ));
+        }
+        Ok(())
+    }
+
     /// Insert a workflow fetch dispatch message in the outbox.
     ///
     /// # Errors

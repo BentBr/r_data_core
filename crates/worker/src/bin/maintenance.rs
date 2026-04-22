@@ -2,7 +2,7 @@
 
 use log::{error, info, warn};
 use r_data_core_core::config::load_maintenance_config;
-use r_data_core_persistence::ComponentVersionRepository;
+use r_data_core_persistence::{ComponentVersionRepository, OutboxRepository};
 use r_data_core_services::bootstrap::{init_cache_manager, init_logger_with_default, init_pg_pool};
 use r_data_core_services::LicenseService;
 use sqlx::PgPool;
@@ -93,6 +93,9 @@ async fn init_application(
     .map_err(|e| {
         r_data_core_core::error::Error::Config(format!("Failed to initialize database pool: {e}"))
     })?;
+    if config.outbox_enabled {
+        OutboxRepository::ensure_table_exists(&pool).await?;
+    }
 
     let cache_manager = init_cache_manager(config.cache.clone(), Some(&config.redis_url)).await;
 
