@@ -2,14 +2,13 @@ mod execution;
 mod staging;
 
 use crate::dynamic_entity::DynamicEntityService;
-use crate::workflow::outbox::{dispatch_workflow_fetch_job, OutboxRetryPolicy};
+use crate::workflow::outbox::{EnqueueWorkflowFetchUseCase, OutboxRetryPolicy};
 use crate::SystemLogService;
 use cron::Schedule;
 use r_data_core_core::system_log::SystemLogResourceType;
 use r_data_core_persistence::OutboxRepository;
 use r_data_core_persistence::WorkflowRepositoryTrait;
 use r_data_core_workflow::data::job_queue::JobQueue;
-use r_data_core_workflow::data::jobs::FetchAndStageJob;
 use r_data_core_workflow::data::requests::{CreateWorkflowRequest, UpdateWorkflowRequest};
 use r_data_core_workflow::data::Workflow;
 use std::str::FromStr;
@@ -459,60 +458,14 @@ impl WorkflowService {
         queue: &dyn JobQueue,
         trigger_id: Option<Uuid>,
     ) -> r_data_core_core::error::Result<Uuid> {
-        let trigger_id = trigger_id.unwrap_or_else(Uuid::now_v7);
-        if let Some(outbox_repo) = self.outbox_repository.as_deref() {
-            let (run_uuid, outbox_uuid) = self
-                .repo
-                .insert_run_queued_with_fetch_outbox(workflow_uuid, trigger_id)
-                .await?;
-            dispatch_workflow_fetch_job(
-                queue,
-                outbox_repo,
-                workflow_uuid,
-                run_uuid,
-                outbox_uuid,
-                1,
-                None,
-                self.outbox_retry_policy.as_ref(),
-            )
-            .await?;
-            let _ = self
-                .repo
-                .insert_run_log(
-                    run_uuid,
-                    "info",
-                    "Run enqueued",
-                    Some(serde_json::json!({
-                        "trigger": trigger_id.to_string(),
-                        "outbox_uuid": outbox_uuid.to_string(),
-                    })),
-                )
-                .await;
-            return Ok(run_uuid);
-        }
-
-        let run_uuid = self
-            .repo
-            .insert_run_queued(workflow_uuid, trigger_id)
-            .await?;
-        queue
-            .enqueue_fetch(FetchAndStageJob {
-                workflow_id: workflow_uuid,
-                trigger_id: Some(run_uuid),
-            })
-            .await?;
-        let _ = self
-            .repo
-            .insert_run_log(
-                run_uuid,
-                "info",
-                "Run enqueued",
-                Some(serde_json::json!({
-                    "trigger": trigger_id.to_string(),
-                })),
-            )
-            .await;
-        Ok(run_uuid)
+        EnqueueWorkflowFetchUseCase::new(
+            &self.repo,
+            queue,
+            self.outbox_repository.as_deref(),
+            self.outbox_retry_policy.as_ref(),
+        )
+        .enqueue_run_for_fetch(workflow_uuid, trigger_id)
+        .await
     }
 
     /// Deliver the fetch job for an already created run.
@@ -525,54 +478,14 @@ impl WorkflowService {
         run_uuid: Uuid,
         queue: &dyn JobQueue,
     ) -> r_data_core_core::error::Result<()> {
-        if let Some(outbox_repo) = self.outbox_repository.as_deref() {
-            let outbox_uuid = outbox_repo
-                .insert_workflow_fetch_enqueue(workflow_uuid, run_uuid)
-                .await?;
-            dispatch_workflow_fetch_job(
-                queue,
-                outbox_repo,
-                workflow_uuid,
-                run_uuid,
-                outbox_uuid,
-                1,
-                None,
-                self.outbox_retry_policy.as_ref(),
-            )
-            .await?;
-            let _ = self
-                .repo
-                .insert_run_log(
-                    run_uuid,
-                    "info",
-                    "Run enqueued",
-                    Some(serde_json::json!({
-                        "run_uuid": run_uuid.to_string(),
-                        "outbox_uuid": outbox_uuid.to_string(),
-                    })),
-                )
-                .await;
-            return Ok(());
-        }
-
-        queue
-            .enqueue_fetch(FetchAndStageJob {
-                workflow_id: workflow_uuid,
-                trigger_id: Some(run_uuid),
-            })
-            .await?;
-        let _ = self
-            .repo
-            .insert_run_log(
-                run_uuid,
-                "info",
-                "Run enqueued",
-                Some(serde_json::json!({
-                    "run_uuid": run_uuid.to_string(),
-                })),
-            )
-            .await;
-        Ok(())
+        EnqueueWorkflowFetchUseCase::new(
+            &self.repo,
+            queue,
+            self.outbox_repository.as_deref(),
+            self.outbox_retry_policy.as_ref(),
+        )
+        .dispatch_fetch_for_existing_run(workflow_uuid, run_uuid)
+        .await
     }
 
     /// Mark a run as running

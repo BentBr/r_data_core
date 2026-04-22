@@ -8,7 +8,7 @@ use time::OffsetDateTime;
 use tokio::sync::Notify;
 use uuid::Uuid;
 
-use r_data_core_services::workflow::outbox::claim_and_dispatch_workflow_outbox_with_stale_lease;
+use r_data_core_services::workflow::outbox::DispatchWorkflowOutboxBatchUseCase;
 
 use crate::runtime::WorkerRuntime;
 
@@ -49,16 +49,15 @@ pub fn spawn_outbox_recovery_loop(runtime: &WorkerRuntime) {
 
             let mut dispatched_total = 0usize;
             loop {
-                match claim_and_dispatch_workflow_outbox_with_stale_lease(
+                let dispatch_use_case = DispatchWorkflowOutboxBatchUseCase::new(
                     queue_for_outbox.as_ref(),
                     outbox_repo_for_outbox.as_ref(),
-                    &worker_id,
+                    worker_id.as_str(),
                     OUTBOX_BATCH_SIZE,
                     outbox_stale_lease_secs,
                     outbox_retry_policy.as_ref(),
-                )
-                .await
-                {
+                );
+                match dispatch_use_case.run_once().await {
                     Ok(dispatched) => {
                         if dispatched == 0 {
                             break;

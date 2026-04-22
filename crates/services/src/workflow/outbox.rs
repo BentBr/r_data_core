@@ -4,6 +4,7 @@ mod dispatch;
 mod payload;
 mod policy;
 mod support;
+mod use_cases;
 
 pub use dispatch::{
     claim_and_dispatch_workflow_outbox, claim_and_dispatch_workflow_outbox_with_stale_lease,
@@ -13,6 +14,7 @@ pub use dispatch::{
 pub(crate) use payload::validate_workflow_push_outbox_size;
 pub use payload::WorkflowPushOutboxPayload;
 pub use policy::{workflow_outbox_retry_at, workflow_outbox_retry_delay_secs, OutboxRetryPolicy};
+pub use use_cases::{DispatchWorkflowOutboxBatchUseCase, EnqueueWorkflowFetchUseCase};
 
 pub const WORKFLOW_PUSH_OUTBOX_MAX_DATA_BYTES: usize = 256 * 1024;
 pub const WORKFLOW_OUTBOX_STALE_LEASE_SECS: i64 = 300;
