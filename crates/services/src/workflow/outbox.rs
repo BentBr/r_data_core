@@ -9,7 +9,7 @@ mod use_cases;
 pub use dispatch::{
     claim_and_dispatch_workflow_outbox, claim_and_dispatch_workflow_outbox_with_stale_lease,
     dispatch_workflow_fetch_job, dispatch_workflow_outbox, dispatch_workflow_push_outbox,
-    enqueue_workflow_push_outbox, outbox_status,
+    enqueue_workflow_push_outbox, outbox_status, WorkflowOutboxDispatcher,
 };
 pub(crate) use payload::validate_workflow_push_outbox_size;
 pub use payload::WorkflowPushOutboxPayload;
