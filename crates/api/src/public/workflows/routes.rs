@@ -429,6 +429,12 @@ pub async fn post_workflow_ingest(
         .await
     {
         log::warn!("Failed to dispatch fetch job for workflow {uuid} (run: {run_uuid}): {e}");
+        return HttpResponse::Accepted().json(json!({
+            "run_uuid": run_uuid,
+            "staged_items": staged_count,
+            "status": "queued_with_warning",
+            "warning": "Items staged but dispatch failed - processing may be delayed"
+        }));
     }
 
     log::info!("Successfully enqueued workflow {uuid} (run: {run_uuid}, staged: {staged_count})");

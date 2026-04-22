@@ -155,6 +155,11 @@ pub async fn run_workflow_now_upload(
                 log::warn!(
                     "Failed to dispatch fetch job for uploaded workflow {workflow_uuid} (run: {run_uuid}): {e}"
                 );
+                return ApiResponse::<serde_json::Value>::ok(serde_json::json!({
+                    "run_uuid": run_uuid,
+                    "staged_items": staged,
+                    "warning": "Upload succeeded but dispatch failed - processing may be delayed"
+                }));
             }
             info!(
                 "Successfully enqueued fetch job for uploaded workflow {workflow_uuid} (run: {run_uuid}, staged: {staged})"
