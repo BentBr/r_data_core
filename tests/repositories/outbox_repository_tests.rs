@@ -8,7 +8,7 @@ use std::sync::{
 use httpmock::{Method::POST, MockServer};
 use r_data_core_persistence::{OutboxRepository, WorkflowRepository};
 use r_data_core_services::workflow::outbox::{
-    DispatchWorkflowOutboxBatchUseCase, WorkflowOutboxDispatcher, enqueue_workflow_push_outbox,
+    enqueue_workflow_push_outbox, DispatchWorkflowOutboxBatchUseCase, WorkflowOutboxDispatcher,
 };
 use r_data_core_test_support::create_test_admin_user;
 use r_data_core_workflow::data::job_queue::JobQueue;
@@ -919,7 +919,7 @@ async fn workflow_push_outbox_dead_letters_invalid_auth_config() -> anyhow::Resu
         "json",
         &data_bytes,
     )
-        .await?;
+    .await?;
 
     let claimed = outbox_repo.claim_due(10, "push-auth-worker").await?;
     assert_eq!(claimed.len(), 1);
@@ -943,11 +943,9 @@ async fn workflow_push_outbox_dead_letters_invalid_auth_config() -> anyhow::Resu
     let last_error: Option<String> = row.try_get("last_error")?;
     assert_eq!(status, "dead_letter");
     assert_eq!(attempt_count, 1);
-    assert!(
-        last_error
-            .as_deref()
-            .is_some_and(|msg| msg.contains("Invalid workflow push auth configuration"))
-    );
+    assert!(last_error
+        .as_deref()
+        .is_some_and(|msg| msg.contains("Invalid workflow push auth configuration")));
 
     Ok(())
 }

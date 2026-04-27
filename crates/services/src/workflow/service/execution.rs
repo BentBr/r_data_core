@@ -1,6 +1,4 @@
-use crate::workflow::item_processing::{
-    execute_pipeline_inline, process_single_item, WorkflowItemContext,
-};
+use crate::workflow::item_processing::{WorkflowItemContext, WorkflowPipelineExecutor};
 use crate::workflow::transform_execution::{JwtConfig, MailContext};
 use serde_json::Value as JsonValue;
 use uuid::Uuid;
@@ -66,16 +64,10 @@ impl WorkflowService {
                 workflow_name: Some(&wf.name),
                 versioning_disabled: wf.versioning_disabled,
             };
+            let executor =
+                WorkflowPipelineExecutor::new(&program, workflow_uuid, run_uuid, &ctx, false);
             for (item_uuid, payload) in items {
-                let success = process_single_item(
-                    &program,
-                    workflow_uuid,
-                    &payload,
-                    item_uuid,
-                    run_uuid,
-                    &ctx,
-                )
-                .await?;
+                let success = executor.process_item(&payload, item_uuid).await?;
                 if success {
                     processed += 1;
                 } else {
@@ -163,8 +155,9 @@ impl WorkflowService {
             workflow_name: Some(&wf.name),
             versioning_disabled: wf.versioning_disabled,
         };
+        let executor = WorkflowPipelineExecutor::new(&program, workflow_uuid, run_uuid, &ctx, true);
 
-        match execute_pipeline_inline(&program, workflow_uuid, payload, run_uuid, &ctx).await {
+        match executor.execute_inline(payload).await {
             Ok(outputs) => {
                 let _ = self.repo.mark_run_success(run_uuid, 1, 0).await;
                 // Return the first Format output value

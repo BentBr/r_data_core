@@ -117,7 +117,7 @@ async fn end_to_end_workflow_outbox_dispatches_into_redis_and_processes_run() ->
         None,
     )
     .run_once()
-        .await?;
+    .await?;
 
     let mut attempts = 0usize;
     loop {
