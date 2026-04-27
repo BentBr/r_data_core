@@ -7,7 +7,7 @@ use super::super::support::is_permanent_outbox_failure;
 use super::super::WORKFLOW_OUTBOX_MAX_ATTEMPTS;
 use super::dispatcher::WorkflowOutboxDispatcher;
 
-impl<'a> WorkflowOutboxDispatcher<'a> {
+impl WorkflowOutboxDispatcher<'_> {
     /// Dispatch a fetch run to queue or transition to dead-letter/retry.
     ///
     /// # Errors

@@ -62,7 +62,7 @@ impl<'a> WorkflowPipelineExecutor<'a> {
         self.step_executor().execute(payload, Uuid::now_v7()).await
     }
 
-    fn step_executor(&self) -> WorkflowStepExecutor<'_> {
+    const fn step_executor(&self) -> WorkflowStepExecutor<'_> {
         WorkflowStepExecutor::new(self.program, self.run_uuid, self.ctx, self.fail_fast)
     }
 

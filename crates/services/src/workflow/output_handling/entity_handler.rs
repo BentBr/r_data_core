@@ -12,6 +12,16 @@ pub(super) struct WorkflowEntityOutputHandler<'a> {
     ctx: &'a WorkflowItemContext<'a>,
 }
 
+struct EntityOperationArgs<'a> {
+    mode: &'a EntityWriteMode,
+    produced: &'a JsonValue,
+    entity_definition: &'a str,
+    path: Option<String>,
+    run_uuid: Uuid,
+    dynamic_entity_service: &'a DynamicEntityService,
+    ctx: &'a PersistenceContext,
+}
+
 impl<'a> WorkflowEntityOutputHandler<'a> {
     pub(super) const fn new(ctx: &'a WorkflowItemContext<'a>) -> Self {
         Self { ctx }
@@ -57,15 +67,15 @@ impl<'a> WorkflowEntityOutputHandler<'a> {
         };
 
         let result = self
-            .execute_entity_operation(
+            .execute_entity_operation(EntityOperationArgs {
                 mode,
                 produced,
                 entity_definition,
-                resolved_path,
+                path: resolved_path,
                 run_uuid,
                 dynamic_entity_service,
-                &ctx,
-            )
+                ctx: &ctx,
+            })
             .await;
 
         let success = self
@@ -120,29 +130,23 @@ impl<'a> WorkflowEntityOutputHandler<'a> {
 
     async fn execute_entity_operation(
         &self,
-        mode: &EntityWriteMode,
-        produced: &JsonValue,
-        entity_definition: &str,
-        path: Option<String>,
-        run_uuid: Uuid,
-        dynamic_entity_service: &DynamicEntityService,
-        ctx: &PersistenceContext,
+        args: EntityOperationArgs<'_>,
     ) -> r_data_core_core::error::Result<()> {
-        match mode {
+        match args.mode {
             EntityWriteMode::Create => {
                 let create_ctx = PersistenceContext {
-                    entity_type: entity_definition.to_string(),
-                    produced: produced.clone(),
-                    path,
-                    run_uuid,
+                    entity_type: args.entity_definition.to_string(),
+                    produced: args.produced.clone(),
+                    path: args.path,
+                    run_uuid: args.run_uuid,
                     update_key: None,
                     skip_versioning: self.ctx.versioning_disabled,
                 };
-                create_entity(dynamic_entity_service, &create_ctx).await
+                create_entity(args.dynamic_entity_service, &create_ctx).await
             }
-            EntityWriteMode::Update => update_entity(dynamic_entity_service, ctx).await,
+            EntityWriteMode::Update => update_entity(args.dynamic_entity_service, args.ctx).await,
             EntityWriteMode::CreateOrUpdate => {
-                create_or_update_entity(dynamic_entity_service, ctx).await
+                create_or_update_entity(args.dynamic_entity_service, args.ctx).await
             }
         }
     }

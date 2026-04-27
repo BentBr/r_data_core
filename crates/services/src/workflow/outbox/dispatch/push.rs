@@ -11,7 +11,7 @@ use super::super::support::{is_permanent_outbox_failure, parse_http_method};
 use super::super::{WORKFLOW_OUTBOX_MAX_ATTEMPTS, WORKFLOW_PUSH_OUTBOX_MAX_DATA_BYTES};
 use super::dispatcher::WorkflowOutboxDispatcher;
 
-impl<'a> WorkflowOutboxDispatcher<'a> {
+impl WorkflowOutboxDispatcher<'_> {
     /// Dispatch a workflow push outbox record to its HTTP destination.
     ///
     /// # Errors

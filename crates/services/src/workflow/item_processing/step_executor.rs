@@ -82,7 +82,7 @@ impl<'a> WorkflowStepExecutor<'a> {
         Ok(results)
     }
 
-    fn is_async_transform(transform: &Transform) -> bool {
+    const fn is_async_transform(transform: &Transform) -> bool {
         matches!(
             transform,
             Transform::ResolveEntityPath(_)

@@ -206,12 +206,12 @@ impl<'a> DispatchWorkflowOutboxBatchUseCase<'a> {
             Some(self.worker_id),
             self.outbox_retry_policy,
         );
-        let mut dispatched = 0usize;
+        let mut dispatched_count = 0usize;
         for record in records {
             dispatcher.dispatch_record(&record).await?;
-            dispatched = dispatched.saturating_add(1);
+            dispatched_count = dispatched_count.saturating_add(1);
         }
 
-        Ok(dispatched)
+        Ok(dispatched_count)
     }
 }
