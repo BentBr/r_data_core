@@ -18,6 +18,7 @@ use std::sync::Arc;
 use crate::api::users::common::get_auth_token;
 use r_data_core_api::{configure_app, ApiState, ApiStateWrapper};
 
+#[allow(clippy::future_not_send)] // actix-web test utilities use Rc internally
 async fn maybe_setup_test_app() -> Option<(
     impl actix_web::dev::Service<
         actix_http::Request,

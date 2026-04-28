@@ -12,33 +12,38 @@ use r_data_core_services::workflow::outbox::OutboxRetryPolicy;
 use r_data_core_services::{SettingsService, WorkflowRepositoryAdapter, WorkflowService};
 use r_data_core_workflow::data::job_queue::apalis_redis::ApalisRedisQueue;
 
+#[derive(Clone)]
+pub(super) struct ScheduleWorkflowJobConfig {
+    pub pool: sqlx::PgPool,
+    pub cache_manager: Arc<r_data_core_core::cache::CacheManager>,
+    pub outbox_fetch_enabled_default: bool,
+    pub outbox_push_enabled_default: bool,
+    pub queue: Arc<ApalisRedisQueue>,
+    pub outbox_repo: Option<Arc<r_data_core_persistence::OutboxRepository>>,
+    pub outbox_retry_policy: Option<OutboxRetryPolicy>,
+}
+
 pub(super) async fn schedule_workflow_job(
     scheduler: JobScheduler,
     workflow_id: Uuid,
     cron: String,
-    pool: sqlx::PgPool,
-    cache_manager: Arc<r_data_core_core::cache::CacheManager>,
-    outbox_fetch_enabled_default: bool,
-    outbox_push_enabled_default: bool,
-    queue: Arc<ApalisRedisQueue>,
-    outbox_repo: Option<Arc<r_data_core_persistence::OutboxRepository>>,
-    outbox_retry_policy: Option<OutboxRetryPolicy>,
+    cfg: ScheduleWorkflowJobConfig,
 ) -> r_data_core_core::error::Result<Uuid> {
-    let pool_clone = pool.clone();
+    let pool_clone = cfg.pool.clone();
     let cron_clone = cron.clone();
     let job = Job::new_async(cron_clone.as_str(), move |_uuid, _l| {
         let pool = pool_clone.clone();
-        let cache_manager = cache_manager.clone();
-        let queue = queue.clone();
-        let outbox_repo = outbox_repo.clone();
+        let cache_manager = cfg.cache_manager.clone();
+        let queue = cfg.queue.clone();
+        let outbox_repo = cfg.outbox_repo.clone();
         Box::pin(async move {
             info!("Schedule: creating run and enqueueing fetch job for workflow {workflow_id}");
             let external_trigger_id = Uuid::now_v7();
             let settings_service = Arc::new(
                 SettingsService::new(pool.clone(), cache_manager).with_outbox_defaults(
                     OutboxSettings {
-                        fetch_enabled: outbox_fetch_enabled_default,
-                        push_enabled: outbox_push_enabled_default,
+                        fetch_enabled: cfg.outbox_fetch_enabled_default,
+                        push_enabled: cfg.outbox_push_enabled_default,
                     },
                 ),
             );
@@ -50,7 +55,7 @@ pub(super) async fn schedule_workflow_job(
                 .with_queue(Some(queue.clone()));
                 if let Some(outbox_repo) = outbox_repo.clone() {
                     let base = base.with_outbox_repository(outbox_repo);
-                    if let Some(policy) = outbox_retry_policy {
+                    if let Some(policy) = cfg.outbox_retry_policy {
                         base.with_outbox_retry_policy(policy)
                     } else {
                         base

@@ -8,7 +8,7 @@ use r_data_core_persistence::WorkflowRepository;
 
 use crate::runtime::WorkerBootstrap;
 
-use super::jobs::schedule_workflow_job;
+use super::jobs::{schedule_workflow_job, ScheduleWorkflowJobConfig};
 
 pub(super) fn spawn_reconcile_task(bootstrap: &WorkerBootstrap) {
     let scheduler_clone = bootstrap.scheduler.clone();
@@ -46,19 +46,18 @@ pub(super) fn spawn_reconcile_task(bootstrap: &WorkerBootstrap) {
                     map.remove(&wf_id);
                 }
                 for (wf_id, cron) in wf_to_add {
-                    if let Ok(job_id) = schedule_workflow_job(
-                        scheduler_clone.clone(),
-                        wf_id,
-                        cron.clone(),
-                        pool_clone.clone(),
-                        cache_manager_clone.clone(),
+                    let job_cfg = ScheduleWorkflowJobConfig {
+                        pool: pool_clone.clone(),
+                        cache_manager: cache_manager_clone.clone(),
                         outbox_fetch_enabled_default,
                         outbox_push_enabled_default,
-                        queue_for_reconcile.clone(),
-                        outbox_repo_for_reconcile.clone(),
+                        queue: queue_for_reconcile.clone(),
+                        outbox_repo: outbox_repo_for_reconcile.clone(),
                         outbox_retry_policy,
-                    )
-                    .await
+                    };
+                    if let Ok(job_id) =
+                        schedule_workflow_job(scheduler_clone.clone(), wf_id, cron.clone(), job_cfg)
+                            .await
                     {
                         map.insert(wf_id, (job_id, cron));
                     }
