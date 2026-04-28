@@ -59,8 +59,8 @@ async fn setup_app_and_token() -> anyhow::Result<(
 
     let wf_repo = WorkflowRepository::new(pool.pool.clone());
     let wf_adapter = WorkflowRepositoryAdapter::new(wf_repo);
-    let workflow_service =
-        r_data_core_services::WorkflowService::new(Arc::new(wf_adapter)).with_queue(Some(queue.clone()));
+    let workflow_service = r_data_core_services::WorkflowService::new(Arc::new(wf_adapter))
+        .with_queue(Some(queue.clone()));
 
     let dashboard_stats_repository =
         r_data_core_persistence::DashboardStatsRepository::new(pool.pool.clone());
