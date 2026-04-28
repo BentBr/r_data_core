@@ -19,108 +19,10 @@ pub fn load_app_config() -> Result<AppConfig> {
     dotenv().ok();
 
     let environment = env::var("APP_ENV").unwrap_or_else(|_| "development".to_string());
-    let outbox_enabled = env::var("OUTBOX_ENABLED")
-        .unwrap_or_else(|_| "false".to_string())
-        .parse()
-        .unwrap_or(false);
-    let outbox_fetch_enabled = env::var("OUTBOX_FETCH_ENABLED")
-        .unwrap_or_else(|_| "false".to_string())
-        .parse()
-        .unwrap_or(false);
-    let outbox_push_enabled = env::var("OUTBOX_PUSH_ENABLED")
-        .unwrap_or_else(|_| "true".to_string())
-        .parse()
-        .unwrap_or(true);
-    let outbox_retry_base_delay_secs = env::var("OUTBOX_RETRY_BASE_DELAY_SECS")
-        .unwrap_or_else(|_| "1".to_string())
-        .parse::<i64>()
-        .map_err(|_| {
-            crate::error::Error::Config(
-                "OUTBOX_RETRY_BASE_DELAY_SECS must be a valid positive integer".to_string(),
-            )
-        })?;
-    if outbox_retry_base_delay_secs <= 0 {
-        return Err(crate::error::Error::Config(
-            "OUTBOX_RETRY_BASE_DELAY_SECS must be > 0 seconds".to_string(),
-        ));
-    }
-    let outbox_retry_multiplier = env::var("OUTBOX_RETRY_MULTIPLIER")
-        .unwrap_or_else(|_| "2".to_string())
-        .parse::<u64>()
-        .map_err(|_| {
-            crate::error::Error::Config(
-                "OUTBOX_RETRY_MULTIPLIER must be a valid positive integer".to_string(),
-            )
-        })?;
-    if outbox_retry_multiplier < 2 {
-        return Err(crate::error::Error::Config(
-            "OUTBOX_RETRY_MULTIPLIER must be >= 2".to_string(),
-        ));
-    }
-    let outbox_retry_max_delay_secs = env::var("OUTBOX_RETRY_MAX_DELAY_SECS")
-        .unwrap_or_else(|_| "300".to_string())
-        .parse::<i64>()
-        .map_err(|_| {
-            crate::error::Error::Config(
-                "OUTBOX_RETRY_MAX_DELAY_SECS must be a valid positive integer".to_string(),
-            )
-        })?;
-    if outbox_retry_max_delay_secs < outbox_retry_base_delay_secs {
-        return Err(crate::error::Error::Config(
-            "OUTBOX_RETRY_MAX_DELAY_SECS must be >= OUTBOX_RETRY_BASE_DELAY_SECS".to_string(),
-        ));
-    }
-
-    let database = DatabaseConfig {
-        connection_string: env::var("DATABASE_URL")
-            .map_err(|_| crate::error::Error::Config("DATABASE_URL not set".to_string()))?,
-        max_connections: env::var("DATABASE_MAX_CONNECTIONS")
-            .unwrap_or_else(|_| "10".to_string())
-            .parse()
-            .unwrap_or(10),
-        connection_timeout: env::var("DATABASE_CONNECTION_TIMEOUT")
-            .unwrap_or_else(|_| "30".to_string())
-            .parse()
-            .unwrap_or(30),
-    };
-
-    let api = ApiConfig {
-        host: env::var("API_HOST")
-            .or_else(|_| env::var("API_HOST"))
-            .unwrap_or_else(|_| "0.0.0.0".to_string()),
-        port: env::var("API_PORT")
-            .unwrap_or_else(|_| "8888".to_string())
-            .parse()
-            .unwrap_or(8888),
-        use_tls: env::var("API_USE_TLS")
-            .unwrap_or_else(|_| "false".to_string())
-            .parse()
-            .unwrap_or(false),
-        jwt_secret: env::var("JWT_SECRET")
-            .map_err(|_| crate::error::Error::Config("JWT_SECRET not set".to_string()))?,
-        jwt_expiration: env::var("JWT_EXPIRATION")
-            .unwrap_or_else(|_| "86400".to_string())
-            .parse()
-            .unwrap_or(86400),
-        enable_docs: env::var("API_ENABLE_DOCS")
-            .unwrap_or_else(|_| "true".to_string())
-            .parse()
-            .unwrap_or(true),
-        cors_origins: env::var("CORS_ORIGINS")
-            .unwrap_or_else(|_| "*".to_string())
-            .split(',')
-            .map(|s| s.trim().to_string())
-            .collect(),
-        check_default_admin_password: env::var("CHECK_DEFAULT_ADMIN_PASSWORD")
-            .unwrap_or_else(|_| "true".to_string())
-            .parse()
-            .unwrap_or(true),
-    };
-
-    let log = LogConfig {
-        level: env::var("LOG_LEVEL").unwrap_or_else(|_| "info".to_string()),
-        file: env::var("LOG_FILE").ok(),
-    };
+    let outbox = load_outbox_config(false)?;
+    let database = load_database_config()?;
+    let api = load_runtime_api_config()?;
+    let log = load_log_config();
 
     let cache = get_cache_config();
     let queue = get_queue_config()?;
@@ -129,12 +31,12 @@ pub fn load_app_config() -> Result<AppConfig> {
 
     Ok(AppConfig {
         environment,
-        outbox_enabled,
-        outbox_fetch_enabled,
-        outbox_push_enabled,
-        outbox_retry_base_delay_secs,
-        outbox_retry_multiplier,
-        outbox_retry_max_delay_secs,
+        outbox_enabled: outbox.enabled,
+        outbox_fetch_enabled: outbox.fetch_enabled,
+        outbox_push_enabled: outbox.push_enabled,
+        outbox_retry_base_delay_secs: outbox.retry_base_delay_secs,
+        outbox_retry_multiplier: outbox.retry_multiplier,
+        outbox_retry_max_delay_secs: outbox.retry_max_delay_secs,
         database,
         api,
         cache,
@@ -171,19 +73,58 @@ pub fn load_worker_config() -> Result<WorkerConfig> {
             "JOB_QUEUE_UPDATE_INTERVAL must be > 0 seconds".to_string(),
         ));
     }
-    let outbox_enabled = env::var("OUTBOX_ENABLED")
+    let outbox = load_outbox_config(true)?;
+    let database = load_worker_database_config()?;
+    let workflow = load_workflow_config();
+
+    let queue = get_queue_config()?;
+    let cache = get_cache_config();
+    let license = get_license_config();
+    let mail = get_mail_config();
+
+    Ok(WorkerConfig {
+        job_queue_update_interval_secs,
+        outbox_enabled: outbox.enabled,
+        outbox_fetch_enabled: outbox.fetch_enabled,
+        outbox_push_enabled: outbox.push_enabled,
+        outbox_stale_lease_secs: outbox.stale_lease_secs,
+        outbox_retry_base_delay_secs: outbox.retry_base_delay_secs,
+        outbox_retry_multiplier: outbox.retry_multiplier,
+        outbox_retry_max_delay_secs: outbox.retry_max_delay_secs,
+        database,
+        workflow,
+        queue,
+        cache,
+        license,
+        mail,
+    })
+}
+
+struct OutboxConfigVars {
+    enabled: bool,
+    fetch_enabled: bool,
+    push_enabled: bool,
+    stale_lease_secs: i64,
+    retry_base_delay_secs: i64,
+    retry_multiplier: u64,
+    retry_max_delay_secs: i64,
+}
+
+fn load_outbox_config(include_stale_lease: bool) -> Result<OutboxConfigVars> {
+    let enabled = env::var("OUTBOX_ENABLED")
         .unwrap_or_else(|_| "false".to_string())
         .parse()
         .unwrap_or(false);
-    let outbox_fetch_enabled = env::var("OUTBOX_FETCH_ENABLED")
+    let fetch_enabled = env::var("OUTBOX_FETCH_ENABLED")
         .unwrap_or_else(|_| "false".to_string())
         .parse()
         .unwrap_or(false);
-    let outbox_push_enabled = env::var("OUTBOX_PUSH_ENABLED")
+    let push_enabled = env::var("OUTBOX_PUSH_ENABLED")
         .unwrap_or_else(|_| "true".to_string())
         .parse()
         .unwrap_or(true);
-    let outbox_retry_base_delay_secs = env::var("OUTBOX_RETRY_BASE_DELAY_SECS")
+
+    let retry_base_delay_secs = env::var("OUTBOX_RETRY_BASE_DELAY_SECS")
         .unwrap_or_else(|_| "1".to_string())
         .parse::<i64>()
         .map_err(|_| {
@@ -191,12 +132,13 @@ pub fn load_worker_config() -> Result<WorkerConfig> {
                 "OUTBOX_RETRY_BASE_DELAY_SECS must be a valid positive integer".to_string(),
             )
         })?;
-    if outbox_retry_base_delay_secs <= 0 {
+    if retry_base_delay_secs <= 0 {
         return Err(crate::error::Error::Config(
             "OUTBOX_RETRY_BASE_DELAY_SECS must be > 0 seconds".to_string(),
         ));
     }
-    let outbox_retry_multiplier = env::var("OUTBOX_RETRY_MULTIPLIER")
+
+    let retry_multiplier = env::var("OUTBOX_RETRY_MULTIPLIER")
         .unwrap_or_else(|_| "2".to_string())
         .parse::<u64>()
         .map_err(|_| {
@@ -204,12 +146,13 @@ pub fn load_worker_config() -> Result<WorkerConfig> {
                 "OUTBOX_RETRY_MULTIPLIER must be a valid positive integer".to_string(),
             )
         })?;
-    if outbox_retry_multiplier < 2 {
+    if retry_multiplier < 2 {
         return Err(crate::error::Error::Config(
             "OUTBOX_RETRY_MULTIPLIER must be >= 2".to_string(),
         ));
     }
-    let outbox_retry_max_delay_secs = env::var("OUTBOX_RETRY_MAX_DELAY_SECS")
+
+    let retry_max_delay_secs = env::var("OUTBOX_RETRY_MAX_DELAY_SECS")
         .unwrap_or_else(|_| "300".to_string())
         .parse::<i64>()
         .map_err(|_| {
@@ -217,26 +160,59 @@ pub fn load_worker_config() -> Result<WorkerConfig> {
                 "OUTBOX_RETRY_MAX_DELAY_SECS must be a valid positive integer".to_string(),
             )
         })?;
-    if outbox_retry_max_delay_secs < outbox_retry_base_delay_secs {
+    if retry_max_delay_secs < retry_base_delay_secs {
         return Err(crate::error::Error::Config(
             "OUTBOX_RETRY_MAX_DELAY_SECS must be >= OUTBOX_RETRY_BASE_DELAY_SECS".to_string(),
         ));
     }
-    let outbox_stale_lease_secs = env::var("OUTBOX_STALE_LEASE_SECS")
-        .unwrap_or_else(|_| "300".to_string())
-        .parse::<i64>()
-        .map_err(|_| {
-            crate::error::Error::Config(
-                "OUTBOX_STALE_LEASE_SECS must be a valid positive integer".to_string(),
-            )
-        })?;
-    if outbox_stale_lease_secs <= 0 {
-        return Err(crate::error::Error::Config(
-            "OUTBOX_STALE_LEASE_SECS must be > 0 seconds".to_string(),
-        ));
-    }
 
-    let database = DatabaseConfig {
+    let stale_lease_secs = if include_stale_lease {
+        let secs = env::var("OUTBOX_STALE_LEASE_SECS")
+            .unwrap_or_else(|_| "300".to_string())
+            .parse::<i64>()
+            .map_err(|_| {
+                crate::error::Error::Config(
+                    "OUTBOX_STALE_LEASE_SECS must be a valid positive integer".to_string(),
+                )
+            })?;
+        if secs <= 0 {
+            return Err(crate::error::Error::Config(
+                "OUTBOX_STALE_LEASE_SECS must be > 0 seconds".to_string(),
+            ));
+        }
+        secs
+    } else {
+        300
+    };
+
+    Ok(OutboxConfigVars {
+        enabled,
+        fetch_enabled,
+        push_enabled,
+        stale_lease_secs,
+        retry_base_delay_secs,
+        retry_multiplier,
+        retry_max_delay_secs,
+    })
+}
+
+fn load_database_config() -> Result<DatabaseConfig> {
+    Ok(DatabaseConfig {
+        connection_string: env::var("DATABASE_URL")
+            .map_err(|_| crate::error::Error::Config("DATABASE_URL not set".to_string()))?,
+        max_connections: env::var("DATABASE_MAX_CONNECTIONS")
+            .unwrap_or_else(|_| "10".to_string())
+            .parse()
+            .unwrap_or(10),
+        connection_timeout: env::var("DATABASE_CONNECTION_TIMEOUT")
+            .unwrap_or_else(|_| "30".to_string())
+            .parse()
+            .unwrap_or(30),
+    })
+}
+
+fn load_worker_database_config() -> Result<DatabaseConfig> {
+    Ok(DatabaseConfig {
         connection_string: env::var("WORKER_DATABASE_URL")
             .map_err(|_| crate::error::Error::Config("WORKER_DATABASE_URL not set".to_string()))?,
         max_connections: env::var("WORKER_DATABASE_MAX_CONNECTIONS")
@@ -247,9 +223,53 @@ pub fn load_worker_config() -> Result<WorkerConfig> {
             .unwrap_or_else(|_| "30".to_string())
             .parse()
             .unwrap_or(30),
-    };
+    })
+}
 
-    let workflow = WorkflowConfig {
+fn load_runtime_api_config() -> Result<ApiConfig> {
+    Ok(ApiConfig {
+        host: env::var("API_HOST")
+            .or_else(|_| env::var("API_HOST"))
+            .unwrap_or_else(|_| "0.0.0.0".to_string()),
+        port: env::var("API_PORT")
+            .unwrap_or_else(|_| "8888".to_string())
+            .parse()
+            .unwrap_or(8888),
+        use_tls: env::var("API_USE_TLS")
+            .unwrap_or_else(|_| "false".to_string())
+            .parse()
+            .unwrap_or(false),
+        jwt_secret: env::var("JWT_SECRET")
+            .map_err(|_| crate::error::Error::Config("JWT_SECRET not set".to_string()))?,
+        jwt_expiration: env::var("JWT_EXPIRATION")
+            .unwrap_or_else(|_| "86400".to_string())
+            .parse()
+            .unwrap_or(86400),
+        enable_docs: env::var("API_ENABLE_DOCS")
+            .unwrap_or_else(|_| "true".to_string())
+            .parse()
+            .unwrap_or(true),
+        cors_origins: env::var("CORS_ORIGINS")
+            .unwrap_or_else(|_| "*".to_string())
+            .split(',')
+            .map(|s| s.trim().to_string())
+            .collect(),
+        check_default_admin_password: env::var("CHECK_DEFAULT_ADMIN_PASSWORD")
+            .unwrap_or_else(|_| "true".to_string())
+            .parse()
+            .unwrap_or(true),
+    })
+}
+
+fn load_log_config() -> LogConfig {
+    LogConfig {
+        level: env::var("LOG_LEVEL").unwrap_or_else(|_| "info".to_string()),
+        file: env::var("LOG_FILE").ok(),
+    }
+}
+
+fn load_workflow_config() -> WorkflowConfig {
+    WorkflowConfig {
         worker_threads: env::var("WORKFLOW_WORKER_THREADS")
             .unwrap_or_else(|_| "4".to_string())
             .parse()
@@ -262,29 +282,7 @@ pub fn load_worker_config() -> Result<WorkerConfig> {
             .unwrap_or_else(|_| "10".to_string())
             .parse()
             .unwrap_or(10),
-    };
-
-    let queue = get_queue_config()?;
-    let cache = get_cache_config();
-    let license = get_license_config();
-    let mail = get_mail_config();
-
-    Ok(WorkerConfig {
-        job_queue_update_interval_secs,
-        outbox_enabled,
-        outbox_fetch_enabled,
-        outbox_push_enabled,
-        outbox_stale_lease_secs,
-        outbox_retry_base_delay_secs,
-        outbox_retry_multiplier,
-        outbox_retry_max_delay_secs,
-        database,
-        workflow,
-        queue,
-        cache,
-        license,
-        mail,
-    })
+    }
 }
 
 /// Load maintenance configuration from environment variables
