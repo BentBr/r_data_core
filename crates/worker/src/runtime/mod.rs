@@ -40,6 +40,8 @@ pub(crate) struct WorkerRuntime {
     pub(crate) outbox_db_url: String,
     pub(crate) jwt_secret: Option<String>,
     pub(crate) jwt_expiration: u64,
+    pub(crate) outbox_fetch_enabled_default: bool,
+    pub(crate) outbox_push_enabled_default: bool,
 }
 
 pub(crate) struct WorkerBootstrap {
@@ -154,6 +156,8 @@ async fn bootstrap_worker() -> r_data_core_core::error::Result<WorkerBootstrap> 
             .ok()
             .and_then(|v| v.parse().ok())
             .unwrap_or(86_400),
+        outbox_fetch_enabled_default: config.outbox_fetch_enabled,
+        outbox_push_enabled_default: config.outbox_push_enabled,
     };
     let email_runtime = bootstrap_email_runtime(&config, pool.clone(), queue);
 

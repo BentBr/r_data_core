@@ -5,7 +5,25 @@ use uuid::Uuid;
 
 use super::WorkflowService;
 
+#[derive(Clone, Copy)]
+struct OutboxModes {
+    push_enabled: bool,
+}
+
 impl WorkflowService {
+    async fn resolve_outbox_modes(&self) -> r_data_core_core::error::Result<OutboxModes> {
+        if let Some(settings_service) = &self.settings_service {
+            let settings = settings_service.get_outbox_settings().await?;
+            return Ok(OutboxModes {
+                push_enabled: settings.push_enabled,
+            });
+        }
+
+        Ok(OutboxModes {
+            push_enabled: self.use_outbox_for_push,
+        })
+    }
+
     /// Process staged raw items for a run using the workflow DSL
     ///
     /// # Errors
@@ -15,6 +33,7 @@ impl WorkflowService {
         workflow_uuid: Uuid,
         run_uuid: Uuid,
     ) -> r_data_core_core::error::Result<(i64, i64)> {
+        let outbox_modes = self.resolve_outbox_modes().await?;
         let wf = self.repo.get_by_uuid(workflow_uuid).await?.ok_or_else(|| {
             r_data_core_core::error::Error::NotFound("Workflow not found".to_string())
         })?;
@@ -58,6 +77,7 @@ impl WorkflowService {
             let ctx = WorkflowItemContext {
                 dynamic_entity_service: self.dynamic_entity_service.as_deref(),
                 outbox_repository: self.outbox_repository.as_deref(),
+                use_outbox_for_push: outbox_modes.push_enabled,
                 repo: &self.repo,
                 jwt: &jwt,
                 mail: &mail,
@@ -117,6 +137,7 @@ impl WorkflowService {
         workflow_uuid: Uuid,
         payload: &JsonValue,
     ) -> r_data_core_core::error::Result<JsonValue> {
+        let outbox_modes = self.resolve_outbox_modes().await?;
         let wf = self.repo.get_by_uuid(workflow_uuid).await?.ok_or_else(|| {
             r_data_core_core::error::Error::NotFound("Workflow not found".to_string())
         })?;
@@ -149,6 +170,7 @@ impl WorkflowService {
         let ctx = WorkflowItemContext {
             dynamic_entity_service: self.dynamic_entity_service.as_deref(),
             outbox_repository: self.outbox_repository.as_deref(),
+            use_outbox_for_push: outbox_modes.push_enabled,
             repo: &self.repo,
             jwt: &jwt,
             mail: &mail,

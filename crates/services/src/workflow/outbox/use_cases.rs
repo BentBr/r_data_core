@@ -16,6 +16,7 @@ pub struct EnqueueWorkflowFetchUseCase<'a> {
     queue: &'a dyn JobQueue,
     outbox_repository: Option<&'a OutboxRepository>,
     outbox_retry_policy: Option<&'a OutboxRetryPolicy>,
+    use_outbox_for_fetch: bool,
 }
 
 impl<'a> EnqueueWorkflowFetchUseCase<'a> {
@@ -25,12 +26,14 @@ impl<'a> EnqueueWorkflowFetchUseCase<'a> {
         queue: &'a dyn JobQueue,
         outbox_repository: Option<&'a OutboxRepository>,
         outbox_retry_policy: Option<&'a OutboxRetryPolicy>,
+        use_outbox_for_fetch: bool,
     ) -> Self {
         Self {
             repo,
             queue,
             outbox_repository,
             outbox_retry_policy,
+            use_outbox_for_fetch,
         }
     }
 
@@ -45,32 +48,34 @@ impl<'a> EnqueueWorkflowFetchUseCase<'a> {
     ) -> r_data_core_core::error::Result<Uuid> {
         let trigger_id = trigger_id.unwrap_or_else(Uuid::now_v7);
 
-        if let Some(outbox_repo) = self.outbox_repository {
-            let (run_uuid, outbox_uuid) = self
-                .repo
-                .insert_run_queued_with_fetch_outbox(workflow_uuid, trigger_id)
-                .await?;
-            WorkflowOutboxDispatcher::new(
-                Some(self.queue),
-                outbox_repo,
-                None,
-                self.outbox_retry_policy,
-            )
-            .dispatch_fetch_run(workflow_uuid, run_uuid, outbox_uuid, 1)
-            .await?;
-            let _ = self
-                .repo
-                .insert_run_log(
-                    run_uuid,
-                    "info",
-                    "Run enqueued",
-                    Some(serde_json::json!({
-                        "trigger": trigger_id.to_string(),
-                        "outbox_uuid": outbox_uuid.to_string(),
-                    })),
+        if self.use_outbox_for_fetch {
+            if let Some(outbox_repo) = self.outbox_repository {
+                let (run_uuid, outbox_uuid) = self
+                    .repo
+                    .insert_run_queued_with_fetch_outbox(workflow_uuid, trigger_id)
+                    .await?;
+                WorkflowOutboxDispatcher::new(
+                    Some(self.queue),
+                    outbox_repo,
+                    None,
+                    self.outbox_retry_policy,
                 )
-                .await;
-            return Ok(run_uuid);
+                .dispatch_fetch_run(workflow_uuid, run_uuid, outbox_uuid, 1)
+                .await?;
+                let _ = self
+                    .repo
+                    .insert_run_log(
+                        run_uuid,
+                        "info",
+                        "Run enqueued",
+                        Some(serde_json::json!({
+                            "trigger": trigger_id.to_string(),
+                            "outbox_uuid": outbox_uuid.to_string(),
+                        })),
+                    )
+                    .await;
+                return Ok(run_uuid);
+            }
         }
 
         let run_uuid = self
@@ -106,31 +111,33 @@ impl<'a> EnqueueWorkflowFetchUseCase<'a> {
         workflow_uuid: Uuid,
         run_uuid: Uuid,
     ) -> r_data_core_core::error::Result<()> {
-        if let Some(outbox_repo) = self.outbox_repository {
-            let outbox_uuid = outbox_repo
-                .insert_workflow_fetch_enqueue(workflow_uuid, run_uuid)
-                .await?;
-            WorkflowOutboxDispatcher::new(
-                Some(self.queue),
-                outbox_repo,
-                None,
-                self.outbox_retry_policy,
-            )
-            .dispatch_fetch_run(workflow_uuid, run_uuid, outbox_uuid, 1)
-            .await?;
-            let _ = self
-                .repo
-                .insert_run_log(
-                    run_uuid,
-                    "info",
-                    "Run enqueued",
-                    Some(serde_json::json!({
-                        "run_uuid": run_uuid.to_string(),
-                        "outbox_uuid": outbox_uuid.to_string(),
-                    })),
+        if self.use_outbox_for_fetch {
+            if let Some(outbox_repo) = self.outbox_repository {
+                let outbox_uuid = outbox_repo
+                    .insert_workflow_fetch_enqueue(workflow_uuid, run_uuid)
+                    .await?;
+                WorkflowOutboxDispatcher::new(
+                    Some(self.queue),
+                    outbox_repo,
+                    None,
+                    self.outbox_retry_policy,
                 )
-                .await;
-            return Ok(());
+                .dispatch_fetch_run(workflow_uuid, run_uuid, outbox_uuid, 1)
+                .await?;
+                let _ = self
+                    .repo
+                    .insert_run_log(
+                        run_uuid,
+                        "info",
+                        "Run enqueued",
+                        Some(serde_json::json!({
+                            "run_uuid": run_uuid.to_string(),
+                            "outbox_uuid": outbox_uuid.to_string(),
+                        })),
+                    )
+                    .await;
+                return Ok(());
+            }
         }
 
         self.queue

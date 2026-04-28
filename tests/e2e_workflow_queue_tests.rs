@@ -577,7 +577,8 @@ async fn post_to_workflow_endpoint_enqueues_fetch_job() -> anyhow::Result<()> {
     let wf_repo = WorkflowRepository::new(pool.pool.clone());
     let wf_adapter = WorkflowRepositoryAdapter::new(wf_repo);
     let workflow_service =
-        WorkflowService::new_with_entities(Arc::new(wf_adapter), dynamic_entity_service.clone());
+        WorkflowService::new_with_entities(Arc::new(wf_adapter), dynamic_entity_service.clone())
+            .with_queue(Some(queue.clone()));
 
     let dashboard_stats_repository =
         r_data_core_persistence::DashboardStatsRepository::new(pool.pool.clone());

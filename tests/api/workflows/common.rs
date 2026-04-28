@@ -70,12 +70,15 @@ pub async fn setup_app_with_entities() -> anyhow::Result<(
         Arc::new(entity_definition_service.clone()),
     ));
 
+    let queue = test_queue_client_async().await;
+
     let wf_repo = WorkflowRepository::new(pool.pool.clone());
     let wf_adapter = WorkflowRepositoryAdapter::new(wf_repo);
     let workflow_service = r_data_core_services::WorkflowService::new_with_entities(
         Arc::new(wf_adapter),
         dynamic_entity_service.clone(),
-    );
+    )
+    .with_queue(Some(queue.clone()));
 
     let dashboard_stats_repository =
         r_data_core_persistence::DashboardStatsRepository::new(pool.pool.clone());
@@ -107,7 +110,7 @@ pub async fn setup_app_with_entities() -> anyhow::Result<(
         dynamic_entity_service: Some(dynamic_entity_service),
         workflow_service,
         dashboard_stats_service,
-        queue: test_queue_client_async().await,
+        queue,
         license_service,
         password_reset_service: None,
         system_log_service: None,

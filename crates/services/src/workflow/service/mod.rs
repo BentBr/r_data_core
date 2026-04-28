@@ -3,7 +3,7 @@ mod staging;
 
 use crate::dynamic_entity::DynamicEntityService;
 use crate::workflow::outbox::{EnqueueWorkflowFetchUseCase, OutboxRetryPolicy};
-use crate::SystemLogService;
+use crate::{SettingsService, SystemLogService};
 use cron::Schedule;
 use r_data_core_core::system_log::SystemLogResourceType;
 use r_data_core_persistence::OutboxRepository;
@@ -19,6 +19,9 @@ pub struct WorkflowService {
     pub(super) dynamic_entity_service: Option<Arc<DynamicEntityService>>,
     pub(super) outbox_repository: Option<Arc<OutboxRepository>>,
     pub(super) outbox_retry_policy: Option<OutboxRetryPolicy>,
+    pub(super) settings_service: Option<Arc<SettingsService>>,
+    pub(super) use_outbox_for_fetch: bool,
+    pub(super) use_outbox_for_push: bool,
     /// JWT signing secret (base, before entity suffix) for authenticate transforms
     pub jwt_secret: Option<String>,
     /// Default JWT expiration in seconds (from `JWT_EXPIRATION` env)
@@ -41,6 +44,9 @@ impl WorkflowService {
             dynamic_entity_service: None,
             outbox_repository: None,
             outbox_retry_policy: None,
+            settings_service: None,
+            use_outbox_for_fetch: false,
+            use_outbox_for_push: true,
             jwt_secret: None,
             jwt_expiration: DEFAULT_JWT_EXPIRATION,
             mail_service: None,
@@ -58,6 +64,9 @@ impl WorkflowService {
             dynamic_entity_service: Some(dynamic_entity_service),
             outbox_repository: None,
             outbox_retry_policy: None,
+            settings_service: None,
+            use_outbox_for_fetch: false,
+            use_outbox_for_push: true,
             jwt_secret: None,
             jwt_expiration: DEFAULT_JWT_EXPIRATION,
             mail_service: None,
@@ -112,6 +121,27 @@ impl WorkflowService {
         outbox_retry_policy: OutboxRetryPolicy,
     ) -> Self {
         self.outbox_retry_policy = Some(outbox_retry_policy);
+        self
+    }
+
+    /// Attach the settings service used for runtime outbox mode resolution.
+    #[must_use]
+    pub fn with_settings_service(mut self, settings_service: Arc<SettingsService>) -> Self {
+        self.settings_service = Some(settings_service);
+        self
+    }
+
+    /// Enable or disable outbox routing for workflow fetch dispatch.
+    #[must_use]
+    pub const fn with_fetch_outbox(mut self, enabled: bool) -> Self {
+        self.use_outbox_for_fetch = enabled;
+        self
+    }
+
+    /// Enable or disable outbox routing for workflow push dispatch.
+    #[must_use]
+    pub const fn with_push_outbox(mut self, enabled: bool) -> Self {
+        self.use_outbox_for_push = enabled;
         self
     }
 
@@ -456,6 +486,11 @@ impl WorkflowService {
         workflow_uuid: Uuid,
         trigger_id: Option<Uuid>,
     ) -> r_data_core_core::error::Result<Uuid> {
+        let use_outbox_for_fetch = if let Some(settings_service) = &self.settings_service {
+            settings_service.get_outbox_settings().await?.fetch_enabled
+        } else {
+            self.use_outbox_for_fetch
+        };
         let Some(queue) = self.queue.as_deref() else {
             return Err(r_data_core_core::error::Error::Config(
                 "WorkflowService queue is not configured".to_string(),
@@ -466,6 +501,7 @@ impl WorkflowService {
             queue,
             self.outbox_repository.as_deref(),
             self.outbox_retry_policy.as_ref(),
+            use_outbox_for_fetch,
         )
         .enqueue_run_for_fetch(workflow_uuid, trigger_id)
         .await
@@ -480,6 +516,11 @@ impl WorkflowService {
         workflow_uuid: Uuid,
         run_uuid: Uuid,
     ) -> r_data_core_core::error::Result<()> {
+        let use_outbox_for_fetch = if let Some(settings_service) = &self.settings_service {
+            settings_service.get_outbox_settings().await?.fetch_enabled
+        } else {
+            self.use_outbox_for_fetch
+        };
         let Some(queue) = self.queue.as_deref() else {
             return Err(r_data_core_core::error::Error::Config(
                 "WorkflowService queue is not configured".to_string(),
@@ -490,6 +531,7 @@ impl WorkflowService {
             queue,
             self.outbox_repository.as_deref(),
             self.outbox_retry_policy.as_ref(),
+            use_outbox_for_fetch,
         )
         .dispatch_fetch_for_existing_run(workflow_uuid, run_uuid)
         .await

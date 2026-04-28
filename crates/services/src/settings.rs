@@ -8,7 +8,7 @@ use uuid::Uuid;
 use r_data_core_core::cache::CacheManager;
 use r_data_core_core::error::Result;
 use r_data_core_core::settings::{
-    EntityVersioningSettings, SystemSettingKey, WorkflowRunLogSettings,
+    EntityVersioningSettings, OutboxSettings, SystemSettingKey, WorkflowRunLogSettings,
 };
 use r_data_core_persistence::SystemSettingsRepository;
 
@@ -18,6 +18,8 @@ pub struct SettingsService {
     pub pool: PgPool,
     /// Cache manager for settings
     pub cache: Arc<CacheManager>,
+    /// Default outbox settings when no value is stored in DB.
+    pub outbox_defaults: OutboxSettings,
 }
 
 impl SettingsService {
@@ -28,7 +30,21 @@ impl SettingsService {
     /// * `cache` - Cache manager
     #[must_use]
     pub const fn new(pool: PgPool, cache: Arc<CacheManager>) -> Self {
-        Self { pool, cache }
+        Self {
+            pool,
+            cache,
+            outbox_defaults: OutboxSettings {
+                fetch_enabled: false,
+                push_enabled: true,
+            },
+        }
+    }
+
+    /// Override outbox defaults used when DB value is missing.
+    #[must_use]
+    pub const fn with_outbox_defaults(mut self, outbox_defaults: OutboxSettings) -> Self {
+        self.outbox_defaults = outbox_defaults;
+        self
     }
 
     /// Get entity versioning settings with caching
@@ -97,6 +113,34 @@ impl SettingsService {
         Ok(settings)
     }
 
+    /// Get outbox settings with caching
+    ///
+    /// # Errors
+    /// Returns an error if database query fails or cache operation fails
+    pub async fn get_outbox_settings(&self) -> Result<OutboxSettings> {
+        let cache_key = SystemSettingKey::Outbox.cache_key();
+        if let Some(cached) = self.cache.get::<OutboxSettings>(&cache_key).await? {
+            return Ok(cached);
+        }
+
+        let repo = SystemSettingsRepository::new(self.pool.clone());
+        let settings: OutboxSettings = repo.get_value(SystemSettingKey::Outbox).await?.map_or_else(
+            || self.outbox_defaults.clone(),
+            |value| serde_json::from_value::<OutboxSettings>(value).unwrap_or_default(),
+        );
+
+        let _ = self
+            .cache
+            .set(&cache_key, &settings, None)
+            .await
+            .map_err(|e| {
+                log::warn!("Failed to cache settings: {e}");
+                e
+            });
+
+        Ok(settings)
+    }
+
     /// Update workflow run log settings
     ///
     /// # Arguments
@@ -119,6 +163,31 @@ impl SettingsService {
         let _ = self
             .cache
             .delete(&SystemSettingKey::WorkflowRunLogs.cache_key())
+            .await;
+        Ok(())
+    }
+
+    /// Update outbox settings
+    ///
+    /// # Arguments
+    /// * `new_settings` - New outbox settings
+    /// * `updated_by` - UUID of user updating the settings
+    ///
+    /// # Errors
+    /// Returns an error if database update fails
+    pub async fn update_outbox_settings(
+        &self,
+        new_settings: &OutboxSettings,
+        updated_by: Uuid,
+    ) -> Result<()> {
+        let json = serde_json::to_value(new_settings)?;
+        let repo = SystemSettingsRepository::new(self.pool.clone());
+        repo.upsert_value(SystemSettingKey::Outbox, &json, updated_by)
+            .await?;
+
+        let _ = self
+            .cache
+            .delete(&SystemSettingKey::Outbox.cache_key())
             .await;
         Ok(())
     }

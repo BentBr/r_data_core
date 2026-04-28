@@ -7,6 +7,8 @@ pub enum SystemSettingKey {
     EntityVersioning,
     /// Workflow run logs retention configuration
     WorkflowRunLogs,
+    /// Workflow outbox routing configuration
+    Outbox,
 }
 
 impl SystemSettingKey {
@@ -22,6 +24,7 @@ impl SystemSettingKey {
         match self {
             Self::EntityVersioning => "entity_versioning",
             Self::WorkflowRunLogs => "workflow_run_logs",
+            Self::Outbox => "outbox",
         }
     }
 

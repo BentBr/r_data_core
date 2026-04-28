@@ -14,6 +14,10 @@ pub struct AppConfig {
 
     /// Whether the workflow outbox is enabled.
     pub outbox_enabled: bool,
+    /// Default for fetch outbox usage when no system setting is stored.
+    pub outbox_fetch_enabled: bool,
+    /// Default for push outbox usage when no system setting is stored.
+    pub outbox_push_enabled: bool,
 
     /// Base delay for workflow outbox retries, in seconds.
     pub outbox_retry_base_delay_secs: i64,
@@ -55,6 +59,10 @@ pub struct WorkerConfig {
 
     /// Whether the workflow outbox is enabled.
     pub outbox_enabled: bool,
+    /// Default for fetch outbox usage when no system setting is stored.
+    pub outbox_fetch_enabled: bool,
+    /// Default for push outbox usage when no system setting is stored.
+    pub outbox_push_enabled: bool,
 
     /// Stale processing lease for outbox rows, in seconds.
     pub outbox_stale_lease_secs: i64,

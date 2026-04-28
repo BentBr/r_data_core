@@ -18,6 +18,8 @@ pub(super) struct ConsumerState {
     pub(super) outbox_retry_policy: Option<OutboxRetryPolicy>,
     pub(super) jwt_secret: Option<String>,
     pub(super) jwt_expiration: u64,
+    pub(super) outbox_fetch_enabled_default: bool,
+    pub(super) outbox_push_enabled_default: bool,
     pub(super) workflow_mail_service: Option<Arc<MailService>>,
 }
 
@@ -35,6 +37,8 @@ impl ConsumerState {
             outbox_retry_policy: runtime.outbox_retry_policy,
             jwt_secret: runtime.jwt_secret.clone(),
             jwt_expiration: runtime.jwt_expiration,
+            outbox_fetch_enabled_default: runtime.outbox_fetch_enabled_default,
+            outbox_push_enabled_default: runtime.outbox_push_enabled_default,
             workflow_mail_service,
         }
     }

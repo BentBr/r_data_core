@@ -34,28 +34,45 @@ impl<'a> WorkflowPushOutputHandler<'a> {
             let data_bytes = self
                 .serialize_for_push(format, produced, item_uuid, run_uuid)
                 .await?;
-            if let Some(outbox_repo) = self.ctx.outbox_repository {
-                let destination_auth = match &destination.auth {
-                    Some(auth) => Some(serde_json::to_value(auth).map_err(|e| {
-                        r_data_core_core::error::Error::Validation(format!(
-                            "Failed to serialize destination auth for outbox: {e}"
-                        ))
-                    })?),
-                    None => None,
-                };
-                enqueue_workflow_push_outbox(
-                    outbox_repo,
-                    workflow_uuid,
-                    run_uuid,
-                    item_uuid,
-                    &destination.destination_type,
-                    destination.config.clone(),
-                    destination_auth,
-                    method.as_ref().copied(),
-                    format.format_type.as_str(),
-                    &data_bytes,
-                )
-                .await?;
+            if self.ctx.use_outbox_for_push {
+                if let Some(outbox_repo) = self.ctx.outbox_repository {
+                    let destination_auth = match &destination.auth {
+                        Some(auth) => Some(serde_json::to_value(auth).map_err(|e| {
+                            r_data_core_core::error::Error::Validation(format!(
+                                "Failed to serialize destination auth for outbox: {e}"
+                            ))
+                        })?),
+                        None => None,
+                    };
+                    enqueue_workflow_push_outbox(
+                        outbox_repo,
+                        workflow_uuid,
+                        run_uuid,
+                        item_uuid,
+                        &destination.destination_type,
+                        destination.config.clone(),
+                        destination_auth,
+                        method.as_ref().copied(),
+                        format.format_type.as_str(),
+                        &data_bytes,
+                    )
+                    .await?;
+                } else {
+                    let dest_ctx =
+                        Self::create_destination_context(destination, method.as_ref().copied())?;
+                    let dest_adapter = self
+                        .create_destination_adapter(destination, item_uuid, run_uuid)
+                        .await?;
+                    self.push_data(
+                        dest_adapter,
+                        &dest_ctx,
+                        data_bytes,
+                        destination,
+                        item_uuid,
+                        run_uuid,
+                    )
+                    .await?;
+                }
             } else {
                 let dest_ctx =
                     Self::create_destination_context(destination, method.as_ref().copied())?;

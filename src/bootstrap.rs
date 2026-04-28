@@ -13,6 +13,7 @@ use std::sync::Arc;
 use r_data_core_api::ApiState;
 use r_data_core_core::cache::CacheManager;
 use r_data_core_core::config::AppConfig;
+use r_data_core_core::settings::OutboxSettings;
 use r_data_core_persistence::{
     AdminUserRepository, ApiKeyRepository, DashboardStatsRepository, DynamicEntityRepository,
     EmailTemplateRepository, EntityDefinitionRepository, OutboxRepository, PasswordResetRepository,
@@ -26,7 +27,7 @@ use r_data_core_services::workflow::outbox::OutboxRetryPolicy;
 use r_data_core_services::{
     AdminUserService, ApiKeyService, DashboardStatsService, DynamicEntityService,
     EntityDefinitionService, LicenseService, MailService, PasswordResetService, RoleService,
-    SystemLogService, WorkflowRepositoryAdapter, WorkflowService,
+    SettingsService, SystemLogService, WorkflowRepositoryAdapter, WorkflowService,
 };
 use r_data_core_workflow::data::job_queue::apalis_redis::ApalisRedisQueue;
 
@@ -186,7 +187,16 @@ pub async fn build_api_state(
         Some(config.api.jwt_secret.clone()),
         config.api.jwt_expiration,
     );
+    let settings_service = Arc::new(
+        SettingsService::new(pool.clone(), cache_manager.clone()).with_outbox_defaults(
+            OutboxSettings {
+                fetch_enabled: config.outbox_fetch_enabled,
+                push_enabled: config.outbox_push_enabled,
+            },
+        ),
+    );
     workflow_service = workflow_service
+        .with_settings_service(settings_service)
         .with_queue(Some(queue_client.clone()))
         .with_mail_service(workflow_mail_service)
         .with_system_log(system_log_service.clone());

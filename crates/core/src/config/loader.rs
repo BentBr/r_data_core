@@ -23,6 +23,14 @@ pub fn load_app_config() -> Result<AppConfig> {
         .unwrap_or_else(|_| "false".to_string())
         .parse()
         .unwrap_or(false);
+    let outbox_fetch_enabled = env::var("OUTBOX_FETCH_ENABLED")
+        .unwrap_or_else(|_| "false".to_string())
+        .parse()
+        .unwrap_or(false);
+    let outbox_push_enabled = env::var("OUTBOX_PUSH_ENABLED")
+        .unwrap_or_else(|_| "true".to_string())
+        .parse()
+        .unwrap_or(true);
     let outbox_retry_base_delay_secs = env::var("OUTBOX_RETRY_BASE_DELAY_SECS")
         .unwrap_or_else(|_| "1".to_string())
         .parse::<i64>()
@@ -122,6 +130,8 @@ pub fn load_app_config() -> Result<AppConfig> {
     Ok(AppConfig {
         environment,
         outbox_enabled,
+        outbox_fetch_enabled,
+        outbox_push_enabled,
         outbox_retry_base_delay_secs,
         outbox_retry_multiplier,
         outbox_retry_max_delay_secs,
@@ -165,6 +175,14 @@ pub fn load_worker_config() -> Result<WorkerConfig> {
         .unwrap_or_else(|_| "false".to_string())
         .parse()
         .unwrap_or(false);
+    let outbox_fetch_enabled = env::var("OUTBOX_FETCH_ENABLED")
+        .unwrap_or_else(|_| "false".to_string())
+        .parse()
+        .unwrap_or(false);
+    let outbox_push_enabled = env::var("OUTBOX_PUSH_ENABLED")
+        .unwrap_or_else(|_| "true".to_string())
+        .parse()
+        .unwrap_or(true);
     let outbox_retry_base_delay_secs = env::var("OUTBOX_RETRY_BASE_DELAY_SECS")
         .unwrap_or_else(|_| "1".to_string())
         .parse::<i64>()
@@ -254,6 +272,8 @@ pub fn load_worker_config() -> Result<WorkerConfig> {
     Ok(WorkerConfig {
         job_queue_update_interval_secs,
         outbox_enabled,
+        outbox_fetch_enabled,
+        outbox_push_enabled,
         outbox_stale_lease_secs,
         outbox_retry_base_delay_secs,
         outbox_retry_multiplier,

@@ -14,6 +14,9 @@ pub(super) fn spawn_reconcile_task(bootstrap: &WorkerBootstrap) {
     let scheduler_clone = bootstrap.scheduler.clone();
     let repo_clone = WorkflowRepository::new(bootstrap.runtime.pool.clone());
     let pool_clone = bootstrap.runtime.pool.clone();
+    let cache_manager_clone = bootstrap.runtime.cache_manager.clone();
+    let outbox_fetch_enabled_default = bootstrap.runtime.outbox_fetch_enabled_default;
+    let outbox_push_enabled_default = bootstrap.runtime.outbox_push_enabled_default;
     let scheduled_map = bootstrap.scheduled_workflows.clone();
     let queue_for_reconcile = bootstrap.runtime.queue.clone();
     let outbox_repo_for_reconcile = bootstrap.runtime.outbox_repo.clone();
@@ -48,6 +51,9 @@ pub(super) fn spawn_reconcile_task(bootstrap: &WorkerBootstrap) {
                         wf_id,
                         cron.clone(),
                         pool_clone.clone(),
+                        cache_manager_clone.clone(),
+                        outbox_fetch_enabled_default,
+                        outbox_push_enabled_default,
                         queue_for_reconcile.clone(),
                         outbox_repo_for_reconcile.clone(),
                         outbox_retry_policy,

@@ -6,10 +6,13 @@ use std::sync::{
 };
 
 use httpmock::{Method::POST, MockServer};
+use r_data_core_persistence::WorkflowRepositoryTrait;
 use r_data_core_persistence::{OutboxRepository, WorkflowRepository};
 use r_data_core_services::workflow::outbox::{
-    enqueue_workflow_push_outbox, DispatchWorkflowOutboxBatchUseCase, WorkflowOutboxDispatcher,
+    enqueue_workflow_push_outbox, DispatchWorkflowOutboxBatchUseCase, EnqueueWorkflowFetchUseCase,
+    WorkflowOutboxDispatcher,
 };
+use r_data_core_services::WorkflowRepositoryAdapter;
 use r_data_core_test_support::create_test_admin_user;
 use r_data_core_workflow::data::job_queue::JobQueue;
 use r_data_core_workflow::data::jobs::{FetchAndStageJob, ProcessRawItemJob, SendEmailJob};
@@ -99,6 +102,139 @@ impl JobQueue for RecordingQueue {
             "email queue not implemented for RecordingQueue".to_string(),
         ))
     }
+}
+
+async fn create_consumer_workflow(
+    workflow_repo: &WorkflowRepository,
+    creator_uuid: Uuid,
+    name_prefix: &str,
+) -> anyhow::Result<Uuid> {
+    workflow_repo
+        .create(
+            &r_data_core_workflow::data::requests::CreateWorkflowRequest {
+                name: format!("{name_prefix}-{}", Uuid::now_v7().simple()),
+                description: Some("outbox test".into()),
+                kind: WorkflowKind::Consumer.to_string(),
+                enabled: true,
+                schedule_cron: None,
+                config: serde_json::json!({
+                    "steps": [
+                        {
+                            "from": {
+                                "type": "format",
+                                "source": {
+                                    "source_type": "uri",
+                                    "config": { "uri": "http://example.com/data.csv" }
+                                },
+                                "format": {
+                                    "format_type": "csv",
+                                    "options": {}
+                                },
+                                "mapping": {}
+                            },
+                            "transform": { "type": "none" },
+                            "to": {
+                                "type": "format",
+                                "output": { "mode": "api" },
+                                "format": {
+                                    "format_type": "json",
+                                    "options": {}
+                                },
+                                "mapping": {}
+                            }
+                        }
+                    ]
+                }),
+                versioning_disabled: false,
+            },
+            creator_uuid,
+        )
+        .await
+        .map_err(Into::into)
+}
+
+#[tokio::test]
+async fn enqueue_fetch_use_case_routes_directly_when_fetch_outbox_disabled() -> anyhow::Result<()> {
+    let Some(pool) = maybe_setup_test_db().await else {
+        return Ok(());
+    };
+
+    let creator_uuid = create_test_admin_user(&pool).await?;
+    let workflow_repo = WorkflowRepository::new(pool.pool.clone());
+    let workflow_uuid =
+        create_consumer_workflow(&workflow_repo, creator_uuid, "fetch-direct").await?;
+
+    let repo_adapter: Arc<dyn WorkflowRepositoryTrait> = Arc::new(WorkflowRepositoryAdapter::new(
+        WorkflowRepository::new(pool.pool.clone()),
+    ));
+    let outbox_repo = OutboxRepository::new(pool.pool.clone());
+    let queue = RecordingQueue::new();
+
+    let use_case =
+        EnqueueWorkflowFetchUseCase::new(&repo_adapter, &queue, Some(&outbox_repo), None, false);
+    let run_uuid = use_case.enqueue_run_for_fetch(workflow_uuid, None).await?;
+
+    assert_eq!(
+        queue.fetch_count().await,
+        1,
+        "fetch should be enqueued directly"
+    );
+
+    let fetch_outbox_count: i64 = sqlx::query_scalar(
+        "SELECT COUNT(*) FROM outbox_messages WHERE topic = $1 AND aggregate_id = $2",
+    )
+    .bind(r_data_core_core::outbox::WORKFLOW_FETCH_TOPIC)
+    .bind(run_uuid.to_string())
+    .fetch_one(&pool.pool)
+    .await?;
+    assert_eq!(
+        fetch_outbox_count, 0,
+        "no fetch outbox row should be written when disabled"
+    );
+
+    Ok(())
+}
+
+#[tokio::test]
+async fn enqueue_fetch_use_case_uses_outbox_when_fetch_outbox_enabled() -> anyhow::Result<()> {
+    let Some(pool) = maybe_setup_test_db().await else {
+        return Ok(());
+    };
+
+    let creator_uuid = create_test_admin_user(&pool).await?;
+    let workflow_repo = WorkflowRepository::new(pool.pool.clone());
+    let workflow_uuid =
+        create_consumer_workflow(&workflow_repo, creator_uuid, "fetch-outbox").await?;
+
+    let repo_adapter: Arc<dyn WorkflowRepositoryTrait> = Arc::new(WorkflowRepositoryAdapter::new(
+        WorkflowRepository::new(pool.pool.clone()),
+    ));
+    let outbox_repo = OutboxRepository::new(pool.pool.clone());
+    let queue = RecordingQueue::new();
+
+    let use_case =
+        EnqueueWorkflowFetchUseCase::new(&repo_adapter, &queue, Some(&outbox_repo), None, true);
+    let run_uuid = use_case.enqueue_run_for_fetch(workflow_uuid, None).await?;
+
+    assert_eq!(
+        queue.fetch_count().await,
+        1,
+        "fetch should be delivered through outbox dispatcher"
+    );
+
+    let fetch_outbox_count: i64 = sqlx::query_scalar(
+        "SELECT COUNT(*) FROM outbox_messages WHERE topic = $1 AND aggregate_id = $2",
+    )
+    .bind(r_data_core_core::outbox::WORKFLOW_FETCH_TOPIC)
+    .bind(run_uuid.to_string())
+    .fetch_one(&pool.pool)
+    .await?;
+    assert_eq!(
+        fetch_outbox_count, 1,
+        "fetch outbox row should be written when enabled"
+    );
+
+    Ok(())
 }
 
 #[tokio::test]

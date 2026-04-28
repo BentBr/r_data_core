@@ -7,6 +7,7 @@ use std::sync::Arc;
 pub struct WorkflowItemContext<'a> {
     pub dynamic_entity_service: Option<&'a DynamicEntityService>,
     pub outbox_repository: Option<&'a OutboxRepository>,
+    pub use_outbox_for_push: bool,
     pub repo: &'a Arc<dyn WorkflowRepositoryTrait>,
     pub jwt: &'a JwtConfig<'a>,
     pub mail: &'a MailContext<'a>,

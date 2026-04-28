@@ -5,7 +5,9 @@ use serde::{Deserialize, Serialize};
 use ts_rs::TS;
 use utoipa::ToSchema;
 
-use r_data_core_core::settings::{EntityVersioningSettings, WorkflowRunLogSettings};
+use r_data_core_core::settings::{
+    EntityVersioningSettings, OutboxSettings, WorkflowRunLogSettings,
+};
 
 /// DTO for entity versioning settings (API layer wrapper)
 ///
@@ -70,6 +72,42 @@ impl From<WorkflowRunLogSettingsDto> for WorkflowRunLogSettings {
             max_age_days: dto.max_age_days,
         }
     }
+}
+
+/// DTO for outbox settings (API layer wrapper)
+#[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
+pub struct OutboxSettingsDto {
+    /// Whether workflow fetch dispatch uses outbox.
+    pub fetch_enabled: bool,
+    /// Whether workflow push dispatch uses outbox.
+    pub push_enabled: bool,
+}
+
+impl From<OutboxSettings> for OutboxSettingsDto {
+    fn from(settings: OutboxSettings) -> Self {
+        Self {
+            fetch_enabled: settings.fetch_enabled,
+            push_enabled: settings.push_enabled,
+        }
+    }
+}
+
+impl From<OutboxSettingsDto> for OutboxSettings {
+    fn from(dto: OutboxSettingsDto) -> Self {
+        Self {
+            fetch_enabled: dto.fetch_enabled,
+            push_enabled: dto.push_enabled,
+        }
+    }
+}
+
+/// Request body for updating outbox settings
+#[derive(Deserialize, Serialize, ToSchema)]
+pub struct UpdateOutboxSettingsBody {
+    /// Whether workflow fetch dispatch should use outbox
+    pub fetch_enabled: Option<bool>,
+    /// Whether workflow push dispatch should use outbox
+    pub push_enabled: Option<bool>,
 }
 
 /// Request body for updating workflow run log settings
