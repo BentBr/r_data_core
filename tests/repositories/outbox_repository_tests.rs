@@ -582,9 +582,9 @@ async fn workflow_processing_uses_push_outbox_mode_when_enabled() -> anyhow::Res
 
     let row = sqlx::query(
         r"
-        SELECT payload, headers
+        SELECT aggregate_type, aggregate_id, payload, headers
         FROM outbox_messages
-        WHERE topic = $1 AND aggregate_id = $2
+        WHERE topic = $1 AND payload->>'run_uuid' = $2
         ",
     )
     .bind(r_data_core_core::outbox::WORKFLOW_PUSH_TOPIC)
@@ -592,9 +592,16 @@ async fn workflow_processing_uses_push_outbox_mode_when_enabled() -> anyhow::Res
     .fetch_one(&pool.pool)
     .await?;
 
+    let aggregate_type: String = row.try_get("aggregate_type")?;
+    let aggregate_id: String = row.try_get("aggregate_id")?;
     let payload: serde_json::Value = row.try_get("payload")?;
     let headers: serde_json::Value = row.try_get("headers")?;
 
+    assert_eq!(aggregate_type, "workflow_item");
+    assert_eq!(
+        aggregate_id,
+        payload["item_uuid"].as_str().unwrap_or_default()
+    );
     assert_eq!(payload["workflow_id"], serde_json::json!(workflow_uuid));
     assert_eq!(payload["run_uuid"], serde_json::json!(run_uuid));
     assert_eq!(payload["destination_step_index"], serde_json::json!(0));
