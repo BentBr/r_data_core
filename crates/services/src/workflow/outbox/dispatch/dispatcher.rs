@@ -1,10 +1,10 @@
 use uuid::Uuid;
 
 use r_data_core_core::outbox::{
-    WORKFLOW_FETCH_ENQUEUE_KIND, WORKFLOW_FETCH_TOPIC, WORKFLOW_PUSH_ENQUEUE_KIND,
+    OutboxMessage, WORKFLOW_FETCH_ENQUEUE_KIND, WORKFLOW_FETCH_TOPIC, WORKFLOW_PUSH_ENQUEUE_KIND,
     WORKFLOW_PUSH_TOPIC,
 };
-use r_data_core_persistence::{OutboxMessageRecord, OutboxRepository};
+use r_data_core_persistence::{OutboxRepositoryTrait, WorkflowRepositoryTrait};
 use r_data_core_workflow::data::job_queue::JobQueue;
 use r_data_core_workflow::data::jobs::FetchAndStageJob;
 
@@ -13,7 +13,8 @@ use super::super::policy::OutboxRetryPolicy;
 /// Dispatcher component responsible for outbox record delivery and state transitions.
 pub struct WorkflowOutboxDispatcher<'a> {
     pub(super) queue: Option<&'a dyn JobQueue>,
-    pub(super) outbox_repo: &'a OutboxRepository,
+    pub(super) outbox_repo: &'a dyn OutboxRepositoryTrait,
+    pub(super) workflow_repo: Option<&'a dyn WorkflowRepositoryTrait>,
     pub(super) locked_by: Option<&'a str>,
     pub(super) retry_policy: Option<&'a OutboxRetryPolicy>,
 }
@@ -22,13 +23,15 @@ impl<'a> WorkflowOutboxDispatcher<'a> {
     #[must_use]
     pub const fn new(
         queue: Option<&'a dyn JobQueue>,
-        outbox_repo: &'a OutboxRepository,
+        outbox_repo: &'a dyn OutboxRepositoryTrait,
+        workflow_repo: Option<&'a dyn WorkflowRepositoryTrait>,
         locked_by: Option<&'a str>,
         retry_policy: Option<&'a OutboxRetryPolicy>,
     ) -> Self {
         Self {
             queue,
             outbox_repo,
+            workflow_repo,
             locked_by,
             retry_policy,
         }
@@ -40,7 +43,7 @@ impl<'a> WorkflowOutboxDispatcher<'a> {
     /// Returns an error if the underlying queue/push or database operation fails.
     pub async fn dispatch_record(
         &self,
-        record: &OutboxMessageRecord,
+        record: &OutboxMessage,
     ) -> r_data_core_core::error::Result<()> {
         let locked_by = self.locked_by.or(record.locked_by.as_deref());
 
@@ -73,6 +76,7 @@ impl<'a> WorkflowOutboxDispatcher<'a> {
             return WorkflowOutboxDispatcher::new(
                 self.queue,
                 self.outbox_repo,
+                self.workflow_repo,
                 locked_by,
                 self.retry_policy,
             )

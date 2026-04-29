@@ -21,6 +21,7 @@ pub mod entity_definition_versioning_repository;
 pub mod entity_definition_versioning_repository_trait;
 pub mod migration_service;
 pub mod outbox_repository;
+pub mod outbox_repository_trait;
 pub mod password_reset_repository;
 pub mod password_reset_repository_trait;
 pub mod refresh_token_repository;
@@ -67,6 +68,7 @@ pub use entity_definition_versioning_repository::{
 pub use entity_definition_versioning_repository_trait::EntityDefinitionVersioningRepositoryTrait;
 pub use migration_service::{AppliedMigration, MigrationService, MigrationStatus};
 pub use outbox_repository::{OutboxMessageRecord, OutboxRepository};
+pub use outbox_repository_trait::OutboxRepositoryTrait;
 pub use password_reset_repository::PasswordResetRepository;
 pub use password_reset_repository_trait::PasswordResetRepositoryTrait;
 pub use refresh_token_repository::RefreshTokenRepository;

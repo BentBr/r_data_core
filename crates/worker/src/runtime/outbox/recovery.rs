@@ -20,6 +20,7 @@ pub fn spawn_outbox_recovery_loop(runtime: &WorkerRuntime) {
     };
 
     let queue_for_outbox = runtime.queue.clone();
+    let workflow_repo_for_outbox = runtime.workflow_repo.clone();
     let outbox_notify = Arc::new(Notify::new());
 
     {
@@ -51,6 +52,7 @@ pub fn spawn_outbox_recovery_loop(runtime: &WorkerRuntime) {
             loop {
                 let dispatch_use_case = DispatchWorkflowOutboxBatchUseCase::new(
                     queue_for_outbox.as_ref(),
+                    workflow_repo_for_outbox.as_ref(),
                     outbox_repo_for_outbox.as_ref(),
                     worker_id.as_str(),
                     OUTBOX_BATCH_SIZE,

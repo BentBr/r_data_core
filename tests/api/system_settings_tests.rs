@@ -140,7 +140,7 @@ async fn get_outbox_settings_returns_defaults() -> Result<()> {
     assert_eq!(resp.status(), StatusCode::OK);
     let body: serde_json::Value = test::read_body_json(resp).await;
     assert_eq!(body["data"]["fetch_enabled"], false);
-    assert_eq!(body["data"]["push_enabled"], true);
+    assert_eq!(body["data"]["push_enabled"], false);
 
     clear_test_db(&pool.pool).await?;
     Ok(())

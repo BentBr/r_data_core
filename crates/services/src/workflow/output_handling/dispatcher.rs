@@ -25,11 +25,19 @@ impl<'a> WorkflowOutputDispatcher<'a> {
         to_def: &ToDef,
         produced: &JsonValue,
         workflow_uuid: Uuid,
+        step_index: usize,
         item_uuid: Uuid,
         run_uuid: Uuid,
     ) -> r_data_core_core::error::Result<bool> {
         WorkflowPushOutputHandler::new(self.ctx)
-            .handle(to_def, produced, workflow_uuid, item_uuid, run_uuid)
+            .handle(
+                to_def,
+                produced,
+                workflow_uuid,
+                step_index,
+                item_uuid,
+                run_uuid,
+            )
             .await
     }
 

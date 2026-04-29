@@ -70,6 +70,7 @@ async fn end_to_end_workflow_outbox_dispatches_into_redis_and_processes_run() ->
     let workflow_repo = WorkflowRepository::new(pool.pool.clone());
     let workflow_service =
         WorkflowService::new(Arc::new(WorkflowRepositoryAdapter::new(workflow_repo)));
+    let workflow_repo_for_outbox = WorkflowRepository::new(pool.pool.clone());
     let workflow_repo_check = WorkflowRepository::new(pool.pool.clone());
     let create_req = r_data_core_workflow::data::requests::CreateWorkflowRequest {
         name: format!("outbox-e2e-{}", Uuid::now_v7().simple()),
@@ -110,6 +111,7 @@ async fn end_to_end_workflow_outbox_dispatches_into_redis_and_processes_run() ->
 
     DispatchWorkflowOutboxBatchUseCase::new(
         &queue_for_outbox,
+        &workflow_repo_for_outbox,
         &outbox_repo,
         "outbox-e2e-worker",
         10,

@@ -644,8 +644,8 @@ pub async fn verify_license_internal(
     let license_service = data.license_service();
     let license_config = &license_service.config;
 
-    // Endpoint is only active if both private and public keys are configured
-    // Return 404 if keys are not set (endpoint doesn't exist)
+    // Endpoint is only active if both private and public keys are configured.
+    // Return 404 if keys are not set (endpoint doesn't exist).
     let Some((_pk, public_key)) = license_config
         .private_key
         .as_ref()

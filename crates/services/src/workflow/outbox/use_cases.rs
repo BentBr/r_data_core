@@ -2,7 +2,7 @@
 
 use std::sync::Arc;
 
-use r_data_core_persistence::{OutboxRepository, WorkflowRepositoryTrait};
+use r_data_core_persistence::{OutboxRepositoryTrait, WorkflowRepositoryTrait};
 use r_data_core_workflow::data::job_queue::JobQueue;
 use r_data_core_workflow::data::jobs::FetchAndStageJob;
 use uuid::Uuid;
@@ -14,7 +14,7 @@ use super::OutboxRetryPolicy;
 pub struct EnqueueWorkflowFetchUseCase<'a> {
     repo: &'a Arc<dyn WorkflowRepositoryTrait>,
     queue: &'a dyn JobQueue,
-    outbox_repository: Option<&'a OutboxRepository>,
+    outbox_repository: Option<&'a dyn OutboxRepositoryTrait>,
     outbox_retry_policy: Option<&'a OutboxRetryPolicy>,
     use_outbox_for_fetch: bool,
 }
@@ -24,7 +24,7 @@ impl<'a> EnqueueWorkflowFetchUseCase<'a> {
     pub const fn new(
         repo: &'a Arc<dyn WorkflowRepositoryTrait>,
         queue: &'a dyn JobQueue,
-        outbox_repository: Option<&'a OutboxRepository>,
+        outbox_repository: Option<&'a dyn OutboxRepositoryTrait>,
         outbox_retry_policy: Option<&'a OutboxRetryPolicy>,
         use_outbox_for_fetch: bool,
     ) -> Self {
@@ -57,6 +57,7 @@ impl<'a> EnqueueWorkflowFetchUseCase<'a> {
                 WorkflowOutboxDispatcher::new(
                     Some(self.queue),
                     outbox_repo,
+                    None,
                     None,
                     self.outbox_retry_policy,
                 )
@@ -120,6 +121,7 @@ impl<'a> EnqueueWorkflowFetchUseCase<'a> {
                     Some(self.queue),
                     outbox_repo,
                     None,
+                    None,
                     self.outbox_retry_policy,
                 )
                 .dispatch_fetch_run(workflow_uuid, run_uuid, outbox_uuid, 1)
@@ -164,7 +166,8 @@ impl<'a> EnqueueWorkflowFetchUseCase<'a> {
 /// Use case for claiming and dispatching workflow outbox records in worker loops.
 pub struct DispatchWorkflowOutboxBatchUseCase<'a> {
     queue: &'a dyn JobQueue,
-    outbox_repository: &'a OutboxRepository,
+    workflow_repository: &'a dyn WorkflowRepositoryTrait,
+    outbox_repository: &'a dyn OutboxRepositoryTrait,
     worker_id: &'a str,
     batch_size: i64,
     stale_lease_secs: i64,
@@ -175,7 +178,8 @@ impl<'a> DispatchWorkflowOutboxBatchUseCase<'a> {
     #[must_use]
     pub const fn new(
         queue: &'a dyn JobQueue,
-        outbox_repository: &'a OutboxRepository,
+        workflow_repository: &'a dyn WorkflowRepositoryTrait,
+        outbox_repository: &'a dyn OutboxRepositoryTrait,
         worker_id: &'a str,
         batch_size: i64,
         stale_lease_secs: i64,
@@ -183,6 +187,7 @@ impl<'a> DispatchWorkflowOutboxBatchUseCase<'a> {
     ) -> Self {
         Self {
             queue,
+            workflow_repository,
             outbox_repository,
             worker_id,
             batch_size,
@@ -210,6 +215,7 @@ impl<'a> DispatchWorkflowOutboxBatchUseCase<'a> {
         let dispatcher = WorkflowOutboxDispatcher::new(
             Some(self.queue),
             self.outbox_repository,
+            Some(self.workflow_repository),
             Some(self.worker_id),
             self.outbox_retry_policy,
         );

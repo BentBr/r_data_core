@@ -59,7 +59,15 @@ impl<'a> WorkflowPipelineExecutor<'a> {
         &self,
         payload: &JsonValue,
     ) -> r_data_core_core::error::Result<Vec<(ToDef, JsonValue)>> {
-        self.step_executor().execute(payload, Uuid::now_v7()).await
+        self.step_executor()
+            .execute(payload, Uuid::now_v7())
+            .await
+            .map(|outputs| {
+                outputs
+                    .into_iter()
+                    .map(|(_step_idx, to_def, produced)| (to_def, produced))
+                    .collect()
+            })
     }
 
     const fn step_executor(&self) -> WorkflowStepExecutor<'_> {
@@ -72,17 +80,18 @@ impl<'a> WorkflowPipelineExecutor<'a> {
 
     async fn process_outputs(
         &self,
-        processed_outputs: Vec<(ToDef, JsonValue)>,
+        processed_outputs: Vec<(usize, ToDef, JsonValue)>,
         payload: &JsonValue,
         item_uuid: Uuid,
     ) -> r_data_core_core::error::Result<bool> {
         let output_dispatcher = WorkflowOutputDispatcher::new(self.ctx);
-        for (to_def, produced) in processed_outputs {
+        for (step_index, to_def, produced) in processed_outputs {
             let push_ok = output_dispatcher
                 .handle_format_push_output(
                     &to_def,
                     &produced,
                     self.workflow_uuid,
+                    step_index,
                     item_uuid,
                     self.run_uuid,
                 )

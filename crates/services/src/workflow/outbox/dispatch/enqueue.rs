@@ -1,7 +1,7 @@
 use uuid::Uuid;
 
 use r_data_core_core::outbox::{WORKFLOW_PUSH_ENQUEUE_KIND, WORKFLOW_PUSH_TOPIC};
-use r_data_core_persistence::OutboxRepository;
+use r_data_core_persistence::OutboxRepositoryTrait;
 use r_data_core_workflow::data::adapters::destination::HttpMethod;
 
 use super::super::payload::{
@@ -16,13 +16,14 @@ use super::super::validate_workflow_push_outbox_size;
 /// Returns an error if the payload is too large or the insert fails.
 #[allow(clippy::too_many_arguments)]
 pub async fn enqueue_workflow_push_outbox(
-    outbox_repo: &OutboxRepository,
+    outbox_repo: &dyn OutboxRepositoryTrait,
     workflow_uuid: Uuid,
     run_uuid: Uuid,
     item_uuid: Uuid,
+    destination_step_index: usize,
     destination_type: &str,
     destination_config: serde_json::Value,
-    destination_auth: Option<serde_json::Value>,
+    auth_required: bool,
     method: Option<HttpMethod>,
     format_type: &str,
     data_bytes: &[u8],
@@ -32,9 +33,11 @@ pub async fn enqueue_workflow_push_outbox(
         workflow_id: workflow_uuid,
         run_uuid,
         item_uuid,
+        destination_step_index: Some(destination_step_index),
         destination_type: destination_type.to_string(),
         destination_config: destination_config.clone(),
-        destination_auth: destination_auth.clone(),
+        auth_required,
+        destination_auth: None,
         method: method.map(destination_method_name).map(str::to_string),
         format_type: format_type.to_string(),
         data_base64: encode_workflow_push_payload(data_bytes),

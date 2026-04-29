@@ -427,6 +427,75 @@ async fn outbox_status_updates_respect_claim_owner() -> anyhow::Result<()> {
 }
 
 #[tokio::test]
+async fn workflow_fetch_outbox_persists_only_job_reference_without_source_auth(
+) -> anyhow::Result<()> {
+    let Some(pool) = maybe_setup_test_db().await else {
+        return Ok(());
+    };
+
+    let creator_uuid = create_test_admin_user(&pool).await?;
+    let workflow_repo = WorkflowRepository::new(pool.pool.clone());
+    let workflow_uuid = workflow_repo
+        .create(
+            &r_data_core_workflow::data::requests::CreateWorkflowRequest {
+                name: format!("fetch-auth-outbox-{}", Uuid::now_v7().simple()),
+                description: Some("fetch auth outbox test".into()),
+                kind: WorkflowKind::Consumer.to_string(),
+                enabled: true,
+                schedule_cron: None,
+                config: serde_json::json!({
+                    "steps": [{
+                        "from": {
+                            "type": "format",
+                            "source": {
+                                "source_type": "uri",
+                                "config": { "uri": "http://example.com/secret.csv" },
+                                "auth": {
+                                    "type": "api_key",
+                                    "key": "source-secret-token",
+                                    "header_name": "X-Source-Key"
+                                }
+                            },
+                            "format": { "format_type": "csv", "options": {} },
+                            "mapping": {}
+                        },
+                        "transform": { "type": "none" },
+                        "to": {
+                            "type": "format",
+                            "output": { "mode": "api" },
+                            "format": { "format_type": "json", "options": {} },
+                            "mapping": {}
+                        }
+                    }]
+                }),
+                versioning_disabled: false,
+            },
+            creator_uuid,
+        )
+        .await?;
+
+    let trigger_id = Uuid::now_v7();
+    let (run_uuid, outbox_uuid) = workflow_repo
+        .insert_run_queued_with_fetch_outbox(workflow_uuid, trigger_id)
+        .await?;
+
+    let payload: serde_json::Value =
+        sqlx::query_scalar("SELECT payload FROM outbox_messages WHERE uuid = $1")
+            .bind(outbox_uuid)
+            .fetch_one(&pool.pool)
+            .await?;
+
+    assert_eq!(payload["workflow_id"], serde_json::json!(workflow_uuid));
+    assert_eq!(payload["trigger_id"], serde_json::json!(run_uuid));
+    assert!(payload.get("source").is_none());
+    assert!(payload.get("source_config").is_none());
+    assert!(payload.get("source_auth").is_none());
+    assert!(!payload.to_string().contains("source-secret-token"));
+
+    Ok(())
+}
+
+#[tokio::test]
 async fn workflow_push_outbox_dispatches_http_request_and_marks_delivered() -> anyhow::Result<()> {
     let Some(pool) = maybe_setup_test_db().await else {
         return Ok(());
@@ -451,9 +520,10 @@ async fn workflow_push_outbox_dispatches_http_request_and_marks_delivered() -> a
         workflow_uuid,
         run_uuid,
         item_uuid,
+        0,
         "uri",
         serde_json::json!({ "uri": server.url("/push") }),
-        None,
+        false,
         Some(r_data_core_workflow::data::adapters::destination::HttpMethod::Post),
         "json",
         &data_bytes,
@@ -464,9 +534,125 @@ async fn workflow_push_outbox_dispatches_http_request_and_marks_delivered() -> a
     assert_eq!(claimed.len(), 1);
     assert_eq!(claimed[0].uuid, outbox_uuid);
 
-    WorkflowOutboxDispatcher::new(None, &outbox_repo, Some("push-test-worker"), None)
-        .dispatch_push_record(&claimed[0])
+    WorkflowOutboxDispatcher::new(None, &outbox_repo, None, Some("push-test-worker"), None)
+        .dispatch_push_record(&claimed[0].clone().into_message())
         .await?;
+
+    push_mock.assert_async().await;
+    let status: String =
+        sqlx::query_scalar("SELECT status::text FROM outbox_messages WHERE uuid = $1")
+            .bind(outbox_uuid)
+            .fetch_one(&pool.pool)
+            .await?;
+    assert_eq!(status, "delivered");
+
+    Ok(())
+}
+
+#[tokio::test]
+async fn workflow_push_outbox_resolves_auth_from_workflow_without_persisting_it(
+) -> anyhow::Result<()> {
+    let Some(pool) = maybe_setup_test_db().await else {
+        return Ok(());
+    };
+    let outbox_repo = OutboxRepository::new(pool.pool.clone());
+    let workflow_repo = WorkflowRepository::new(pool.pool.clone());
+    let creator_uuid = create_test_admin_user(&pool).await?;
+
+    let server = MockServer::start_async().await;
+    let push_mock = server
+        .mock_async(|when, then| {
+            when.method(POST)
+                .path("/push")
+                .header("X-Workflow-Key", "secret-token");
+            then.status(204);
+        })
+        .await;
+
+    let workflow_uuid = workflow_repo
+        .create(
+            &r_data_core_workflow::data::requests::CreateWorkflowRequest {
+                name: format!("push-auth-outbox-{}", Uuid::now_v7().simple()),
+                description: Some("push auth outbox test".into()),
+                kind: WorkflowKind::Consumer.to_string(),
+                enabled: true,
+                schedule_cron: None,
+                config: serde_json::json!({
+                    "steps": [{
+                        "from": {
+                            "type": "format",
+                            "source": {
+                                "source_type": "uri",
+                                "config": { "uri": "http://example.com/data.json" }
+                            },
+                            "format": { "format_type": "json", "options": {} },
+                            "mapping": {}
+                        },
+                        "transform": { "type": "none" },
+                        "to": {
+                            "type": "format",
+                            "output": {
+                                "mode": "push",
+                                "destination": {
+                                    "destination_type": "uri",
+                                    "config": { "uri": server.url("/push") },
+                                    "auth": {
+                                        "type": "api_key",
+                                        "key": "secret-token",
+                                        "header_name": "X-Workflow-Key"
+                                    }
+                                },
+                                "method": "POST"
+                            },
+                            "format": { "format_type": "json", "options": {} },
+                            "mapping": {}
+                        }
+                    }]
+                }),
+                versioning_disabled: false,
+            },
+            creator_uuid,
+        )
+        .await?;
+    let run_uuid = Uuid::now_v7();
+    let item_uuid = Uuid::now_v7();
+    let data_bytes = serde_json::to_vec(&serde_json::json!({"hello": "auth"}))?;
+    let outbox_uuid = enqueue_workflow_push_outbox(
+        &outbox_repo,
+        workflow_uuid,
+        run_uuid,
+        item_uuid,
+        0,
+        "uri",
+        serde_json::json!({ "uri": server.url("/push") }),
+        true,
+        Some(r_data_core_workflow::data::adapters::destination::HttpMethod::Post),
+        "json",
+        &data_bytes,
+    )
+    .await?;
+
+    let row = sqlx::query("SELECT payload FROM outbox_messages WHERE uuid = $1")
+        .bind(outbox_uuid)
+        .fetch_one(&pool.pool)
+        .await?;
+    let payload: serde_json::Value = row.try_get("payload")?;
+    assert_eq!(payload["auth_required"], serde_json::json!(true));
+    assert!(payload
+        .get("destination_auth")
+        .is_none_or(serde_json::Value::is_null));
+
+    let claimed = outbox_repo.claim_due(10, "push-auth-worker").await?;
+    assert_eq!(claimed[0].uuid, outbox_uuid);
+    WorkflowOutboxDispatcher::new(
+        None,
+        &outbox_repo,
+        Some(&workflow_repo),
+        Some("push-auth-worker"),
+        None,
+    )
+    .dispatch_push_record(&claimed[0].clone().into_message())
+    .await?;
 
     push_mock.assert_async().await;
     let status: String =
@@ -496,14 +682,15 @@ async fn workflow_outbox_insert_emits_database_notification() -> anyhow::Result<
     let item_uuid = Uuid::now_v7();
     let data_bytes = serde_json::to_vec(&serde_json::json!({"hello": "notify"}))?;
 
-    let _ = enqueue_workflow_push_outbox(
+    enqueue_workflow_push_outbox(
         &outbox_repo,
         workflow_uuid,
         run_uuid,
         item_uuid,
+        0,
         "uri",
         serde_json::json!({ "uri": "http://example.com/push" }),
-        None,
+        false,
         Some(r_data_core_workflow::data::adapters::destination::HttpMethod::Post),
         "json",
         &data_bytes,
@@ -593,9 +780,10 @@ async fn workflow_push_outbox_retries_on_http_error() -> anyhow::Result<()> {
         workflow_uuid,
         run_uuid,
         item_uuid,
+        0,
         "uri",
         serde_json::json!({ "uri": server.url("/push") }),
-        None,
+        false,
         Some(r_data_core_workflow::data::adapters::destination::HttpMethod::Post),
         "json",
         &data_bytes,
@@ -604,8 +792,8 @@ async fn workflow_push_outbox_retries_on_http_error() -> anyhow::Result<()> {
 
     let claimed = outbox_repo.claim_due(10, "push-retry-worker").await?;
     assert_eq!(claimed.len(), 1);
-    WorkflowOutboxDispatcher::new(None, &outbox_repo, Some("push-retry-worker"), None)
-        .dispatch_push_record(&claimed[0])
+    WorkflowOutboxDispatcher::new(None, &outbox_repo, None, Some("push-retry-worker"), None)
+        .dispatch_push_record(&claimed[0].clone().into_message())
         .await?;
 
     push_mock.assert_async().await;
@@ -702,6 +890,7 @@ async fn workflow_outbox_worker_reclaims_stale_processing_rows() -> anyhow::Resu
     let queue = RecordingQueue::new();
     let dispatched = DispatchWorkflowOutboxBatchUseCase::new(
         &queue,
+        &workflow_repo,
         &outbox_repo,
         "reclaim-worker",
         10,
@@ -785,6 +974,7 @@ async fn workflow_outbox_worker_retries_when_queue_enqueue_fails() -> anyhow::Re
     let queue = RecordingQueue::with_fetch_failure();
     let dispatched = DispatchWorkflowOutboxBatchUseCase::new(
         &queue,
+        &workflow_repo,
         &outbox_repo,
         "retry-worker",
         10,
@@ -877,6 +1067,7 @@ async fn workflow_outbox_worker_dead_letters_permanent_queue_failures() -> anyho
     let queue = RecordingQueue::with_permanent_fetch_failure();
     let dispatched = DispatchWorkflowOutboxBatchUseCase::new(
         &queue,
+        &workflow_repo,
         &outbox_repo,
         "permanent-worker",
         10,
@@ -934,9 +1125,10 @@ async fn workflow_push_outbox_dead_letters_on_client_error() -> anyhow::Result<(
         workflow_uuid,
         run_uuid,
         item_uuid,
+        0,
         "uri",
         serde_json::json!({ "uri": server.url("/push") }),
-        None,
+        false,
         Some(r_data_core_workflow::data::adapters::destination::HttpMethod::Post),
         "json",
         &data_bytes,
@@ -945,9 +1137,15 @@ async fn workflow_push_outbox_dead_letters_on_client_error() -> anyhow::Result<(
 
     let claimed = outbox_repo.claim_due(10, "push-dead-letter-worker").await?;
     assert_eq!(claimed.len(), 1);
-    WorkflowOutboxDispatcher::new(None, &outbox_repo, Some("push-dead-letter-worker"), None)
-        .dispatch_push_record(&claimed[0])
-        .await?;
+    WorkflowOutboxDispatcher::new(
+        None,
+        &outbox_repo,
+        None,
+        Some("push-dead-letter-worker"),
+        None,
+    )
+    .dispatch_push_record(&claimed[0].clone().into_message())
+    .await?;
 
     push_mock.assert_async().await;
     let row = sqlx::query(
@@ -995,9 +1193,10 @@ async fn workflow_push_outbox_retries_on_rate_limit_error() -> anyhow::Result<()
         workflow_uuid,
         run_uuid,
         item_uuid,
+        0,
         "uri",
         serde_json::json!({ "uri": server.url("/push") }),
-        None,
+        false,
         Some(r_data_core_workflow::data::adapters::destination::HttpMethod::Post),
         "json",
         &data_bytes,
@@ -1006,8 +1205,8 @@ async fn workflow_push_outbox_retries_on_rate_limit_error() -> anyhow::Result<()
 
     let claimed = outbox_repo.claim_due(10, "push-429-worker").await?;
     assert_eq!(claimed.len(), 1);
-    WorkflowOutboxDispatcher::new(None, &outbox_repo, Some("push-429-worker"), None)
-        .dispatch_push_record(&claimed[0])
+    WorkflowOutboxDispatcher::new(None, &outbox_repo, None, Some("push-429-worker"), None)
+        .dispatch_push_record(&claimed[0].clone().into_message())
         .await?;
 
     push_mock.assert_async().await;
@@ -1033,7 +1232,7 @@ async fn workflow_push_outbox_retries_on_rate_limit_error() -> anyhow::Result<()
 }
 
 #[tokio::test]
-async fn workflow_push_outbox_dead_letters_invalid_auth_config() -> anyhow::Result<()> {
+async fn workflow_push_outbox_persists_auth_marker_without_auth_payload() -> anyhow::Result<()> {
     let Some(pool) = maybe_setup_test_db().await else {
         return Ok(());
     };
@@ -1048,40 +1247,26 @@ async fn workflow_push_outbox_dead_letters_invalid_auth_config() -> anyhow::Resu
         workflow_uuid,
         run_uuid,
         item_uuid,
+        0,
         "uri",
         serde_json::json!({ "uri": "http://example.com/push" }),
-        Some(serde_json::json!({ "type": "bearer" })),
+        true,
         Some(r_data_core_workflow::data::adapters::destination::HttpMethod::Post),
         "json",
         &data_bytes,
     )
     .await?;
 
-    let claimed = outbox_repo.claim_due(10, "push-auth-worker").await?;
-    assert_eq!(claimed.len(), 1);
-    WorkflowOutboxDispatcher::new(None, &outbox_repo, Some("push-auth-worker"), None)
-        .dispatch_push_record(&claimed[0])
+    let row = sqlx::query("SELECT payload FROM outbox_messages WHERE uuid = $1")
+        .bind(outbox_uuid)
+        .fetch_one(&pool.pool)
         .await?;
-
-    let row = sqlx::query(
-        r"
-        SELECT status::text AS status, attempt_count, last_error
-        FROM outbox_messages
-        WHERE uuid = $1
-        ",
-    )
-    .bind(outbox_uuid)
-    .fetch_one(&pool.pool)
-    .await?;
-
-    let status: String = row.try_get("status")?;
-    let attempt_count: i32 = row.try_get("attempt_count")?;
-    let last_error: Option<String> = row.try_get("last_error")?;
-    assert_eq!(status, "dead_letter");
-    assert_eq!(attempt_count, 1);
-    assert!(last_error
-        .as_deref()
-        .is_some_and(|msg| msg.contains("Invalid workflow push auth configuration")));
+    let payload: serde_json::Value = row.try_get("payload")?;
+    assert_eq!(payload["auth_required"], serde_json::json!(true));
+    assert_eq!(payload["destination_step_index"], serde_json::json!(0));
+    assert!(payload
+        .get("destination_auth")
+        .is_none_or(serde_json::Value::is_null));
 
     Ok(())
 }

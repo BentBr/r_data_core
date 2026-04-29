@@ -120,9 +120,9 @@ fn load_outbox_config(include_stale_lease: bool) -> Result<OutboxConfigVars> {
         .parse()
         .unwrap_or(false);
     let push_enabled = env::var("OUTBOX_PUSH_ENABLED")
-        .unwrap_or_else(|_| "true".to_string())
+        .unwrap_or_else(|_| "false".to_string())
         .parse()
-        .unwrap_or(true);
+        .unwrap_or(false);
 
     let retry_base_delay_secs = env::var("OUTBOX_RETRY_BASE_DELAY_SECS")
         .unwrap_or_else(|_| "1".to_string())

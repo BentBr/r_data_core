@@ -6,8 +6,7 @@ use crate::workflow::outbox::{EnqueueWorkflowFetchUseCase, OutboxRetryPolicy};
 use crate::{SettingsService, SystemLogService};
 use cron::Schedule;
 use r_data_core_core::system_log::SystemLogResourceType;
-use r_data_core_persistence::OutboxRepository;
-use r_data_core_persistence::WorkflowRepositoryTrait;
+use r_data_core_persistence::{OutboxRepositoryTrait, WorkflowRepositoryTrait};
 use r_data_core_workflow::data::requests::{CreateWorkflowRequest, UpdateWorkflowRequest};
 use r_data_core_workflow::data::Workflow;
 use std::str::FromStr;
@@ -17,7 +16,7 @@ use uuid::Uuid;
 pub struct WorkflowService {
     pub(super) repo: Arc<dyn WorkflowRepositoryTrait>,
     pub(super) dynamic_entity_service: Option<Arc<DynamicEntityService>>,
-    pub(super) outbox_repository: Option<Arc<OutboxRepository>>,
+    pub(super) outbox_repository: Option<Arc<dyn OutboxRepositoryTrait>>,
     pub(super) outbox_retry_policy: Option<OutboxRetryPolicy>,
     pub(super) settings_service: Option<Arc<SettingsService>>,
     pub(super) use_outbox_for_fetch: bool,
@@ -46,7 +45,7 @@ impl WorkflowService {
             outbox_retry_policy: None,
             settings_service: None,
             use_outbox_for_fetch: false,
-            use_outbox_for_push: true,
+            use_outbox_for_push: false,
             jwt_secret: None,
             jwt_expiration: DEFAULT_JWT_EXPIRATION,
             mail_service: None,
@@ -66,7 +65,7 @@ impl WorkflowService {
             outbox_retry_policy: None,
             settings_service: None,
             use_outbox_for_fetch: false,
-            use_outbox_for_push: true,
+            use_outbox_for_push: false,
             jwt_secret: None,
             jwt_expiration: DEFAULT_JWT_EXPIRATION,
             mail_service: None,
@@ -109,7 +108,10 @@ impl WorkflowService {
 
     /// Attach an outbox repository for deferred workflow deliveries.
     #[must_use]
-    pub fn with_outbox_repository(mut self, outbox_repository: Arc<OutboxRepository>) -> Self {
+    pub fn with_outbox_repository(
+        mut self,
+        outbox_repository: Arc<dyn OutboxRepositoryTrait>,
+    ) -> Self {
         self.outbox_repository = Some(outbox_repository);
         self
     }
@@ -147,7 +149,7 @@ impl WorkflowService {
 
     /// Return the configured workflow outbox repository, if enabled.
     #[must_use]
-    pub const fn outbox_repository(&self) -> Option<&Arc<OutboxRepository>> {
+    pub fn outbox_repository(&self) -> Option<&Arc<dyn OutboxRepositoryTrait>> {
         self.outbox_repository.as_ref()
     }
 

@@ -1,4 +1,5 @@
 use super::{DataDestination, DestinationContext, HttpMethod};
+use crate::data::adapters::http::uri_http_client;
 use async_trait::async_trait;
 use bytes::Bytes;
 
@@ -33,9 +34,8 @@ impl DataDestination for UriDestination {
                     "URI destination requires 'uri' in config".to_string(),
                 )
             })?;
-
         let method = ctx.method.unwrap_or(HttpMethod::Post);
-        let client = reqwest::Client::new();
+        let client = uri_http_client()?;
 
         let mut request = match method {
             HttpMethod::Get => client.get(uri),

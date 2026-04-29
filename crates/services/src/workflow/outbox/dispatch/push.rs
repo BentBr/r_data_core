@@ -1,9 +1,10 @@
 use base64::Engine as _;
 
-use r_data_core_workflow::data::adapters::auth::{create_auth_provider, AuthConfig};
+use r_data_core_workflow::data::adapters::auth::create_auth_provider;
 use r_data_core_workflow::data::adapters::destination::uri::UriDestination;
 use r_data_core_workflow::data::adapters::destination::DataDestination;
 use r_data_core_workflow::data::adapters::destination::{DestinationContext, HttpMethod};
+use r_data_core_workflow::dsl::{DslProgram, OutputMode, ToDef};
 
 use super::super::payload::WorkflowPushOutboxPayload;
 use super::super::policy::{workflow_outbox_retry_at, OutboxRetryPolicy};
@@ -19,7 +20,7 @@ impl WorkflowOutboxDispatcher<'_> {
     #[allow(clippy::too_many_lines)]
     pub async fn dispatch_push_record(
         &self,
-        record: &r_data_core_persistence::OutboxMessageRecord,
+        record: &r_data_core_core::outbox::OutboxMessage,
     ) -> r_data_core_core::error::Result<()> {
         let locked_by = self.locked_by.or(record.locked_by.as_deref());
 
@@ -50,7 +51,7 @@ impl WorkflowOutboxDispatcher<'_> {
             return Ok(());
         }
 
-        let Some(uri) = payload
+        let Some(_uri) = payload
             .destination_config
             .get("uri")
             .and_then(|value| value.as_str())
@@ -64,36 +65,104 @@ impl WorkflowOutboxDispatcher<'_> {
             return Ok(());
         };
 
-        let destination_auth = match payload.destination_auth {
-            Some(auth) => match serde_json::from_value::<AuthConfig>(auth) {
-                Ok(parsed) => Some(parsed),
+        if payload.destination_auth.is_some() {
+            self.mark_dead_letter_for_record(
+                record.uuid,
+                "Workflow push outbox does not support persisted destination auth",
+                locked_by,
+            )
+            .await?;
+            return Ok(());
+        }
+        let auth_provider = if payload.auth_required {
+            let Some(workflow_repo) = self.workflow_repo else {
+                self.mark_dead_letter_for_record(
+                    record.uuid,
+                    "Workflow push outbox auth requires workflow repository access",
+                    locked_by,
+                )
+                .await?;
+                return Ok(());
+            };
+            let Some(step_index) = payload.destination_step_index else {
+                self.mark_dead_letter_for_record(
+                    record.uuid,
+                    "Workflow push outbox auth requires destination step index",
+                    locked_by,
+                )
+                .await?;
+                return Ok(());
+            };
+            let Some(workflow) = workflow_repo.get_by_uuid(payload.workflow_id).await? else {
+                self.mark_dead_letter_for_record(
+                    record.uuid,
+                    "Workflow push outbox auth workflow not found",
+                    locked_by,
+                )
+                .await?;
+                return Ok(());
+            };
+            let program = match DslProgram::from_config(&workflow.config) {
+                Ok(program) => program,
                 Err(e) => {
                     self.mark_dead_letter_for_record(
                         record.uuid,
-                        &format!("Invalid workflow push auth configuration: {e}"),
+                        &format!("Invalid workflow config for push auth resolution: {e}"),
                         locked_by,
                     )
                     .await?;
                     return Ok(());
                 }
-            },
-            None => None,
-        };
-        let auth_provider = match destination_auth
-            .as_ref()
-            .map(create_auth_provider)
-            .transpose()
-        {
-            Ok(provider) => provider,
-            Err(e) => {
+            };
+            let Some(step) = program.steps.get(step_index) else {
                 self.mark_dead_letter_for_record(
                     record.uuid,
-                    &format!("Failed to create auth provider for workflow push: {e}"),
+                    "Workflow push outbox auth step not found",
                     locked_by,
                 )
                 .await?;
                 return Ok(());
+            };
+            let ToDef::Format {
+                output:
+                    OutputMode::Push {
+                        destination,
+                        method: _,
+                    },
+                ..
+            } = &step.to
+            else {
+                self.mark_dead_letter_for_record(
+                    record.uuid,
+                    "Workflow push outbox auth step is not a push output",
+                    locked_by,
+                )
+                .await?;
+                return Ok(());
+            };
+            let Some(auth_config) = destination.auth.as_ref() else {
+                self.mark_dead_letter_for_record(
+                    record.uuid,
+                    "Workflow push outbox auth config not found",
+                    locked_by,
+                )
+                .await?;
+                return Ok(());
+            };
+            match create_auth_provider(auth_config) {
+                Ok(provider) => Some(provider),
+                Err(e) => {
+                    self.mark_dead_letter_for_record(
+                        record.uuid,
+                        &format!("Failed to create workflow push auth provider: {e}"),
+                        locked_by,
+                    )
+                    .await?;
+                    return Ok(());
+                }
             }
+        } else {
+            None
         };
         let method = payload
             .method
@@ -103,7 +172,7 @@ impl WorkflowOutboxDispatcher<'_> {
         let dest_ctx = DestinationContext {
             auth: auth_provider,
             method: Some(method),
-            config: serde_json::json!({ "uri": uri }),
+            config: payload.destination_config.clone(),
         };
         let destination = UriDestination::new();
         let data = match base64::engine::general_purpose::STANDARD.decode(payload.data_base64) {

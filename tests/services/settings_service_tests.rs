@@ -36,7 +36,7 @@ async fn outbox_settings_defaults_when_missing() -> anyhow::Result<()> {
     let service = SettingsService::new(pool.pool.clone(), create_cache_manager());
     let settings = service.get_outbox_settings().await?;
     assert!(!settings.fetch_enabled);
-    assert!(settings.push_enabled);
+    assert!(!settings.push_enabled);
     Ok(())
 }
 

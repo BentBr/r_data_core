@@ -24,5 +24,9 @@ CREATE UNIQUE INDEX IF NOT EXISTS outbox_messages_idempotency_key_idx
 CREATE INDEX IF NOT EXISTS outbox_messages_status_available_at_idx
     ON outbox_messages (status, available_at);
 
+CREATE INDEX IF NOT EXISTS outbox_messages_claim_due_idx
+    ON outbox_messages (available_at, created_at)
+    WHERE status IN ('pending', 'retry');
+
 CREATE INDEX IF NOT EXISTS outbox_messages_aggregate_idx
     ON outbox_messages (aggregate_type, aggregate_id);

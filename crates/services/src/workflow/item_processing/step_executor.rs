@@ -35,8 +35,8 @@ impl<'a> WorkflowStepExecutor<'a> {
         &self,
         payload: &JsonValue,
         item_uuid: Uuid,
-    ) -> r_data_core_core::error::Result<Vec<(ToDef, JsonValue)>> {
-        let mut results: Vec<(ToDef, JsonValue)> = Vec::new();
+    ) -> r_data_core_core::error::Result<Vec<(usize, ToDef, JsonValue)>> {
+        let mut results: Vec<(usize, ToDef, JsonValue)> = Vec::new();
         let mut previous_step_output: Option<JsonValue> = None;
 
         for step_idx in 0..self.program.steps.len() {
@@ -76,7 +76,7 @@ impl<'a> WorkflowStepExecutor<'a> {
                 &produced,
             )?);
 
-            results.push((to_def, produced));
+            results.push((step_idx, to_def, produced));
         }
 
         Ok(results)

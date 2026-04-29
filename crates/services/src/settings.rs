@@ -35,7 +35,7 @@ impl SettingsService {
             cache,
             outbox_defaults: OutboxSettings {
                 fetch_enabled: false,
-                push_enabled: true,
+                push_enabled: false,
             },
         }
     }

@@ -14,8 +14,13 @@ pub struct WorkflowPushOutboxPayload {
     pub workflow_id: Uuid,
     pub run_uuid: Uuid,
     pub item_uuid: Uuid,
+    #[serde(default)]
+    pub destination_step_index: Option<usize>,
     pub destination_type: String,
     pub destination_config: serde_json::Value,
+    #[serde(default)]
+    pub auth_required: bool,
+    #[serde(default)]
     pub destination_auth: Option<serde_json::Value>,
     pub method: Option<String>,
     pub format_type: String,

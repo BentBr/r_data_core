@@ -18,6 +18,7 @@ impl<'a> WorkflowPushOutputHandler<'a> {
         to_def: &ToDef,
         produced: &JsonValue,
         workflow_uuid: Uuid,
+        step_index: usize,
         item_uuid: Uuid,
         run_uuid: Uuid,
     ) -> r_data_core_core::error::Result<bool> {
@@ -36,22 +37,15 @@ impl<'a> WorkflowPushOutputHandler<'a> {
                 .await?;
             if self.ctx.use_outbox_for_push {
                 if let Some(outbox_repo) = self.ctx.outbox_repository {
-                    let destination_auth = match &destination.auth {
-                        Some(auth) => Some(serde_json::to_value(auth).map_err(|e| {
-                            r_data_core_core::error::Error::Validation(format!(
-                                "Failed to serialize destination auth for outbox: {e}"
-                            ))
-                        })?),
-                        None => None,
-                    };
                     enqueue_workflow_push_outbox(
                         outbox_repo,
                         workflow_uuid,
                         run_uuid,
                         item_uuid,
+                        step_index,
                         &destination.destination_type,
                         destination.config.clone(),
-                        destination_auth,
+                        destination.auth.is_some(),
                         method.as_ref().copied(),
                         format.format_type.as_str(),
                         &data_bytes,

@@ -30,6 +30,7 @@ pub const VERSION: &str = env!("CARGO_PKG_VERSION");
 pub(crate) struct WorkerRuntime {
     pub(crate) pool: sqlx::PgPool,
     pub(crate) queue: Arc<ApalisRedisQueue>,
+    pub(crate) workflow_repo: Arc<WorkflowRepository>,
     pub(crate) queue_fetch_key: String,
     pub(crate) cache_manager: Arc<r_data_core_core::cache::CacheManager>,
     pub(crate) outbox_repo: Option<Arc<r_data_core_persistence::OutboxRepository>>,
@@ -144,6 +145,7 @@ async fn bootstrap_worker() -> r_data_core_core::error::Result<WorkerBootstrap> 
     let runtime = WorkerRuntime {
         pool: pool.clone(),
         queue: queue.clone(),
+        workflow_repo: Arc::new(WorkflowRepository::new(pool.clone())),
         queue_fetch_key: queue_cfg.fetch_key.clone(),
         cache_manager,
         outbox_repo,

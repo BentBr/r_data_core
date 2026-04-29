@@ -109,6 +109,8 @@ docker pull ghcr.io/bentbr/r-data-core-maintenance:latest
 | `API_PORT` | 8888        | Server port                           |
 | `JWT_EXPIRATION` | 86400       | JWT token expiration (seconds)        |
 | `OUTBOX_ENABLED` | false       | Enables the workflow outbox           |
+| `OUTBOX_FETCH_ENABLED` | false | Default fetch outbox mode when no system setting exists |
+| `OUTBOX_PUSH_ENABLED` | false | Default push outbox mode when no system setting exists |
 | `OUTBOX_STALE_LEASE_SECS` | 300 | Lease timeout before stale outbox rows are reclaimed |
 | `OUTBOX_RETRY_BASE_DELAY_SECS` | 1 | Base delay for outbox retries |
 | `OUTBOX_RETRY_MULTIPLIER` | 2 | Exponential multiplier for outbox retries |
