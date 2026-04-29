@@ -1,4 +1,5 @@
 use crate::workflow::item_processing::{WorkflowItemContext, WorkflowPipelineExecutor};
+use crate::workflow::outbox::PushDispatchMode;
 use crate::workflow::transform_execution::{JwtConfig, MailContext};
 use serde_json::Value as JsonValue;
 use uuid::Uuid;
@@ -22,6 +23,16 @@ impl WorkflowService {
         Ok(OutboxModes {
             push_enabled: self.use_outbox_for_push,
         })
+    }
+
+    fn push_dispatch_mode(&self, push_enabled: bool) -> PushDispatchMode<'_> {
+        if push_enabled {
+            if let Some(repository) = self.outbox_repository.as_deref() {
+                return PushDispatchMode::Outbox { repository };
+            }
+        }
+
+        PushDispatchMode::Direct
     }
 
     /// Process staged raw items for a run using the workflow DSL
@@ -76,8 +87,7 @@ impl WorkflowService {
             };
             let ctx = WorkflowItemContext {
                 dynamic_entity_service: self.dynamic_entity_service.as_deref(),
-                outbox_repository: self.outbox_repository.as_deref(),
-                use_outbox_for_push: outbox_modes.push_enabled,
+                push_dispatch: self.push_dispatch_mode(outbox_modes.push_enabled),
                 repo: &self.repo,
                 jwt: &jwt,
                 mail: &mail,
@@ -169,8 +179,7 @@ impl WorkflowService {
         };
         let ctx = WorkflowItemContext {
             dynamic_entity_service: self.dynamic_entity_service.as_deref(),
-            outbox_repository: self.outbox_repository.as_deref(),
-            use_outbox_for_push: outbox_modes.push_enabled,
+            push_dispatch: self.push_dispatch_mode(outbox_modes.push_enabled),
             repo: &self.repo,
             jwt: &jwt,
             mail: &mail,

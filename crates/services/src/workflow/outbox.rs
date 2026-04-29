@@ -1,12 +1,14 @@
 #![deny(clippy::all, clippy::pedantic, clippy::nursery, warnings)]
 
 mod dispatch;
+mod modes;
 mod payload;
 mod policy;
 mod support;
 mod use_cases;
 
 pub use dispatch::{enqueue_workflow_push_outbox, outbox_status, WorkflowOutboxDispatcher};
+pub use modes::{FetchDispatchMode, PushDispatchMode};
 pub(crate) use payload::validate_workflow_push_outbox_size;
 pub use payload::WorkflowPushOutboxPayload;
 pub use policy::{workflow_outbox_retry_at, workflow_outbox_retry_delay_secs, OutboxRetryPolicy};

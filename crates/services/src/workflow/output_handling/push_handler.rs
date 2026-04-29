@@ -1,5 +1,6 @@
 use crate::workflow::item_processing::WorkflowItemContext;
 use crate::workflow::outbox::enqueue_workflow_push_outbox;
+use crate::workflow::outbox::PushDispatchMode;
 use r_data_core_workflow::dsl::ToDef;
 use serde_json::Value as JsonValue;
 use uuid::Uuid;
@@ -35,10 +36,10 @@ impl<'a> WorkflowPushOutputHandler<'a> {
             let data_bytes = self
                 .serialize_for_push(format, produced, item_uuid, run_uuid)
                 .await?;
-            if self.ctx.use_outbox_for_push {
-                if let Some(outbox_repo) = self.ctx.outbox_repository {
+            match self.ctx.push_dispatch {
+                PushDispatchMode::Outbox { repository } => {
                     enqueue_workflow_push_outbox(
-                        outbox_repo,
+                        repository,
                         workflow_uuid,
                         run_uuid,
                         item_uuid,
@@ -51,7 +52,8 @@ impl<'a> WorkflowPushOutputHandler<'a> {
                         &data_bytes,
                     )
                     .await?;
-                } else {
+                }
+                PushDispatchMode::Direct => {
                     let dest_ctx =
                         Self::create_destination_context(destination, method.as_ref().copied())?;
                     let dest_adapter = self
@@ -67,21 +69,6 @@ impl<'a> WorkflowPushOutputHandler<'a> {
                     )
                     .await?;
                 }
-            } else {
-                let dest_ctx =
-                    Self::create_destination_context(destination, method.as_ref().copied())?;
-                let dest_adapter = self
-                    .create_destination_adapter(destination, item_uuid, run_uuid)
-                    .await?;
-                self.push_data(
-                    dest_adapter,
-                    &dest_ctx,
-                    data_bytes,
-                    destination,
-                    item_uuid,
-                    run_uuid,
-                )
-                .await?;
             }
         }
         Ok(true)

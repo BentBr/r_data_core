@@ -10,9 +10,9 @@ use r_data_core_persistence::WorkflowRepositoryTrait;
 use r_data_core_persistence::{OutboxRepository, WorkflowRepository};
 use r_data_core_services::workflow::outbox::{
     enqueue_workflow_push_outbox, DispatchWorkflowOutboxBatchUseCase, EnqueueWorkflowFetchUseCase,
-    WorkflowOutboxDispatcher,
+    FetchDispatchMode, WorkflowOutboxDispatcher,
 };
-use r_data_core_services::WorkflowRepositoryAdapter;
+use r_data_core_services::{WorkflowRepositoryAdapter, WorkflowService};
 use r_data_core_test_support::create_test_admin_user;
 use r_data_core_workflow::data::job_queue::JobQueue;
 use r_data_core_workflow::data::jobs::{FetchAndStageJob, ProcessRawItemJob, SendEmailJob};
@@ -167,11 +167,10 @@ async fn enqueue_fetch_use_case_routes_directly_when_fetch_outbox_disabled() -> 
     let repo_adapter: Arc<dyn WorkflowRepositoryTrait> = Arc::new(WorkflowRepositoryAdapter::new(
         WorkflowRepository::new(pool.pool.clone()),
     ));
-    let outbox_repo = OutboxRepository::new(pool.pool.clone());
     let queue = RecordingQueue::new();
 
     let use_case =
-        EnqueueWorkflowFetchUseCase::new(&repo_adapter, &queue, Some(&outbox_repo), None, false);
+        EnqueueWorkflowFetchUseCase::new(&repo_adapter, &queue, FetchDispatchMode::Direct);
     let run_uuid = use_case.enqueue_run_for_fetch(workflow_uuid, None).await?;
 
     assert_eq!(
@@ -212,8 +211,14 @@ async fn enqueue_fetch_use_case_uses_outbox_when_fetch_outbox_enabled() -> anyho
     let outbox_repo = OutboxRepository::new(pool.pool.clone());
     let queue = RecordingQueue::new();
 
-    let use_case =
-        EnqueueWorkflowFetchUseCase::new(&repo_adapter, &queue, Some(&outbox_repo), None, true);
+    let use_case = EnqueueWorkflowFetchUseCase::new(
+        &repo_adapter,
+        &queue,
+        FetchDispatchMode::Outbox {
+            repository: &outbox_repo,
+            retry_policy: None,
+        },
+    );
     let run_uuid = use_case.enqueue_run_for_fetch(workflow_uuid, None).await?;
 
     assert_eq!(
@@ -491,6 +496,118 @@ async fn workflow_fetch_outbox_persists_only_job_reference_without_source_auth(
     assert!(payload.get("source_config").is_none());
     assert!(payload.get("source_auth").is_none());
     assert!(!payload.to_string().contains("source-secret-token"));
+
+    Ok(())
+}
+
+#[tokio::test]
+async fn workflow_processing_uses_push_outbox_mode_when_enabled() -> anyhow::Result<()> {
+    let Some(pool) = maybe_setup_test_db().await else {
+        return Ok(());
+    };
+
+    let creator_uuid = create_test_admin_user(&pool).await?;
+    let workflow_repo = WorkflowRepository::new(pool.pool.clone());
+    let outbox_repo = Arc::new(OutboxRepository::new(pool.pool.clone()));
+
+    let server = MockServer::start_async().await;
+    let workflow_uuid = workflow_repo
+        .create(
+            &r_data_core_workflow::data::requests::CreateWorkflowRequest {
+                name: format!("push-mode-outbox-{}", Uuid::now_v7().simple()),
+                description: Some("push dispatch mode outbox test".into()),
+                kind: WorkflowKind::Consumer.to_string(),
+                enabled: true,
+                schedule_cron: None,
+                config: serde_json::json!({
+                    "steps": [{
+                        "from": {
+                            "type": "format",
+                            "source": {
+                                "source_type": "uri",
+                                "config": { "uri": "http://example.com/data.json" }
+                            },
+                            "format": { "format_type": "json", "options": {} },
+                            "mapping": {}
+                        },
+                        "transform": { "type": "none" },
+                        "to": {
+                            "type": "format",
+                            "output": {
+                                "mode": "push",
+                                "destination": {
+                                    "destination_type": "uri",
+                                    "config": { "uri": server.url("/push") },
+                                    "auth": {
+                                        "type": "api_key",
+                                        "key": "secret-token",
+                                        "header_name": "X-Workflow-Key"
+                                    }
+                                },
+                                "method": "POST"
+                            },
+                            "format": { "format_type": "json", "options": {} },
+                            "mapping": {}
+                        }
+                    }]
+                }),
+                versioning_disabled: false,
+            },
+            creator_uuid,
+        )
+        .await?;
+
+    let service_repo: Arc<dyn WorkflowRepositoryTrait> = Arc::new(WorkflowRepositoryAdapter::new(
+        WorkflowRepository::new(pool.pool.clone()),
+    ));
+    let service = WorkflowService::new(service_repo)
+        .with_outbox_repository(outbox_repo)
+        .with_push_outbox(true);
+
+    let run_uuid = service.enqueue_run(workflow_uuid).await?;
+    let staged = service
+        .stage_raw_items(
+            workflow_uuid,
+            run_uuid,
+            vec![serde_json::json!({"sku": "A-1", "name": "Outbox Item"})],
+        )
+        .await?;
+    assert_eq!(staged, 1);
+
+    let (processed, failed) = service
+        .process_staged_items(workflow_uuid, run_uuid)
+        .await?;
+    assert_eq!(processed, 1);
+    assert_eq!(failed, 0);
+
+    let row = sqlx::query(
+        r"
+        SELECT payload, headers
+        FROM outbox_messages
+        WHERE topic = $1 AND aggregate_id = $2
+        ",
+    )
+    .bind(r_data_core_core::outbox::WORKFLOW_PUSH_TOPIC)
+    .bind(run_uuid.to_string())
+    .fetch_one(&pool.pool)
+    .await?;
+
+    let payload: serde_json::Value = row.try_get("payload")?;
+    let headers: serde_json::Value = row.try_get("headers")?;
+
+    assert_eq!(payload["workflow_id"], serde_json::json!(workflow_uuid));
+    assert_eq!(payload["run_uuid"], serde_json::json!(run_uuid));
+    assert_eq!(payload["destination_step_index"], serde_json::json!(0));
+    assert_eq!(payload["auth_required"], serde_json::json!(true));
+    assert_eq!(
+        payload["destination_config"]["uri"],
+        serde_json::json!(server.url("/push"))
+    );
+    assert!(payload
+        .get("destination_auth")
+        .is_none_or(serde_json::Value::is_null));
+    assert!(!payload.to_string().contains("secret-token"));
+    assert_eq!(headers["run_uuid"], serde_json::json!(run_uuid));
 
     Ok(())
 }

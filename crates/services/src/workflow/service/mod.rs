@@ -2,7 +2,7 @@ mod execution;
 mod staging;
 
 use crate::dynamic_entity::DynamicEntityService;
-use crate::workflow::outbox::{EnqueueWorkflowFetchUseCase, OutboxRetryPolicy};
+use crate::workflow::outbox::{EnqueueWorkflowFetchUseCase, FetchDispatchMode, OutboxRetryPolicy};
 use crate::{SettingsService, SystemLogService};
 use cron::Schedule;
 use r_data_core_core::system_log::SystemLogResourceType;
@@ -151,6 +151,19 @@ impl WorkflowService {
     #[must_use]
     pub fn outbox_repository(&self) -> Option<&Arc<dyn OutboxRepositoryTrait>> {
         self.outbox_repository.as_ref()
+    }
+
+    fn fetch_dispatch_mode(&self, fetch_enabled: bool) -> FetchDispatchMode<'_> {
+        if fetch_enabled {
+            if let Some(repository) = self.outbox_repository.as_deref() {
+                return FetchDispatchMode::Outbox {
+                    repository,
+                    retry_policy: self.outbox_retry_policy.as_ref(),
+                };
+            }
+        }
+
+        FetchDispatchMode::Direct
     }
 
     /// List all workflows
@@ -501,9 +514,7 @@ impl WorkflowService {
         EnqueueWorkflowFetchUseCase::new(
             &self.repo,
             queue,
-            self.outbox_repository.as_deref(),
-            self.outbox_retry_policy.as_ref(),
-            use_outbox_for_fetch,
+            self.fetch_dispatch_mode(use_outbox_for_fetch),
         )
         .enqueue_run_for_fetch(workflow_uuid, trigger_id)
         .await
@@ -531,9 +542,7 @@ impl WorkflowService {
         EnqueueWorkflowFetchUseCase::new(
             &self.repo,
             queue,
-            self.outbox_repository.as_deref(),
-            self.outbox_retry_policy.as_ref(),
-            use_outbox_for_fetch,
+            self.fetch_dispatch_mode(use_outbox_for_fetch),
         )
         .dispatch_fetch_for_existing_run(workflow_uuid, run_uuid)
         .await
