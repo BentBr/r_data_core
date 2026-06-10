@@ -101,6 +101,13 @@ services:
             QUEUE_EMAIL_KEY: "queue:email"
             PASSWORD_RESET_THROTTLE_SECONDS: 60
             FRONTEND_BASE_URL: "http://admin.rdatacore.docker"
+            OUTBOX_ENABLED: true
+            OUTBOX_FETCH_ENABLED: true
+            OUTBOX_PUSH_ENABLED: true
+            OUTBOX_STALE_LEASE_SECS: 300
+            OUTBOX_RETRY_BASE_DELAY_SECS: 1
+            OUTBOX_RETRY_MULTIPLIER: 2
+            OUTBOX_RETRY_MAX_DELAY_SECS: 300
             # RDT key
             MAIN_SERVICE: app
         ports:
@@ -147,6 +154,13 @@ services:
             QUEUE_EMAIL_KEY: "queue:email"
             PASSWORD_RESET_THROTTLE_SECONDS: 60
             FRONTEND_BASE_URL: "http://admin.rdatacore.docker"
+            OUTBOX_ENABLED: true
+            OUTBOX_FETCH_ENABLED: true
+            OUTBOX_PUSH_ENABLED: true
+            OUTBOX_STALE_LEASE_SECS: 300
+            OUTBOX_RETRY_BASE_DELAY_SECS: 1
+            OUTBOX_RETRY_MULTIPLIER: 2
+            OUTBOX_RETRY_MAX_DELAY_SECS: 300
         networks:
             default:
                 aliases:
@@ -192,6 +206,13 @@ services:
             FRONTEND_BASE_URL: "http://admin.rdatacore.docker"
             SYSTEM_LOGS_PURGER_CRON: "30 */5 * * * *"
             SYSTEM_LOGS_RETENTION_DAYS: 90
+            OUTBOX_ENABLED: true
+            OUTBOX_FETCH_ENABLED: true
+            OUTBOX_PUSH_ENABLED: true
+            OUTBOX_STALE_LEASE_SECS: 300
+            OUTBOX_RETRY_BASE_DELAY_SECS: 1
+            OUTBOX_RETRY_MULTIPLIER: 2
+            OUTBOX_RETRY_MAX_DELAY_SECS: 300
         networks:
             default:
                 aliases:
