@@ -55,10 +55,7 @@ impl MockEntityDefinitionService {
     }
 
     #[allow(clippy::unused_async)]
-    fn get_entity_definition_by_entity_type(
-        &self,
-        entity_type: &str,
-    ) -> Result<EntityDefinition> {
+    fn get_entity_definition_by_entity_type(&self, entity_type: &str) -> Result<EntityDefinition> {
         if !self.entity_type_exists {
             return Err(r_data_core_core::error::Error::NotFound(format!(
                 "Class definition for entity type '{entity_type}' not found"
@@ -227,8 +224,7 @@ impl TestService {
         // First check if the entity type exists and is published
         let entity_def = self
             .class_service
-            .get_entity_definition_by_entity_type(entity_type)
-            ?;
+            .get_entity_definition_by_entity_type(entity_type)?;
 
         if !entity_def.published {
             return Err(r_data_core_core::error::Error::NotFound(format!(
@@ -245,8 +241,7 @@ impl TestService {
         // Check if the entity type is published
         let entity_def = self
             .class_service
-            .get_entity_definition_by_entity_type(&entity.entity_type)
-            ?;
+            .get_entity_definition_by_entity_type(&entity.entity_type)?;
 
         if !entity_def.published {
             return Err(r_data_core_core::error::Error::NotFound(format!(
