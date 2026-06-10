@@ -19,7 +19,7 @@
                                 :label="t('entity_definitions.create.entity_type_label')"
                                 :hint="t('entity_definitions.create.entity_type_hint')"
                                 :rules="[
-                                    v => !!v ?? t('entity_definitions.create.entity_type_required'),
+                                    v => !!v || t('entity_definitions.create.entity_type_required'),
                                 ]"
                                 required
                                 readonly
@@ -31,7 +31,7 @@
                                 :label="t('entity_definitions.create.display_name_label')"
                                 :rules="[
                                     v =>
-                                        !!v ?? t('entity_definitions.create.display_name_required'),
+                                        !!v || t('entity_definitions.create.display_name_required'),
                                 ]"
                                 required
                             />

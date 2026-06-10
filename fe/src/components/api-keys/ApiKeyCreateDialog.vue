@@ -16,7 +16,7 @@
                         ref="nameField"
                         v-model="createForm.name"
                         :label="t('api_keys.create.name_label')"
-                        :rules="[v => !!v ?? t('api_keys.create.name_required')]"
+                        :rules="[v => !!v || t('api_keys.create.name_required')]"
                         required
                         @input="validateForm"
                     />
