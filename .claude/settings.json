@@ -2,7 +2,7 @@
     "hooks": {
         "PreToolUse": [
             {
-                "matcher": "Read|Grep|Write|Edit|Bash",
+                "matcher": "Read|Grep|Write|Edit|Bash|Glob",
                 "hooks": [
                     {
                         "type": "command",
@@ -10,7 +10,45 @@
                         "timeout": 5000
                     }
                 ]
+            },
+            {
+                "matcher": "Write|Edit",
+                "hooks": [
+                    {
+                        "type": "command",
+                        "command": "node .claude/hooks/protect_generated.cjs",
+                        "timeout": 5000
+                    }
+                ]
+            }
+        ],
+        "PostToolUse": [
+            {
+                "matcher": "Write|Edit",
+                "hooks": [
+                    {
+                        "type": "command",
+                        "command": "node .claude/hooks/rustfmt.cjs",
+                        "timeout": 30000
+                    },
+                    {
+                        "type": "command",
+                        "command": "node .claude/hooks/prettier.cjs",
+                        "timeout": 30000
+                    },
+                    {
+                        "type": "command",
+                        "command": "node .claude/hooks/eslint.cjs",
+                        "timeout": 30000
+                    }
+                ]
             }
         ]
+    },
+    "enabledMcpjsonServers": ["context7"],
+    "enabledPlugins": {
+        "frontend-design@claude-plugins-official": true,
+        "typescript-lsp@claude-plugins-official": true,
+        "rust-analyzer-lsp@claude-plugins-official": true
     }
 }
