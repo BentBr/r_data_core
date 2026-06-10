@@ -18,11 +18,14 @@ process.stdin.on('end', () => {
             process.exit(0)
         }
 
+        // The node container runs in fe/, so strip the fe/ prefix for the path.
+        const feRel = rel.slice('fe/'.length)
+
         try {
             // execFileSync with an arg array — no shell, path is a literal arg.
             execFileSync(
                 'docker',
-                ['compose', 'exec', '-T', 'node', 'npx', 'prettier', '--write', rel],
+                ['compose', 'exec', '-T', 'node', 'npx', 'prettier', '--write', feRel],
                 { stdio: 'pipe' },
             )
         } catch (err) {
