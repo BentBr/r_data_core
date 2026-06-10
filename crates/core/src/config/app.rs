@@ -12,6 +12,22 @@ pub struct AppConfig {
     /// Application environment (development, production, etc.)
     pub environment: String,
 
+    /// Whether the workflow outbox is enabled.
+    pub outbox_enabled: bool,
+    /// Default for fetch outbox usage when no system setting is stored.
+    pub outbox_fetch_enabled: bool,
+    /// Default for push outbox usage when no system setting is stored.
+    pub outbox_push_enabled: bool,
+
+    /// Base delay for workflow outbox retries, in seconds.
+    pub outbox_retry_base_delay_secs: i64,
+
+    /// Exponential multiplier for workflow outbox retries.
+    pub outbox_retry_multiplier: u64,
+
+    /// Maximum delay for workflow outbox retries, in seconds.
+    pub outbox_retry_max_delay_secs: i64,
+
     /// Database configuration
     pub database: DatabaseConfig,
 
@@ -41,6 +57,25 @@ pub struct WorkerConfig {
     /// Interval in seconds to reconcile scheduled jobs with DB
     pub job_queue_update_interval_secs: u64,
 
+    /// Whether the workflow outbox is enabled.
+    pub outbox_enabled: bool,
+    /// Default for fetch outbox usage when no system setting is stored.
+    pub outbox_fetch_enabled: bool,
+    /// Default for push outbox usage when no system setting is stored.
+    pub outbox_push_enabled: bool,
+
+    /// Stale processing lease for outbox rows, in seconds.
+    pub outbox_stale_lease_secs: i64,
+
+    /// Base delay for workflow outbox retries, in seconds.
+    pub outbox_retry_base_delay_secs: i64,
+
+    /// Exponential multiplier for workflow outbox retries.
+    pub outbox_retry_multiplier: u64,
+
+    /// Maximum delay for workflow outbox retries, in seconds.
+    pub outbox_retry_max_delay_secs: i64,
+
     /// Database configuration
     pub database: DatabaseConfig,
 
@@ -59,6 +94,9 @@ pub struct WorkerConfig {
 /// Maintenance worker configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct MaintenanceConfig {
+    /// Whether the workflow outbox is enabled.
+    pub outbox_enabled: bool,
+
     /// Cron expression for the version purger task (required)
     pub version_purger_cron: String,
 
@@ -73,6 +111,12 @@ pub struct MaintenanceConfig {
 
     /// Number of days to retain system logs before purging
     pub system_logs_retention_days: u64,
+
+    /// Cron expression for outbox cleanup task (required when outbox is enabled)
+    pub outbox_purger_cron: Option<String>,
+
+    /// Retention window for terminal outbox rows, in days
+    pub outbox_retention_days: Option<u32>,
 
     /// Database configuration used by the maintenance worker
     pub database: DatabaseConfig,

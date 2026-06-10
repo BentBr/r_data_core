@@ -1,4 +1,5 @@
 use super::{DataDestination, DestinationContext, HttpMethod};
+use crate::data::adapters::http::uri_http_client;
 use async_trait::async_trait;
 use bytes::Bytes;
 
@@ -33,9 +34,8 @@ impl DataDestination for UriDestination {
                     "URI destination requires 'uri' in config".to_string(),
                 )
             })?;
-
         let method = ctx.method.unwrap_or(HttpMethod::Post);
-        let client = reqwest::Client::new();
+        let client = uri_http_client()?;
 
         let mut request = match method {
             HttpMethod::Get => client.get(uri),
@@ -62,9 +62,22 @@ impl DataDestination for UriDestination {
         let response = request.send().await.map_err(|e| {
             r_data_core_core::error::Error::Api(format!("Failed to send request: {e}"))
         })?;
-        let response = response
-            .error_for_status()
-            .map_err(|e| r_data_core_core::error::Error::Api(format!("HTTP error: {e}")))?;
+        let status = response.status();
+        if status.is_client_error() {
+            if status.as_u16() == 408 || status.as_u16() == 429 {
+                return Err(r_data_core_core::error::Error::Api(format!(
+                    "HTTP transient client error: {status}"
+                )));
+            }
+            return Err(r_data_core_core::error::Error::Validation(format!(
+                "HTTP client error: {status}"
+            )));
+        }
+        if status.is_server_error() {
+            return Err(r_data_core_core::error::Error::Api(format!(
+                "HTTP server error: {status}"
+            )));
+        }
         let _body = response.bytes().await.map_err(|e| {
             r_data_core_core::error::Error::Api(format!("Failed to read response body: {e}"))
         })?;

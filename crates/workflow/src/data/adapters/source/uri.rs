@@ -1,4 +1,5 @@
 use super::{DataSource, SourceContext};
+use crate::data::adapters::http::uri_http_client;
 use async_trait::async_trait;
 use bytes::Bytes;
 use futures::{stream, Stream};
@@ -35,8 +36,7 @@ impl DataSource for UriSource {
                     "URI source requires 'uri' in config".to_string(),
                 )
             })?;
-
-        let client = reqwest::Client::new();
+        let client = uri_http_client()?;
         let mut request = client.get(uri);
 
         // Apply authentication if provided
@@ -74,7 +74,6 @@ impl DataSource for UriSource {
                 "URI must start with http:// or https://".to_string(),
             ));
         }
-
         Ok(())
     }
 }

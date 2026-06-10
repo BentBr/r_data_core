@@ -3,6 +3,7 @@
 pub mod adapter;
 pub mod entity_persistence;
 pub mod item_processing;
+pub mod outbox;
 pub mod output_handling;
 pub mod post_run;
 pub mod service;

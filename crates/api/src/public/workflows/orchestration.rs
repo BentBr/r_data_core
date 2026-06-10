@@ -11,8 +11,6 @@ use r_data_core_core::error::Error;
 use r_data_core_workflow::data::adapters::format::csv::CsvFormatHandler;
 use r_data_core_workflow::data::adapters::format::json::JsonFormatHandler;
 use r_data_core_workflow::data::adapters::format::FormatHandler;
-use r_data_core_workflow::data::job_queue::JobQueue;
-use r_data_core_workflow::data::jobs::FetchAndStageJob;
 use r_data_core_workflow::dsl::{DslProgram, FormatConfig};
 
 use super::helpers::{
@@ -340,29 +338,18 @@ async fn enqueue_run_for_api(
     workflow_uuid: Uuid,
     state: &web::Data<ApiStateWrapper>,
 ) -> Result<Uuid, HttpResponse> {
-    let run_uuid = match state.workflow_service().enqueue_run(workflow_uuid).await {
-        Ok(run_uuid) => run_uuid,
+    let run_uuid = match state
+        .workflow_service()
+        .enqueue_run_for_fetch(workflow_uuid, None)
+        .await
+    {
+        Ok(result) => result,
         Err(e) => {
             log::error!("Failed to enqueue run: {e}");
             return Err(HttpResponse::InternalServerError()
                 .json(json!({"error": "Failed to enqueue workflow run"})));
         }
     };
-    // worker will pick it up via queue
-    if let Err(e) = state
-        .queue()
-        .enqueue_fetch(FetchAndStageJob {
-            workflow_id: workflow_uuid,
-            trigger_id: Some(run_uuid),
-        })
-        .await
-    {
-        log::error!(
-            "Failed to enqueue fetch job for workflow {workflow_uuid} (run: {run_uuid}): {e}"
-        );
-        return Err(HttpResponse::InternalServerError()
-            .json(json!({"error": "Failed to enqueue workflow job"})));
-    }
     Ok(run_uuid)
 }
 

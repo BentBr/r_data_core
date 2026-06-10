@@ -10,6 +10,7 @@ use r_data_core::bootstrap::{
 };
 use r_data_core_api::{ApiResponse, ApiStateWrapper};
 use r_data_core_core::config::load_app_config;
+use r_data_core_persistence::OutboxRepository;
 
 /// 404 handler function
 async fn default_404_handler() -> impl actix_web::Responder {
@@ -40,6 +41,9 @@ async fn main() -> r_data_core_core::error::Result<()> {
             "Failed to create database connection pool: {e}"
         ))
     })?;
+    if config.outbox_enabled {
+        OutboxRepository::ensure_table_exists(&pool).await?;
+    }
 
     info!("Using SQLx migrations (run with 'cargo sqlx migrate run')");
 

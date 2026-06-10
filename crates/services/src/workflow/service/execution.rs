@@ -1,13 +1,40 @@
-use crate::workflow::item_processing::{
-    execute_pipeline_inline, process_single_item, WorkflowItemContext,
-};
+use crate::workflow::item_processing::{WorkflowItemContext, WorkflowPipelineExecutor};
+use crate::workflow::outbox::PushDispatchMode;
 use crate::workflow::transform_execution::{JwtConfig, MailContext};
 use serde_json::Value as JsonValue;
 use uuid::Uuid;
 
 use super::WorkflowService;
 
+#[derive(Clone, Copy)]
+struct OutboxModes {
+    push_enabled: bool,
+}
+
 impl WorkflowService {
+    async fn resolve_outbox_modes(&self) -> r_data_core_core::error::Result<OutboxModes> {
+        if let Some(settings_service) = &self.settings_service {
+            let settings = settings_service.get_outbox_settings().await?;
+            return Ok(OutboxModes {
+                push_enabled: settings.push_enabled,
+            });
+        }
+
+        Ok(OutboxModes {
+            push_enabled: self.use_outbox_for_push,
+        })
+    }
+
+    fn push_dispatch_mode(&self, push_enabled: bool) -> PushDispatchMode<'_> {
+        if push_enabled {
+            if let Some(repository) = self.outbox_repository.as_deref() {
+                return PushDispatchMode::Outbox { repository };
+            }
+        }
+
+        PushDispatchMode::Direct
+    }
+
     /// Process staged raw items for a run using the workflow DSL
     ///
     /// # Errors
@@ -17,6 +44,7 @@ impl WorkflowService {
         workflow_uuid: Uuid,
         run_uuid: Uuid,
     ) -> r_data_core_core::error::Result<(i64, i64)> {
+        let outbox_modes = self.resolve_outbox_modes().await?;
         let wf = self.repo.get_by_uuid(workflow_uuid).await?.ok_or_else(|| {
             r_data_core_core::error::Error::NotFound("Workflow not found".to_string())
         })?;
@@ -59,15 +87,17 @@ impl WorkflowService {
             };
             let ctx = WorkflowItemContext {
                 dynamic_entity_service: self.dynamic_entity_service.as_deref(),
+                push_dispatch: self.push_dispatch_mode(outbox_modes.push_enabled),
                 repo: &self.repo,
                 jwt: &jwt,
                 mail: &mail,
                 workflow_name: Some(&wf.name),
                 versioning_disabled: wf.versioning_disabled,
             };
+            let executor =
+                WorkflowPipelineExecutor::new(&program, workflow_uuid, run_uuid, &ctx, false);
             for (item_uuid, payload) in items {
-                let success =
-                    process_single_item(&program, &payload, item_uuid, run_uuid, &ctx).await?;
+                let success = executor.process_item(&payload, item_uuid).await?;
                 if success {
                     processed += 1;
                 } else {
@@ -117,6 +147,7 @@ impl WorkflowService {
         workflow_uuid: Uuid,
         payload: &JsonValue,
     ) -> r_data_core_core::error::Result<JsonValue> {
+        let outbox_modes = self.resolve_outbox_modes().await?;
         let wf = self.repo.get_by_uuid(workflow_uuid).await?.ok_or_else(|| {
             r_data_core_core::error::Error::NotFound("Workflow not found".to_string())
         })?;
@@ -148,14 +179,16 @@ impl WorkflowService {
         };
         let ctx = WorkflowItemContext {
             dynamic_entity_service: self.dynamic_entity_service.as_deref(),
+            push_dispatch: self.push_dispatch_mode(outbox_modes.push_enabled),
             repo: &self.repo,
             jwt: &jwt,
             mail: &mail,
             workflow_name: Some(&wf.name),
             versioning_disabled: wf.versioning_disabled,
         };
+        let executor = WorkflowPipelineExecutor::new(&program, workflow_uuid, run_uuid, &ctx, true);
 
-        match execute_pipeline_inline(&program, payload, run_uuid, &ctx).await {
+        match executor.execute_inline(payload).await {
             Ok(outputs) => {
                 let _ = self.repo.mark_run_success(run_uuid, 1, 0).await;
                 // Return the first Format output value

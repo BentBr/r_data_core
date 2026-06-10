@@ -2,10 +2,11 @@ mod execution;
 mod staging;
 
 use crate::dynamic_entity::DynamicEntityService;
-use crate::SystemLogService;
+use crate::workflow::outbox::{EnqueueWorkflowFetchUseCase, FetchDispatchMode, OutboxRetryPolicy};
+use crate::{SettingsService, SystemLogService};
 use cron::Schedule;
 use r_data_core_core::system_log::SystemLogResourceType;
-use r_data_core_persistence::WorkflowRepositoryTrait;
+use r_data_core_persistence::{OutboxRepositoryTrait, WorkflowRepositoryTrait};
 use r_data_core_workflow::data::requests::{CreateWorkflowRequest, UpdateWorkflowRequest};
 use r_data_core_workflow::data::Workflow;
 use std::str::FromStr;
@@ -15,6 +16,11 @@ use uuid::Uuid;
 pub struct WorkflowService {
     pub(super) repo: Arc<dyn WorkflowRepositoryTrait>,
     pub(super) dynamic_entity_service: Option<Arc<DynamicEntityService>>,
+    pub(super) outbox_repository: Option<Arc<dyn OutboxRepositoryTrait>>,
+    pub(super) outbox_retry_policy: Option<OutboxRetryPolicy>,
+    pub(super) settings_service: Option<Arc<SettingsService>>,
+    pub(super) use_outbox_for_fetch: bool,
+    pub(super) use_outbox_for_push: bool,
     /// JWT signing secret (base, before entity suffix) for authenticate transforms
     pub jwt_secret: Option<String>,
     /// Default JWT expiration in seconds (from `JWT_EXPIRATION` env)
@@ -35,6 +41,11 @@ impl WorkflowService {
         Self {
             repo,
             dynamic_entity_service: None,
+            outbox_repository: None,
+            outbox_retry_policy: None,
+            settings_service: None,
+            use_outbox_for_fetch: false,
+            use_outbox_for_push: false,
             jwt_secret: None,
             jwt_expiration: DEFAULT_JWT_EXPIRATION,
             mail_service: None,
@@ -50,6 +61,11 @@ impl WorkflowService {
         Self {
             repo,
             dynamic_entity_service: Some(dynamic_entity_service),
+            outbox_repository: None,
+            outbox_retry_policy: None,
+            settings_service: None,
+            use_outbox_for_fetch: false,
+            use_outbox_for_push: false,
             jwt_secret: None,
             jwt_expiration: DEFAULT_JWT_EXPIRATION,
             mail_service: None,
@@ -88,6 +104,66 @@ impl WorkflowService {
     pub fn with_system_log(mut self, log: Arc<SystemLogService>) -> Self {
         self.system_log = Some(log);
         self
+    }
+
+    /// Attach an outbox repository for deferred workflow deliveries.
+    #[must_use]
+    pub fn with_outbox_repository(
+        mut self,
+        outbox_repository: Arc<dyn OutboxRepositoryTrait>,
+    ) -> Self {
+        self.outbox_repository = Some(outbox_repository);
+        self
+    }
+
+    /// Attach a retry policy for deferred workflow deliveries.
+    #[must_use]
+    pub const fn with_outbox_retry_policy(
+        mut self,
+        outbox_retry_policy: OutboxRetryPolicy,
+    ) -> Self {
+        self.outbox_retry_policy = Some(outbox_retry_policy);
+        self
+    }
+
+    /// Attach the settings service used for runtime outbox mode resolution.
+    #[must_use]
+    pub fn with_settings_service(mut self, settings_service: Arc<SettingsService>) -> Self {
+        self.settings_service = Some(settings_service);
+        self
+    }
+
+    /// Enable or disable outbox routing for workflow fetch dispatch.
+    #[must_use]
+    pub const fn with_fetch_outbox(mut self, enabled: bool) -> Self {
+        self.use_outbox_for_fetch = enabled;
+        self
+    }
+
+    /// Enable or disable outbox routing for workflow push dispatch.
+    #[must_use]
+    pub const fn with_push_outbox(mut self, enabled: bool) -> Self {
+        self.use_outbox_for_push = enabled;
+        self
+    }
+
+    /// Return the configured workflow outbox repository, if enabled.
+    #[must_use]
+    pub fn outbox_repository(&self) -> Option<&Arc<dyn OutboxRepositoryTrait>> {
+        self.outbox_repository.as_ref()
+    }
+
+    fn fetch_dispatch_mode(&self, fetch_enabled: bool) -> FetchDispatchMode<'_> {
+        if fetch_enabled {
+            if let Some(repository) = self.outbox_repository.as_deref() {
+                return FetchDispatchMode::Outbox {
+                    repository,
+                    retry_policy: self.outbox_retry_policy.as_ref(),
+                };
+            }
+        }
+
+        FetchDispatchMode::Direct
     }
 
     /// List all workflows
@@ -382,6 +458,94 @@ impl WorkflowService {
             )
             .await;
         Ok(run_uuid)
+    }
+
+    /// Enqueue a workflow run and persist the matching workflow-fetch outbox entry.
+    ///
+    /// # Errors
+    /// Returns an error if the database operation fails
+    pub async fn enqueue_run_with_fetch_outbox(
+        &self,
+        workflow_uuid: Uuid,
+    ) -> r_data_core_core::error::Result<(Uuid, Uuid)> {
+        let trigger_id = Uuid::now_v7();
+        let (run_uuid, outbox_uuid) = self
+            .repo
+            .insert_run_queued_with_fetch_outbox(workflow_uuid, trigger_id)
+            .await?;
+        let _ = self
+            .repo
+            .insert_run_log(
+                run_uuid,
+                "info",
+                "Run enqueued",
+                Some(serde_json::json!({
+                    "trigger": trigger_id.to_string(),
+                    "outbox_uuid": outbox_uuid.to_string(),
+                })),
+            )
+            .await;
+        Ok((run_uuid, outbox_uuid))
+    }
+
+    /// Enqueue a workflow run and deliver the matching fetch job.
+    ///
+    /// When the outbox is enabled, the run is created together with an outbox
+    /// record and the worker is responsible for dispatching it.
+    /// When the outbox is disabled, the fetch job is written directly to Redis.
+    ///
+    /// # Errors
+    /// Returns an error if the database or queue operation fails.
+    pub async fn enqueue_run_for_fetch(
+        &self,
+        workflow_uuid: Uuid,
+        trigger_id: Option<Uuid>,
+    ) -> r_data_core_core::error::Result<Uuid> {
+        let use_outbox_for_fetch = if let Some(settings_service) = &self.settings_service {
+            settings_service.get_outbox_settings().await?.fetch_enabled
+        } else {
+            self.use_outbox_for_fetch
+        };
+        let Some(queue) = self.queue.as_deref() else {
+            return Err(r_data_core_core::error::Error::Config(
+                "WorkflowService queue is not configured".to_string(),
+            ));
+        };
+        EnqueueWorkflowFetchUseCase::new(
+            &self.repo,
+            queue,
+            self.fetch_dispatch_mode(use_outbox_for_fetch),
+        )
+        .enqueue_run_for_fetch(workflow_uuid, trigger_id)
+        .await
+    }
+
+    /// Deliver the fetch job for an already created run.
+    ///
+    /// # Errors
+    /// Returns an error if the queue or outbox write fails.
+    pub async fn dispatch_fetch_for_existing_run(
+        &self,
+        workflow_uuid: Uuid,
+        run_uuid: Uuid,
+    ) -> r_data_core_core::error::Result<()> {
+        let use_outbox_for_fetch = if let Some(settings_service) = &self.settings_service {
+            settings_service.get_outbox_settings().await?.fetch_enabled
+        } else {
+            self.use_outbox_for_fetch
+        };
+        let Some(queue) = self.queue.as_deref() else {
+            return Err(r_data_core_core::error::Error::Config(
+                "WorkflowService queue is not configured".to_string(),
+            ));
+        };
+        EnqueueWorkflowFetchUseCase::new(
+            &self.repo,
+            queue,
+            self.fetch_dispatch_mode(use_outbox_for_fetch),
+        )
+        .dispatch_fetch_for_existing_run(workflow_uuid, run_uuid)
+        .await
     }
 
     /// Mark a run as running

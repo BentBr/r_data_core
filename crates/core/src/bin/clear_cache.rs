@@ -37,8 +37,11 @@ use r_data_core_core::cache::redis::RedisCache;
 /// Main entry point for the cache clearing utility
 #[tokio::main]
 async fn main() -> ExitCode {
-    // Load .env file if present
-    dotenv().ok();
+    // Load .env only when the caller did not already provide REDIS_URL and
+    // when tests did not explicitly request .env suppression.
+    if env::var_os("DOTENV_IGNORE").is_none() && env::var_os("REDIS_URL").is_none() {
+        dotenv().ok();
+    }
 
     // Parse arguments
     let args: Vec<String> = env::args().collect();
@@ -63,6 +66,16 @@ async fn main() -> ExitCode {
     if clear_all && prefix.is_some() {
         eprintln!("Error: Cannot specify both --all and --prefix");
         return ExitCode::FAILURE;
+    }
+
+    if dry_run {
+        if clear_all {
+            return execute_clear_all_dry_run();
+        }
+
+        if let Some(prefix) = prefix {
+            return execute_clear_by_prefix_dry_run(&prefix);
+        }
     }
 
     // Get Redis URL
@@ -119,6 +132,12 @@ async fn execute_clear_all(cache: &RedisCache, dry_run: bool) -> ExitCode {
     }
 }
 
+/// Execute clear all cache operation in dry-run mode.
+fn execute_clear_all_dry_run() -> ExitCode {
+    println!("[DRY-RUN] Would clear entire cache (FLUSHDB)");
+    ExitCode::SUCCESS
+}
+
 /// Execute clear by prefix operation
 async fn execute_clear_by_prefix(cache: &RedisCache, prefix: &str, dry_run: bool) -> ExitCode {
     println!("Scanning for keys matching '{prefix}*'...");
@@ -151,6 +170,13 @@ async fn execute_clear_by_prefix(cache: &RedisCache, prefix: &str, dry_run: bool
             }
         }
     }
+}
+
+/// Execute clear by prefix operation in dry-run mode.
+fn execute_clear_by_prefix_dry_run(prefix: &str) -> ExitCode {
+    println!("Scanning for keys matching '{prefix}*'...");
+    println!("[DRY-RUN] Would delete keys matching '{prefix}'");
+    ExitCode::SUCCESS
 }
 
 /// Get the value of a command-line argument

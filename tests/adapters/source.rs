@@ -25,6 +25,10 @@ async fn test_uri_source_validate() {
     // Missing URI
     let config = json!({});
     assert!(source.validate(&config).is_err());
+
+    // Local targets are accepted at this layer; deployment policy owns network egress.
+    let config = json!({"uri": "http://127.0.0.1/data"});
+    assert!(source.validate(&config).is_ok());
 }
 
 #[tokio::test]

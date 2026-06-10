@@ -60,7 +60,7 @@ export default [
                 ecmaVersion: 'latest',
                 sourceType: 'module',
                 extraFileExtensions: ['.vue'],
-                project: true,
+                projectService: true,
                 tsconfigRootDir: import.meta.dirname,
             },
             globals: {
@@ -110,7 +110,7 @@ export default [
             parserOptions: {
                 ecmaVersion: 'latest',
                 sourceType: 'module',
-                project: true,
+                projectService: true,
                 tsconfigRootDir: import.meta.dirname,
             },
         },
@@ -134,7 +134,7 @@ export default [
             parserOptions: {
                 ecmaVersion: 'latest',
                 sourceType: 'module',
-                project: true,
+                projectService: true,
                 tsconfigRootDir: import.meta.dirname,
             },
         },
@@ -156,7 +156,7 @@ export default [
             parserOptions: {
                 ecmaVersion: 'latest',
                 sourceType: 'module',
-                project: true,
+                projectService: true,
                 tsconfigRootDir: import.meta.dirname,
             },
         },

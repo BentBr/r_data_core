@@ -13,19 +13,21 @@ use std::sync::Arc;
 use r_data_core_api::ApiState;
 use r_data_core_core::cache::CacheManager;
 use r_data_core_core::config::AppConfig;
+use r_data_core_core::settings::OutboxSettings;
 use r_data_core_persistence::{
     AdminUserRepository, ApiKeyRepository, DashboardStatsRepository, DynamicEntityRepository,
-    EmailTemplateRepository, EntityDefinitionRepository, PasswordResetRepository,
+    EmailTemplateRepository, EntityDefinitionRepository, OutboxRepository, PasswordResetRepository,
     SystemLogRepository, WorkflowRepository,
 };
 use r_data_core_services::adapters::{
     AdminUserRepositoryAdapter, ApiKeyRepositoryAdapter, DynamicEntityRepositoryAdapter,
     EntityDefinitionRepositoryAdapter,
 };
+use r_data_core_services::workflow::outbox::OutboxRetryPolicy;
 use r_data_core_services::{
     AdminUserService, ApiKeyService, DashboardStatsService, DynamicEntityService,
     EntityDefinitionService, LicenseService, MailService, PasswordResetService, RoleService,
-    SystemLogService, WorkflowRepositoryAdapter, WorkflowService,
+    SettingsService, SystemLogService, WorkflowRepositoryAdapter, WorkflowService,
 };
 use r_data_core_workflow::data::job_queue::apalis_redis::ApalisRedisQueue;
 
@@ -164,27 +166,16 @@ pub async fn build_api_state(
         Arc::new(entity_definition_service.clone()),
     );
 
-    let workflow_repo = WorkflowRepository::new(pool.clone());
-    let workflow_adapter = WorkflowRepositoryAdapter::new(workflow_repo);
-    let workflow_mail_service =
-        config
-            .mail
-            .workflow
-            .as_ref()
-            .and_then(|smtp| match MailService::new(smtp) {
-                Ok(svc) => Some(Arc::new(svc)),
-                Err(e) => {
-                    log::warn!("Failed to initialize workflow mail service: {e}");
-                    None
-                }
-            });
-    let workflow_service = WorkflowService::new(Arc::new(workflow_adapter))
-        .with_jwt_config(
-            Some(config.api.jwt_secret.clone()),
-            config.api.jwt_expiration,
-        )
-        .with_mail_service(workflow_mail_service)
-        .with_system_log(system_log_service.clone());
+    // Initialise queue client
+    let queue_client = create_queue_client(config).await?;
+
+    let workflow_service = build_workflow_service(
+        config,
+        &pool,
+        cache_manager.clone(),
+        queue_client.clone(),
+        system_log_service.clone(),
+    );
 
     let role_service = RoleService::new(
         pool.clone(),
@@ -199,39 +190,8 @@ pub async fn build_api_state(
     // Initialise licence service
     let license_service = LicenseService::new(config.license.clone(), cache_manager.clone());
 
-    // Initialise queue client
-    let queue_client = create_queue_client(config).await?;
-
     // Initialise password reset service if system mail is configured
-    let password_reset_service = config.mail.system.as_ref().map_or_else(
-        || {
-            log::debug!("System mail not configured; password reset disabled");
-            None
-        },
-        |smtp_config| match MailService::new(smtp_config) {
-            Ok(mail_service) => {
-                let pool_arc2 = Arc::new(pool.clone());
-                let password_reset_repo = PasswordResetRepository::new(pool.clone());
-                let user_repo_for_reset =
-                    r_data_core_persistence::AdminUserRepository::new(pool_arc2);
-                let template_repo = EmailTemplateRepository::new(pool.clone());
-                let frontend_base_url = config.frontend_base_url.clone().unwrap_or_default();
-                Some(PasswordResetService::new(
-                    Arc::new(password_reset_repo),
-                    Arc::new(user_repo_for_reset),
-                    Arc::new(template_repo),
-                    queue_client.clone(),
-                    Arc::new(mail_service),
-                    config.password_reset_throttle_seconds,
-                    frontend_base_url,
-                ))
-            }
-            Err(e) => {
-                log::warn!("Failed to initialize mail service for password reset: {e}");
-                None
-            }
-        },
-    );
+    let password_reset_service = build_password_reset_service(config, &pool, queue_client.clone());
 
     Ok(ApiState {
         db_pool: pool,
@@ -249,4 +209,93 @@ pub async fn build_api_state(
         password_reset_service,
         system_log_service: Some(system_log_service),
     })
+}
+
+fn build_workflow_service(
+    config: &AppConfig,
+    pool: &PgPool,
+    cache_manager: Arc<CacheManager>,
+    queue_client: Arc<ApalisRedisQueue>,
+    system_log_service: Arc<SystemLogService>,
+) -> WorkflowService {
+    let workflow_repo = WorkflowRepository::new(pool.clone());
+    let workflow_adapter = WorkflowRepositoryAdapter::new(workflow_repo);
+    let workflow_mail_service =
+        config
+            .mail
+            .workflow
+            .as_ref()
+            .and_then(|smtp| match MailService::new(smtp) {
+                Ok(svc) => Some(Arc::new(svc)),
+                Err(e) => {
+                    log::warn!("Failed to initialize workflow mail service: {e}");
+                    None
+                }
+            });
+
+    let settings_service = Arc::new(
+        SettingsService::new(pool.clone(), cache_manager).with_outbox_defaults(OutboxSettings {
+            fetch_enabled: config.outbox_fetch_enabled,
+            push_enabled: config.outbox_push_enabled,
+        }),
+    );
+
+    let mut workflow_service = WorkflowService::new(Arc::new(workflow_adapter))
+        .with_jwt_config(
+            Some(config.api.jwt_secret.clone()),
+            config.api.jwt_expiration,
+        )
+        .with_settings_service(settings_service)
+        .with_queue(Some(queue_client))
+        .with_mail_service(workflow_mail_service)
+        .with_system_log(system_log_service);
+
+    if config.outbox_enabled {
+        let outbox_repo = OutboxRepository::new(pool.clone());
+        workflow_service = workflow_service
+            .with_outbox_repository(Arc::new(outbox_repo))
+            .with_outbox_retry_policy(OutboxRetryPolicy::new(
+                config.outbox_retry_base_delay_secs,
+                config.outbox_retry_multiplier,
+                config.outbox_retry_max_delay_secs,
+            ));
+    }
+
+    workflow_service
+}
+
+fn build_password_reset_service(
+    config: &AppConfig,
+    pool: &PgPool,
+    queue_client: Arc<ApalisRedisQueue>,
+) -> Option<PasswordResetService> {
+    config.mail.system.as_ref().map_or_else(
+        || {
+            log::debug!("System mail not configured; password reset disabled");
+            None
+        },
+        |smtp_config| match MailService::new(smtp_config) {
+            Ok(mail_service) => {
+                let pool_arc = Arc::new(pool.clone());
+                let password_reset_repo = PasswordResetRepository::new(pool.clone());
+                let user_repo_for_reset =
+                    r_data_core_persistence::AdminUserRepository::new(pool_arc);
+                let template_repo = EmailTemplateRepository::new(pool.clone());
+                let frontend_base_url = config.frontend_base_url.clone().unwrap_or_default();
+                Some(PasswordResetService::new(
+                    Arc::new(password_reset_repo),
+                    Arc::new(user_repo_for_reset),
+                    Arc::new(template_repo),
+                    queue_client,
+                    Arc::new(mail_service),
+                    config.password_reset_throttle_seconds,
+                    frontend_base_url,
+                ))
+            }
+            Err(e) => {
+                log::warn!("Failed to initialize mail service for password reset: {e}");
+                None
+            }
+        },
+    )
 }

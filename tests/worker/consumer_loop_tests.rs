@@ -13,7 +13,40 @@ use r_data_core_workflow::data::jobs::FetchAndStageJob;
 use r_data_core_workflow::data::WorkflowKind;
 use sqlx;
 use std::sync::Arc;
+use std::time::Duration;
 use uuid::Uuid;
+
+async fn wait_until_runs_leave_queued_state(
+    repo: &WorkflowRepository,
+    run_uuids: &[Uuid],
+    timeout: Duration,
+) {
+    let deadline = tokio::time::Instant::now() + timeout;
+
+    loop {
+        let mut all_finished = true;
+        for run_uuid in run_uuids {
+            let status = repo
+                .get_run_status(*run_uuid)
+                .await
+                .expect("get run status");
+            if status.as_deref() == Some("queued") {
+                all_finished = false;
+                break;
+            }
+        }
+
+        if all_finished {
+            return;
+        }
+
+        if tokio::time::Instant::now() >= deadline {
+            return;
+        }
+
+        tokio::time::sleep(Duration::from_millis(200)).await;
+    }
+}
 
 #[tokio::test]
 async fn consumer_loop_processes_job_with_trigger_id() {
@@ -105,14 +138,9 @@ async fn consumer_loop_processes_job_with_trigger_id() {
         fetch_key: fetch_key.clone(),
     });
 
-    // Wait a bit for processing
-    tokio::time::sleep(std::time::Duration::from_millis(500)).await;
-
-    // Check run status
     let repo = WorkflowRepository::new(pool.pool.clone());
+    wait_until_runs_leave_queued_state(&repo, &[run_uuid], Duration::from_secs(10)).await;
     let status = repo.get_run_status(run_uuid).await.expect("get run status");
-
-    // Run should be processed (success or failed, but not queued)
     assert!(
         status.as_deref() != Some("queued"),
         "Run should not be queued after processing"
@@ -315,11 +343,8 @@ async fn consumer_loop_processes_multiple_jobs_sequentially() {
         fetch_key: fetch_key.clone(),
     });
 
-    // Wait for all jobs to be processed
-    tokio::time::sleep(std::time::Duration::from_secs(2)).await;
-
-    // Verify all runs were processed
     let repo = WorkflowRepository::new(pool.pool.clone());
+    wait_until_runs_leave_queued_state(&repo, &run_uuids, Duration::from_secs(10)).await;
     for run_uuid in &run_uuids {
         let status = repo
             .get_run_status(*run_uuid)

@@ -1,6 +1,7 @@
 #![deny(clippy::all, clippy::pedantic, clippy::nursery, warnings)]
 
 pub mod license;
+pub mod outbox_purger;
 pub mod password_reset_cleanup;
 pub mod refresh_token;
 pub mod statistics;
@@ -10,6 +11,7 @@ pub mod version_purger;
 pub mod workflow_run_logs_purger;
 
 pub use license::LicenseVerificationRegistrar;
+pub use outbox_purger::OutboxPurgerRegistrar;
 pub use password_reset_cleanup::PasswordResetCleanupRegistrar;
 pub use refresh_token::RefreshTokenCleanupRegistrar;
 pub use statistics::StatisticsCollectionRegistrar;

@@ -11,8 +11,8 @@ pub use consumer_loop::{
 };
 pub use database::{
     cleanup_orphaned_test_schemas, clear_entity_definitions, clear_refresh_tokens, clear_test_db,
-    fast_clear_test_db, random_string, setup_test_db, teardown_test_schema, unique_entity_type,
-    TestDatabase,
+    fast_clear_test_db, random_string, setup_test_db, teardown_test_schema, try_setup_test_db,
+    unique_entity_type, TestDatabase,
 };
 pub use entities::{
     create_entity_definition_from_json, create_test_admin_user, create_test_api_key,

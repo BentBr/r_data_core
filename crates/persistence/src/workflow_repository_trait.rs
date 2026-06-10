@@ -135,6 +135,20 @@ pub trait WorkflowRepositoryTrait: Send + Sync {
         trigger_id: Uuid,
     ) -> r_data_core_core::error::Result<Uuid>;
 
+    /// Insert a new workflow run in queued status and persist its fetch outbox entry.
+    ///
+    /// # Arguments
+    /// * `workflow_uuid` - Workflow UUID
+    /// * `trigger_id` - Trigger UUID
+    ///
+    /// # Errors
+    /// Returns an error if insertion fails
+    async fn insert_run_queued_with_fetch_outbox(
+        &self,
+        workflow_uuid: Uuid,
+        trigger_id: Uuid,
+    ) -> r_data_core_core::error::Result<(Uuid, Uuid)>;
+
     /// List workflow runs with pagination
     ///
     /// # Arguments

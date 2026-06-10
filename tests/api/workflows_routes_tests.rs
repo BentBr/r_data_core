@@ -55,9 +55,12 @@ async fn setup_app_and_token() -> anyhow::Result<(
         r_data_core_persistence::EntityDefinitionRepository::new(pool.pool.clone()),
     ));
 
+    let queue = test_queue_client_async().await;
+
     let wf_repo = WorkflowRepository::new(pool.pool.clone());
     let wf_adapter = WorkflowRepositoryAdapter::new(wf_repo);
-    let workflow_service = r_data_core_services::WorkflowService::new(Arc::new(wf_adapter));
+    let workflow_service = r_data_core_services::WorkflowService::new(Arc::new(wf_adapter))
+        .with_queue(Some(queue.clone()));
 
     let dashboard_stats_repository =
         r_data_core_persistence::DashboardStatsRepository::new(pool.pool.clone());
@@ -89,7 +92,7 @@ async fn setup_app_and_token() -> anyhow::Result<(
         dynamic_entity_service: None,
         workflow_service,
         dashboard_stats_service,
-        queue: test_queue_client_async().await,
+        queue,
         license_service,
         password_reset_service: None,
         system_log_service: None,

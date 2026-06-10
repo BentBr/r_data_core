@@ -32,9 +32,9 @@ sha2 = "0.10"
 rand = "0.9.0"
 base64 = "0.22"
 chrono = "0.4"
+time = { version = "0.3", features = ["serde", "formatting", "parsing", "macros"] }
 r_data_core_core = { path = "../core" }
 r_data_core_persistence = { path = "../persistence" }
 r_data_core_services = { path = "../services" }
 r_data_core_workflow = { path = "../workflow" }
-
 

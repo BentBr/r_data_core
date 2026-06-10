@@ -192,7 +192,7 @@ async fn create_entity_definition(
         Err(e) => {
             error!(
                 "Failed to parse UUID from claims.0.sub: {}, error: {}",
-                &auth.0.sub, e
+                auth.0.sub, e
             );
             return HttpResponse::InternalServerError().json(json!({
                 "error": "No authentication claims found"
@@ -316,7 +316,7 @@ async fn update_entity_definition(
         Err(e) => {
             log::error!(
                 "Failed to parse UUID from claims.0.sub: {}, error: {}",
-                &auth.0.sub,
+                auth.0.sub,
                 e
             );
             return HttpResponse::InternalServerError().json(json!({
