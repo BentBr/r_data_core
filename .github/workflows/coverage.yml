@@ -5,6 +5,9 @@ on:
         branches: [ main, develop ]
     push:
         branches: [ main ]
+    # Called by pr-management.yml to gate auto-created (bot-opened) PRs, which
+    # don't fire pull_request. The caller posts the `coverage` commit status.
+    workflow_call:
 
 # contents: write is needed only by the gh-pages badge push (push-to-main).
 permissions:
