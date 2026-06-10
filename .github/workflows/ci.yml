@@ -6,6 +6,21 @@ on:
         branches: [ main, develop ]
     # Allow other workflows to call this one (for release-please PRs)
     workflow_call:
+    # Dispatched by pr-management.yml onto an auto-created PR branch. That PR is
+    # opened via GITHUB_TOKEN, which (by GitHub's anti-recursion rule) does NOT
+    # trigger `pull_request` CI. API `workflow_dispatch` is the documented
+    # exception, so CI runs against the PR contents. Caveat: dispatch check runs
+    # do NOT surface in the PR merge box (GitHub only associates
+    # pull_request/push suites with a PR), so the ci-gate job posts an explicit
+    # `ci-gate` commit status on github.sha (= the PR head), which the merge box
+    # honors. See the ci-gate job.
+    workflow_dispatch:
+
+# statuses: write lets the changes + ci-gate jobs post the `ci-gate` commit
+# status on workflow_dispatch runs (auto-PR gating).
+permissions:
+    contents: read
+    statuses: write
 
 jobs:
     # Detect which parts of the codebase changed
@@ -39,13 +54,26 @@ jobs:
                         frontend:
                           - 'fe/**'
 
-            # For workflow_call (release-please PRs), run all checks
-            -   name: Default to all checks (workflow_call)
+            # For workflow_call / workflow_dispatch, run all checks (paths-filter
+            # can't diff against a base ref outside of pull_request)
+            -   name: Default to all checks (non-PR)
                 if: ${{ github.event_name != 'pull_request' }}
                 id: default
                 run: |
                     echo "backend=true" >> $GITHUB_OUTPUT
                     echo "frontend=true" >> $GITHUB_OUTPUT
+
+            # Dispatched runs (auto-PR gating) don't surface in the PR merge box,
+            # so flag ci-gate pending immediately; the ci-gate job resolves it.
+            -   name: Set ci-gate status to pending (workflow_dispatch)
+                if: ${{ github.event_name == 'workflow_dispatch' }}
+                env:
+                    GH_TOKEN: ${{ github.token }}
+                run: |
+                    gh api "repos/$GITHUB_REPOSITORY/statuses/$GITHUB_SHA" \
+                        -f state=pending -f context=ci-gate \
+                        -f description="CI is running" \
+                        -f target_url="$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
 
     # ============================================================================
     # Backend Jobs - Only run when backend files change
@@ -661,45 +689,80 @@ jobs:
         if: ${{ always() }}
         runs-on: ubuntu-latest
         steps:
-            -   name: Check backend results
-                if: ${{ needs.changes.outputs.backend == 'true' }}
+            -   name: Enforce all required jobs
+                id: enforce
+                env:
+                    BACKEND_NEEDED: ${{ needs.changes.outputs.backend }}
+                    FRONTEND_NEEDED: ${{ needs.changes.outputs.frontend }}
+                    BACKEND_CLIPPY: ${{ needs.backend-clippy.result }}
+                    BACKEND_FORMAT: ${{ needs.backend-format.result }}
+                    BACKEND_AUDIT: ${{ needs.backend-audit.result }}
+                    BACKEND_TESTS: ${{ needs.backend-tests.result }}
+                    BACKEND_BUILD: ${{ needs.backend-build.result }}
+                    BACKEND_TS_BINDINGS: ${{ needs.backend-ts-bindings.result }}
+                    FRONTEND_LINT: ${{ needs.frontend-lint.result }}
+                    FRONTEND_TESTS: ${{ needs.frontend-tests.result }}
+                    FRONTEND_AUDIT: ${{ needs.frontend-audit.result }}
+                    FRONTEND_BUILD: ${{ needs.frontend-build.result }}
+                    FRONTEND_E2E: ${{ needs.frontend-e2e.result }}
                 run: |
-                    if [[ "${{ needs.backend-clippy.result }}" != "success" ]] || \
-                       [[ "${{ needs.backend-format.result }}" != "success" ]] || \
-                       [[ "${{ needs.backend-audit.result }}" != "success" ]] || \
-                       [[ "${{ needs.backend-tests.result }}" != "success" ]] || \
-                       [[ "${{ needs.backend-build.result }}" != "success" ]] || \
-                       [[ "${{ needs.backend-ts-bindings.result }}" != "success" ]]; then
-                      echo "Backend checks failed"
-                      exit 1
-                    fi
-                    echo "All backend checks passed"
+                    fail=0
+                    require_success() {
+                      local name="$1"; local result="$2"
+                      if [[ "$result" != "success" ]]; then
+                        echo "::error::Required job '$name' did not succeed (result=$result)"
+                        fail=1
+                      else
+                        echo "✓ $name"
+                      fi
+                    }
 
-            -   name: Check frontend results
-                if: ${{ needs.changes.outputs.frontend == 'true' }}
-                run: |
-                    if [[ "${{ needs.frontend-lint.result }}" != "success" ]] || \
-                       [[ "${{ needs.frontend-tests.result }}" != "success" ]] || \
-                       [[ "${{ needs.frontend-audit.result }}" != "success" ]] || \
-                       [[ "${{ needs.frontend-build.result }}" != "success" ]]; then
-                      echo "Frontend checks failed"
-                      exit 1
+                    if [[ "$BACKEND_NEEDED" == "true" ]]; then
+                      require_success backend-clippy      "$BACKEND_CLIPPY"
+                      require_success backend-format      "$BACKEND_FORMAT"
+                      require_success backend-audit       "$BACKEND_AUDIT"
+                      require_success backend-tests       "$BACKEND_TESTS"
+                      require_success backend-build       "$BACKEND_BUILD"
+                      require_success backend-ts-bindings "$BACKEND_TS_BINDINGS"
                     fi
-                    echo "All frontend checks passed"
 
-            -   name: Check E2E results
-                if: ${{ needs.changes.outputs.frontend == 'true' || needs.changes.outputs.backend == 'true' }}
-                run: |
-                    if [[ "${{ needs.frontend-e2e.result }}" != "success" ]]; then
-                      echo "E2E checks failed"
-                      exit 1
+                    if [[ "$FRONTEND_NEEDED" == "true" ]]; then
+                      require_success frontend-lint  "$FRONTEND_LINT"
+                      require_success frontend-tests "$FRONTEND_TESTS"
+                      require_success frontend-audit "$FRONTEND_AUDIT"
+                      require_success frontend-build "$FRONTEND_BUILD"
                     fi
-                    echo "E2E checks passed"
 
-            -   name: Verify at least one component was checked
-                run: |
-                    if [[ "${{ needs.changes.outputs.backend }}" != "true" ]] && \
-                       [[ "${{ needs.changes.outputs.frontend }}" != "true" ]]; then
+                    if [[ "$BACKEND_NEEDED" == "true" || "$FRONTEND_NEEDED" == "true" ]]; then
+                      require_success frontend-e2e "$FRONTEND_E2E"
+                    else
                       echo "No backend or frontend changes detected - nothing to check"
                     fi
+
+                    if [[ $fail -eq 1 ]]; then
+                      echo "::error::CI gate failed"
+                      exit 1
+                    fi
                     echo "CI gate passed"
+
+            # Dispatched runs (auto-PR gating): this run's check runs are NOT
+            # linked to the PR merge box, so report the required `ci-gate` check
+            # explicitly via a commit status. github.sha IS the dispatched PR head.
+            -   name: Report ci-gate commit status (workflow_dispatch)
+                if: ${{ always() && github.event_name == 'workflow_dispatch' }}
+                env:
+                    GH_TOKEN: ${{ github.token }}
+                    ENFORCE_OUTCOME: ${{ steps.enforce.outcome }}
+                run: |
+                    if [[ "$ENFORCE_OUTCOME" == "success" ]]; then
+                      state=success
+                      description="All CI checks passed"
+                    else
+                      state=failure
+                      description="CI checks failed"
+                    fi
+                    gh api "repos/$GITHUB_REPOSITORY/statuses/$GITHUB_SHA" \
+                        -f state="$state" -f context=ci-gate \
+                        -f description="$description" \
+                        -f target_url="$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
+                    echo "set ci-gate=$state on $GITHUB_SHA"
