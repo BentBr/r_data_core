@@ -43,5 +43,17 @@ no_docker_compose = true
         "alias" = "generate-ts-check"
         "execution" = "TS_RS_EXPORT_DIR=$(pwd)/fe/src/types/generated cargo test --workspace export_bindings 2>&1 && cargo run -p r_data_core_core --bin export_validation_constants > ./fe/src/types/generated/validation.ts && git diff --exit-code fe/src/types/generated/"
         "description" = "Generates TS bindings and fails if any generated files differ from committed versions"
+    [commands.coverage]
+        "alias" = "coverage"
+        "execution" = "./scripts/coverage.sh all && docker compose exec -T node npm run coverage"
+        "description" = "Runs backend (cargo-llvm-cov) and frontend (vitest) coverage with thresholds"
+    [commands.coverage-be]
+        "alias" = "coverage-be"
+        "execution" = "./scripts/coverage.sh all"
+        "description" = "Runs backend coverage via scripts/coverage.sh (profile + lcov + json + summary + check)"
+    [commands.coverage-fe]
+        "alias" = "coverage-fe"
+        "execution" = "docker compose exec -T node npm run coverage"
+        "description" = "Runs frontend vitest coverage in the node container"
 # Mandatory node
 [environments]

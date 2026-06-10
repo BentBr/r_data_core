@@ -7,7 +7,10 @@ logs
 
 compose.override.yaml
 
+/coverage
 /fe/coverage
+# Stray profiling data from instrumented coverage runs (cargo-llvm-cov)
+*.profraw
 
 # ts-rs default output (we use TS_RS_EXPORT_DIR instead)
 **/bindings/*.ts

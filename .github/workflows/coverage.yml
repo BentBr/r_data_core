@@ -1,0 +1,197 @@
+name: Coverage
+
+on:
+  pull_request:
+    branches: [ main, develop ]
+  push:
+    branches: [ main ]
+
+# contents: write is needed only by the gh-pages badge push (push-to-main).
+permissions:
+  contents: write
+
+jobs:
+  # ==========================================================================
+  # Backend coverage — cargo-llvm-cov. Enforces the line threshold defined in
+  # scripts/coverage.sh (single source of truth) on every run, so PRs that drop
+  # below it fail. Publishes the badge JSON to gh-pages only on push-to-main.
+  # ==========================================================================
+  backend-coverage:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Start PostgreSQL
+        run: |
+          docker run -d --name postgres \
+            -e POSTGRES_USER=postgres \
+            -e POSTGRES_PASSWORD=postgres \
+            -e POSTGRES_DB=rdata_test \
+            -p 5432:5432 \
+            postgres:18-alpine
+          for i in {1..30}; do
+            docker exec postgres pg_isready -U postgres && break
+            echo "Waiting for postgres..."; sleep 1
+          done
+
+      - name: Start Redis
+        run: |
+          docker run -d --name redis -p 6379:6379 redis:8-alpine
+          for i in {1..30}; do
+            docker exec redis redis-cli ping && break
+            echo "Waiting for redis..."; sleep 1
+          done
+
+      - name: Install Rust (nightly)
+        uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: nightly
+          components: clippy,rustfmt,llvm-tools-preview
+
+      - name: Cache cargo registry + build
+        uses: swatinem/rust-cache@v2
+        with:
+          workspaces: .
+
+      - name: Cache cargo bin directory
+        uses: actions/cache@v4
+        with:
+          path: ~/.cargo/bin
+          key: ${{ runner.os }}-cargo-bin-${{ hashFiles('Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-bin-
+
+      - name: Install sqlx-cli
+        run: |
+          if ! command -v sqlx &> /dev/null; then
+            cargo install sqlx-cli --no-default-features --features postgres --locked
+          fi
+
+      - name: Install cargo-llvm-cov
+        run: |
+          if ! command -v cargo-llvm-cov &> /dev/null; then
+            cargo install cargo-llvm-cov --locked
+          fi
+
+      - name: Run migrations
+        env:
+          DATABASE_URL: postgres://postgres:postgres@localhost:5432/rdata_test
+        run: sqlx migrate run
+
+      - name: Run coverage (profile + lcov + json)
+        env:
+          DATABASE_URL: postgres://postgres:postgres@localhost:5432/rdata_test
+          REDIS_URL: redis://localhost:6379
+          RUST_LOG: error
+        run: |
+          ./scripts/coverage.sh profile
+          ./scripts/coverage.sh lcov
+          ./scripts/coverage.sh json
+
+      - name: Append coverage summary to step summary
+        run: |
+          {
+            echo "## Rust coverage"
+            echo ""
+            echo '```'
+            ./scripts/coverage.sh summary
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      # Fails the build (and therefore the PR / main) when line coverage is
+      # below MIN_LINES defined in scripts/coverage.sh.
+      - name: Enforce coverage threshold
+        run: ./scripts/coverage.sh check
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: rust-coverage
+          path: |
+            coverage/rust.lcov
+            coverage/rust.json
+          retention-days: 14
+
+      - name: Publish coverage badge to gh-pages
+        if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+        run: |
+          PCT=$(jq -r '.data[0].totals.lines.percent | tostring | .[0:5]' coverage/rust.json)
+          THRESHOLD=$(./scripts/coverage.sh threshold)
+          # Red below the gate (badge "fails"), gradient above it.
+          COLOR=$(awk -v p="$PCT" -v th="$THRESHOLD" 'BEGIN{
+              if (p+0 < th+0) print "red";
+              else if (p+0 >= 90) print "brightgreen";
+              else if (p+0 >= 80) print "green";
+              else print "yellowgreen";
+          }')
+          printf '{"schemaVersion":1,"label":"BE coverage","message":"%s%%","color":"%s"}\n' "$PCT" "$COLOR" > /tmp/coverage.json
+          ./.github/scripts/publish-badge.sh coverage.json /tmp/coverage.json "BE"
+
+  # ==========================================================================
+  # Frontend coverage — vitest v8. The line threshold lives in
+  # fe/vitest.config.ts (thresholds.lines), so `npm run coverage` exits non-zero
+  # below it and fails the build. Publishes the badge JSON on push-to-main.
+  # The 30s test timeout is baked into the `coverage` script: v8 instrumentation
+  # pushes a few heavy component tests past the default 5s.
+  # ==========================================================================
+  frontend-coverage:
+    runs-on: ubuntu-latest
+    # Keep this in sync with thresholds.lines in fe/vitest.config.ts.
+    env:
+      FE_THRESHOLD: "70"
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+          cache-dependency-path: fe/package-lock.json
+
+      - name: Install dependencies
+        working-directory: fe
+        run: npm ci
+
+      - name: Run FE coverage (fails below threshold)
+        working-directory: fe
+        run: npm run coverage
+
+      - name: Append FE coverage summary to step summary
+        run: |
+          {
+            echo "## Frontend coverage"
+            echo ""
+            echo '```'
+            jq -r '"lines:      \(.total.lines.pct)%\nstatements: \(.total.statements.pct)%\nfunctions:  \(.total.functions.pct)%\nbranches:   \(.total.branches.pct)%"' fe/coverage/coverage-summary.json
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: fe-coverage
+          path: |
+            fe/coverage/lcov.info
+            fe/coverage/coverage-summary.json
+          retention-days: 14
+
+      - name: Publish FE coverage badge to gh-pages
+        if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+        run: |
+          PCT=$(jq -r '.total.lines.pct | tostring | .[0:5]' fe/coverage/coverage-summary.json)
+          # Red below the gate (badge "fails"), gradient above it.
+          COLOR=$(awk -v p="$PCT" -v th="$FE_THRESHOLD" 'BEGIN{
+              if (p+0 < th+0) print "red";
+              else if (p+0 >= 90) print "brightgreen";
+              else if (p+0 >= 80) print "green";
+              else print "yellowgreen";
+          }')
+          printf '{"schemaVersion":1,"label":"FE coverage","message":"%s%%","color":"%s"}\n' "$PCT" "$COLOR" > /tmp/coverage-fe.json
+          ./.github/scripts/publish-badge.sh coverage-fe.json /tmp/coverage-fe.json "FE"

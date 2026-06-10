@@ -1,5 +1,13 @@
 # RDataCore
 
+[![CI](https://github.com/BentBr/r_data_core/actions/workflows/ci.yml/badge.svg)](https://github.com/BentBr/r_data_core/actions/workflows/ci.yml)
+[![Release Please](https://github.com/BentBr/r_data_core/actions/workflows/release-please.yml/badge.svg)](https://github.com/BentBr/r_data_core/actions/workflows/release-please.yml)
+[![Latest release](https://img.shields.io/github/v/release/BentBr/r_data_core?display_name=tag&sort=semver&label=release)](https://github.com/BentBr/r_data_core/releases/latest)
+[![License: Business](https://img.shields.io/badge/license-Business-blue.svg)](BUSINESS_LICENSE_AGREEMENT.md)
+[![Rust nightly](https://img.shields.io/badge/rust-nightly-orange.svg)](CONTRIBUTING.md)
+[![BE coverage](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/BentBr/r_data_core/gh-pages/coverage.json)](https://github.com/BentBr/r_data_core/actions/workflows/coverage.yml)
+[![FE coverage](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/BentBr/r_data_core/gh-pages/coverage-fe.json)](https://github.com/BentBr/r_data_core/actions/workflows/coverage.yml)
+
 A self-hosted master data management (MDM) platform built with Rust. Connect Shops, PIM, CRM, ERP, and any system. Fast, secure, and flexible.
 See our website for more infos [RDataCore](https://rdatacore.eu) (/ˈɹeɪtəkɔːɹ/)
 
