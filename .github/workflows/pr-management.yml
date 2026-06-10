@@ -25,6 +25,8 @@ jobs:
         permissions:
             contents: read
             pull-requests: write
+            # Lets the workflow dispatch ci.yml onto a freshly-created PR branch.
+            actions: write
         runs-on: ubuntu-latest
         env:
             BASE_BRANCH: 'main'
@@ -217,6 +219,7 @@ jobs:
                         });
 
                         let pr;
+                        let created = false;
                         if (open.length > 0) {
                             pr = open[0];
                             if (pr.base.ref !== base) {
@@ -230,6 +233,7 @@ jobs:
                                 owner, repo, head, base, title, body, draft: true
                             });
                             pr = newPR;
+                            created = true;
                             core.info(`Created draft PR #${pr.number}`);
 
                             // Assign the pusher when the PR was opened by the action.
@@ -246,6 +250,7 @@ jobs:
                         }
 
                         core.exportVariable('PR_NUMBER', String(pr.number));
+                        core.exportVariable('PR_CREATED', created ? 'true' : 'false');
 
             -   name: Apply commit-type labels
                 if: env.SKIP != 'true' && env.PR_NUMBER
@@ -283,3 +288,17 @@ jobs:
 
                         await github.rest.issues.setLabels({ owner, repo, issue_number, labels });
                         core.info(`Applied labels: ${labels.join(', ')}`);
+
+            # Only on creation: a PR opened by GITHUB_TOKEN does not fire
+            # `pull_request` CI, so dispatch ci.yml onto the branch (and ci.yml
+            # posts the `ci-gate` commit status). On later pushes the developer's
+            # push fires `synchronize` → pull_request CI runs natively, so we
+            # must NOT dispatch then or CI would run twice.
+            -   name: Dispatch CI for the new PR
+                if: env.SKIP != 'true' && env.PR_CREATED == 'true'
+                env:
+                    GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+                    BRANCH: ${{ env.BRANCH }}
+                run: |
+                    gh workflow run ci.yml --repo "$GITHUB_REPOSITORY" --ref "$BRANCH"
+                    echo "Dispatched ci.yml on $BRANCH"
