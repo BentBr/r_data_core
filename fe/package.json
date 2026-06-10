@@ -15,6 +15,7 @@
         "test:ui": "vitest --ui",
         "test:run": "vue-tsc --noEmit && vitest run",
         "test:coverage": "vue-tsc --noEmit && vitest run --coverage",
+        "coverage": "vitest run --coverage --test-timeout=30000",
         "test:e2e": "npx playwright test --config=e2e/playwright.config.ts",
         "test:e2e:headed": "npx playwright test --config=e2e/playwright.config.ts --headed",
         "test:e2e:debug": "npx playwright test --config=e2e/playwright.config.ts --debug",

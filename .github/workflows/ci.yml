@@ -1,705 +1,705 @@
 name: CI
 
 on:
-  # Only run on PRs - merges to main/develop already passed CI on the PR
-  pull_request:
-    branches: [ main, develop ]
-  # Allow other workflows to call this one (for release-please PRs)
-  workflow_call:
+    # Only run on PRs - merges to main/develop already passed CI on the PR
+    pull_request:
+        branches: [ main, develop ]
+    # Allow other workflows to call this one (for release-please PRs)
+    workflow_call:
 
 jobs:
-  # Detect which parts of the codebase changed
-  # For workflow_call (release-please), run all checks since we can't detect changes
-  changes:
-    runs-on: ubuntu-latest
-    outputs:
-      backend: ${{ steps.filter.outputs.backend || steps.default.outputs.backend }}
-      frontend: ${{ steps.filter.outputs.frontend || steps.default.outputs.frontend }}
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-        with:
-          # Fetch enough history for paths-filter to work
-          fetch-depth: 0
-
-      - name: Detect changes (PR only)
-        if: ${{ github.event_name == 'pull_request' }}
-        uses: dorny/paths-filter@v3
-        id: filter
-        with:
-          filters: |
-            backend:
-              - 'crates/**'
-              - 'migrations/**'
-              - 'tests/**'
-              - 'Cargo.toml'
-              - 'Cargo.lock'
-              - '.sqlx/**'
-              - 'src/**'
-            frontend:
-              - 'fe/**'
-
-      # For workflow_call (release-please PRs), run all checks
-      - name: Default to all checks (workflow_call)
-        if: ${{ github.event_name != 'pull_request' }}
-        id: default
-        run: |
-          echo "backend=true" >> $GITHUB_OUTPUT
-          echo "frontend=true" >> $GITHUB_OUTPUT
-
-  # ============================================================================
-  # Backend Jobs - Only run when backend files change
-  # ============================================================================
-  backend-prepare:
-    needs: changes
-    if: ${{ needs.changes.outputs.backend == 'true' }}
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Install Rust (nightly)
-        uses: dtolnay/rust-toolchain@master
-        with:
-          toolchain: nightly
-          components: clippy,rustfmt
-
-      - name: Show rustc version
-        run: rustc -Vv
-
-      - name: Cache cargo registry + build
-        uses: swatinem/rust-cache@v2
-        with:
-          workspaces: .
-
-      - name: Cache cargo bin directory
-        id: cache-cargo-bin
-        uses: actions/cache@v4
-        with:
-          path: ~/.cargo/bin
-          key: ${{ runner.os }}-cargo-bin-${{ hashFiles('Cargo.lock') }}
-          restore-keys: |
-            ${{ runner.os }}-cargo-bin-
-
-      - name: Install cargo-audit
-        run: |
-          if ! command -v cargo-audit &> /dev/null; then
-            cargo install cargo-audit --locked
-          fi
-
-      - name: Install sqlx-cli
-        run: |
-          if ! command -v sqlx &> /dev/null; then
-            cargo install sqlx-cli --no-default-features --features postgres --locked
-          fi
-
-  backend-clippy:
-    needs: [changes, backend-prepare]
-    if: ${{ needs.changes.outputs.backend == 'true' }}
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Install Rust (nightly)
-        uses: dtolnay/rust-toolchain@master
-        with:
-          toolchain: nightly
-          components: clippy,rustfmt
-
-      - name: Cache cargo registry + build
-        uses: swatinem/rust-cache@v2
-        with:
-          workspaces: .
-
-      - name: Cache cargo bin directory
-        uses: actions/cache@v4
-        with:
-          path: ~/.cargo/bin
-          key: ${{ runner.os }}-cargo-bin-${{ hashFiles('Cargo.lock') }}
-          restore-keys: |
-            ${{ runner.os }}-cargo-bin-
-
-      - name: Clippy (strict)
-        env:
-          SQLX_OFFLINE: true
-        run: |
-          cargo clippy --workspace --all-targets --all-features -- \
-            -D clippy::all -D warnings -D clippy::pedantic -D clippy::nursery
-
-  backend-format:
-    needs: [changes, backend-prepare]
-    if: ${{ needs.changes.outputs.backend == 'true' }}
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Install Rust (nightly)
-        uses: dtolnay/rust-toolchain@master
-        with:
-          toolchain: nightly
-          components: clippy,rustfmt
-
-      - name: Cache cargo registry + build
-        uses: swatinem/rust-cache@v2
-        with:
-          workspaces: .
-
-      - name: Format check
-        env:
-          SQLX_OFFLINE: true
-        run: cargo fmt --check --all
-
-  backend-audit:
-    needs: [changes, backend-prepare]
-    if: ${{ needs.changes.outputs.backend == 'true' }}
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Install Rust (nightly)
-        uses: dtolnay/rust-toolchain@master
-        with:
-          toolchain: nightly
-          components: clippy,rustfmt
-
-      - name: Cache cargo registry + build
-        uses: swatinem/rust-cache@v2
-        with:
-          workspaces: .
-
-      - name: Cache cargo bin directory
-        uses: actions/cache@v4
-        with:
-          path: ~/.cargo/bin
-          key: ${{ runner.os }}-cargo-bin-${{ hashFiles('Cargo.lock') }}
-          restore-keys: |
-            ${{ runner.os }}-cargo-bin-
-
-      - name: Install cargo-audit
-        run: |
-          if ! command -v cargo-audit &> /dev/null; then
-            cargo install cargo-audit --locked
-          fi
-
-      - name: Security audit
-        run: cargo audit
-
-  backend-tests:
-    needs: [changes, backend-prepare]
-    if: ${{ needs.changes.outputs.backend == 'true' }}
-    runs-on: ubuntu-latest
-    # Note: Using docker run instead of services: block to support workflow_call (reusable workflows)
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Start PostgreSQL
-        run: |
-          docker run -d --name postgres \
-            -e POSTGRES_USER=postgres \
-            -e POSTGRES_PASSWORD=postgres \
-            -e POSTGRES_DB=rdata_test \
-            -p 5432:5432 \
-            postgres:18-alpine
-          # Wait for postgres to be ready
-          for i in {1..30}; do
-            docker exec postgres pg_isready -U postgres && break
-            echo "Waiting for postgres..."
-            sleep 1
-          done
-
-      - name: Start Redis
-        run: |
-          docker run -d --name redis \
-            -p 6379:6379 \
-            redis:8-alpine
-          # Wait for redis to be ready
-          for i in {1..30}; do
-            docker exec redis redis-cli ping && break
-            echo "Waiting for redis..."
-            sleep 1
-          done
-
-      - name: Install Rust (nightly)
-        uses: dtolnay/rust-toolchain@master
-        with:
-          toolchain: nightly
-          components: clippy,rustfmt
-
-      - name: Cache cargo registry + build
-        uses: swatinem/rust-cache@v2
-        with:
-          workspaces: .
-
-      - name: Cache cargo bin directory
-        uses: actions/cache@v4
-        with:
-          path: ~/.cargo/bin
-          key: ${{ runner.os }}-cargo-bin-${{ hashFiles('Cargo.lock') }}
-          restore-keys: |
-            ${{ runner.os }}-cargo-bin-
-
-      - name: Install sqlx-cli
-        run: |
-          if ! command -v sqlx &> /dev/null; then
-            cargo install sqlx-cli --no-default-features --features postgres --locked
-          fi
-
-      - name: Run migrations
-        env:
-          DATABASE_URL: postgres://postgres:postgres@localhost:5432/rdata_test
-        run: |
-          sqlx migrate run
-
-      - name: Run tests
-        env:
-          DATABASE_URL: postgres://postgres:postgres@localhost:5432/rdata_test
-          REDIS_URL: redis://localhost:6379
-        run: RUST_LOG=error cargo test --workspace
-
-  backend-build:
-    needs: [changes, backend-prepare]
-    if: ${{ needs.changes.outputs.backend == 'true' }}
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Install Rust (nightly)
-        uses: dtolnay/rust-toolchain@master
-        with:
-          toolchain: nightly
-          components: clippy,rustfmt
-
-      - name: Cache cargo registry + build
-        uses: swatinem/rust-cache@v2
-        with:
-          workspaces: .
-
-      - name: Build verification
-        env:
-          SQLX_OFFLINE: true
-        run: cargo build --workspace --all-features
-
-  backend-ts-bindings:
-    name: TS bindings up to date
-    needs: [changes, backend-prepare]
-    if: ${{ needs.changes.outputs.backend == 'true' }}
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Install Rust (nightly)
-        uses: dtolnay/rust-toolchain@master
-        with:
-          toolchain: nightly
-          components: clippy,rustfmt
-
-      - name: Cache cargo registry + build
-        uses: swatinem/rust-cache@v2
-        with:
-          workspaces: .
-
-      - name: Generate TS bindings
-        env:
-          SQLX_OFFLINE: true
-        run: |
-          TS_RS_EXPORT_DIR=${{ github.workspace }}/fe/src/types/generated cargo test --workspace export_bindings 2>&1
-          cargo run -p r_data_core_core --bin export_validation_constants > ./fe/src/types/generated/validation.ts
-
-      - name: Check for stale bindings
-        run: |
-          if ! git diff --exit-code fe/src/types/generated/; then
-            echo "::error::Generated TypeScript bindings are out of date. Run 'rdt generate-ts' locally and commit the changes."
-            exit 1
-          fi
-
-  # ============================================================================
-  # Frontend Jobs - Only run when frontend files change
-  # ============================================================================
-  frontend-prepare:
-    needs: changes
-    if: ${{ needs.changes.outputs.frontend == 'true' }}
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '22'
-          cache: 'npm'
-          cache-dependency-path: fe/package-lock.json
-
-      - name: Cache node_modules
-        uses: actions/cache@v4
-        with:
-          path: fe/node_modules
-          key: ${{ runner.os }}-node-modules-${{ hashFiles('fe/package-lock.json') }}
-          restore-keys: |
-            ${{ runner.os }}-node-modules-
-
-      - name: Install dependencies
-        working-directory: fe
-        run: npm ci
-
-  frontend-lint:
-    needs: [changes, frontend-prepare]
-    if: ${{ needs.changes.outputs.frontend == 'true' }}
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '22'
-          cache: 'npm'
-          cache-dependency-path: fe/package-lock.json
-
-      - name: Cache node_modules
-        id: cache-node-modules
-        uses: actions/cache@v4
-        with:
-          path: fe/node_modules
-          key: ${{ runner.os }}-node-modules-${{ hashFiles('fe/package-lock.json') }}
-          restore-keys: |
-            ${{ runner.os }}-node-modules-
-
-      - name: Install dependencies
-        if: steps.cache-node-modules.outputs.cache-hit != 'true'
-        working-directory: fe
-        run: npm ci
-
-      - name: Lint
-        working-directory: fe
-        run: npm run lint
-
-  frontend-tests:
-    needs: [changes, frontend-prepare]
-    if: ${{ needs.changes.outputs.frontend == 'true' }}
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '22'
-          cache: 'npm'
-          cache-dependency-path: fe/package-lock.json
-
-      - name: Cache node_modules
-        id: cache-node-modules
-        uses: actions/cache@v4
-        with:
-          path: fe/node_modules
-          key: ${{ runner.os }}-node-modules-${{ hashFiles('fe/package-lock.json') }}
-          restore-keys: |
-            ${{ runner.os }}-node-modules-
-
-      - name: Install dependencies
-        if: steps.cache-node-modules.outputs.cache-hit != 'true'
-        working-directory: fe
-        run: npm ci
-
-      - name: Run tests
-        working-directory: fe
-        run: npm run test
-
-  frontend-audit:
-    needs: [changes, frontend-prepare]
-    if: ${{ needs.changes.outputs.frontend == 'true' }}
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '22'
-          cache: 'npm'
-          cache-dependency-path: fe/package-lock.json
-
-      - name: Cache node_modules
-        id: cache-node-modules
-        uses: actions/cache@v4
-        with:
-          path: fe/node_modules
-          key: ${{ runner.os }}-node-modules-${{ hashFiles('fe/package-lock.json') }}
-          restore-keys: |
-            ${{ runner.os }}-node-modules-
-
-      - name: Install dependencies
-        if: steps.cache-node-modules.outputs.cache-hit != 'true'
-        working-directory: fe
-        run: npm ci
-
-      - name: Security audit
-        working-directory: fe
-        run: npm audit --audit-level=moderate
-
-  frontend-build:
-    needs: [changes, frontend-prepare]
-    if: ${{ needs.changes.outputs.frontend == 'true' }}
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '22'
-          cache: 'npm'
-          cache-dependency-path: fe/package-lock.json
-
-      - name: Cache node_modules
-        id: cache-node-modules
-        uses: actions/cache@v4
-        with:
-          path: fe/node_modules
-          key: ${{ runner.os }}-node-modules-sharp-${{ hashFiles('fe/package-lock.json') }}
-          restore-keys: |
-            ${{ runner.os }}-node-modules-sharp-
-
-      - name: Install system dependencies for sharp
-        if: steps.cache-node-modules.outputs.cache-hit != 'true'
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y libvips-dev
-
-      - name: Install dependencies
-        if: steps.cache-node-modules.outputs.cache-hit != 'true'
-        working-directory: fe
-        run: npm ci
-
-      - name: Build
-        working-directory: fe
-        run: npm run build
-
-      - name: Upload build artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: frontend-dist
-          path: fe/dist
-          retention-days: 7
-
-  # ============================================================================
-  # Frontend E2E Tests - Runs in parallel with other frontend/backend jobs
-  # ============================================================================
-  frontend-e2e:
-    needs: [changes]
-    if: ${{ needs.changes.outputs.frontend == 'true' || needs.changes.outputs.backend == 'true' }}
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '22'
-          cache: 'npm'
-          cache-dependency-path: fe/package-lock.json
-
-      - name: Cache node_modules
-        id: cache-node-modules
-        uses: actions/cache@v4
-        with:
-          path: fe/node_modules
-          key: ${{ runner.os }}-node-modules-${{ hashFiles('fe/package-lock.json') }}
-          restore-keys: |
-            ${{ runner.os }}-node-modules-
-
-      - name: Install dependencies
-        if: steps.cache-node-modules.outputs.cache-hit != 'true'
-        working-directory: fe
-        run: npm ci
-
-      - name: Install Playwright Chromium
-        working-directory: fe
-        run: npx playwright install --with-deps chromium
-
-      - name: Start PostgreSQL
-        run: |
-          docker run -d --name postgres \
-            -e POSTGRES_USER=postgres \
-            -e POSTGRES_PASSWORD=postgres \
-            -e POSTGRES_DB=rdata \
-            -p 5432:5432 \
-            postgres:18-alpine
-          for i in {1..30}; do
-            docker exec postgres pg_isready -U postgres && break
-            echo "Waiting for postgres..."
-            sleep 1
-          done
-
-      - name: Start Redis
-        run: |
-          docker run -d --name redis \
-            -p 6379:6379 \
-            redis:8-alpine
-          for i in {1..30}; do
-            docker exec redis redis-cli ping && break
-            echo "Waiting for redis..."
-            sleep 1
-          done
-
-      - name: Install Rust (nightly)
-        uses: dtolnay/rust-toolchain@master
-        with:
-          toolchain: nightly
-
-      - name: Cache cargo registry + build
-        uses: swatinem/rust-cache@v2
-        with:
-          workspaces: .
-
-      - name: Cache cargo bin directory
-        uses: actions/cache@v4
-        with:
-          path: ~/.cargo/bin
-          key: ${{ runner.os }}-cargo-bin-${{ hashFiles('Cargo.lock') }}
-          restore-keys: |
-            ${{ runner.os }}-cargo-bin-
-
-      - name: Install sqlx-cli
-        run: |
-          if ! command -v sqlx &> /dev/null; then
-            cargo install sqlx-cli --no-default-features --features postgres --locked
-          fi
-
-      - name: Run migrations
-        env:
-          DATABASE_URL: postgres://postgres:postgres@localhost:5432/rdata
-        run: sqlx migrate run
-
-      - name: Build and start app
-        env:
-          DATABASE_URL: postgres://postgres:postgres@localhost:5432/rdata
-          REDIS_URL: redis://localhost:6379
-          JWT_SECRET: development_secret_key
-          JWT_EXPIRATION: 86400
-          API_HOST: localhost
-          API_PORT: 8080
-          CORS_ORIGINS: '*'
-          API_ENABLE_DOCS: true
-          RUST_LOG: info
-        run: |
-          cargo build --bin r_data_core
-          cargo run --bin r_data_core &
-          # Wait for app to be ready
-          for i in {1..60}; do
-            curl -sf http://localhost:8080/admin/api/v1/health && break
-            echo "Waiting for app..."
-            sleep 2
-          done
-
-      - name: Build and start frontend
-        working-directory: fe
-        env:
-          VITE_API_BASE_URL: http://localhost:8080
-          VITE_ADMIN_BASE_URL: http://localhost:5173
-        run: |
-          npm run build
-          npx vite preview --port 5173 --host 0.0.0.0 &
-          for i in {1..30}; do
-            curl -sf http://localhost:5173 && break
-            echo "Waiting for frontend..."
-            sleep 2
-          done
-
-      - name: Run Playwright tests
-        working-directory: fe
-        env:
-          E2E_BASE_URL: http://localhost:5173
-          E2E_API_BASE_URL: http://localhost:8080
-        run: npx playwright test --config=e2e/playwright.config.ts
-
-      - name: Upload Playwright report
-        uses: actions/upload-artifact@v4
-        if: ${{ !cancelled() }}
-        with:
-          name: playwright-report
-          path: fe/e2e/playwright-report
-          retention-days: 7
-
-      - name: Upload test results
-        uses: actions/upload-artifact@v4
-        if: ${{ !cancelled() }}
-        with:
-          name: playwright-test-results
-          path: fe/e2e/test-results
-          retention-days: 7
-
-  # ============================================================================
-  # CI Gate - Passes when all applicable checks pass
-  # ============================================================================
-  ci-gate:
-    needs:
-      - changes
-      - backend-clippy
-      - backend-format
-      - backend-audit
-      - backend-tests
-      - backend-build
-      - backend-ts-bindings
-      - frontend-lint
-      - frontend-tests
-      - frontend-audit
-      - frontend-build
-      - frontend-e2e
-    if: ${{ always() }}
-    runs-on: ubuntu-latest
-    steps:
-      - name: Check backend results
+    # Detect which parts of the codebase changed
+    # For workflow_call (release-please), run all checks since we can't detect changes
+    changes:
+        runs-on: ubuntu-latest
+        outputs:
+            backend: ${{ steps.filter.outputs.backend || steps.default.outputs.backend }}
+            frontend: ${{ steps.filter.outputs.frontend || steps.default.outputs.frontend }}
+        steps:
+            -   name: Checkout
+                uses: actions/checkout@v4
+                with:
+                    # Fetch enough history for paths-filter to work
+                    fetch-depth: 0
+
+            -   name: Detect changes (PR only)
+                if: ${{ github.event_name == 'pull_request' }}
+                uses: dorny/paths-filter@v3
+                id: filter
+                with:
+                    filters: |
+                        backend:
+                          - 'crates/**'
+                          - 'migrations/**'
+                          - 'tests/**'
+                          - 'Cargo.toml'
+                          - 'Cargo.lock'
+                          - '.sqlx/**'
+                          - 'src/**'
+                        frontend:
+                          - 'fe/**'
+
+            # For workflow_call (release-please PRs), run all checks
+            -   name: Default to all checks (workflow_call)
+                if: ${{ github.event_name != 'pull_request' }}
+                id: default
+                run: |
+                    echo "backend=true" >> $GITHUB_OUTPUT
+                    echo "frontend=true" >> $GITHUB_OUTPUT
+
+    # ============================================================================
+    # Backend Jobs - Only run when backend files change
+    # ============================================================================
+    backend-prepare:
+        needs: changes
         if: ${{ needs.changes.outputs.backend == 'true' }}
-        run: |
-          if [[ "${{ needs.backend-clippy.result }}" != "success" ]] || \
-             [[ "${{ needs.backend-format.result }}" != "success" ]] || \
-             [[ "${{ needs.backend-audit.result }}" != "success" ]] || \
-             [[ "${{ needs.backend-tests.result }}" != "success" ]] || \
-             [[ "${{ needs.backend-build.result }}" != "success" ]] || \
-             [[ "${{ needs.backend-ts-bindings.result }}" != "success" ]]; then
-            echo "Backend checks failed"
-            exit 1
-          fi
-          echo "All backend checks passed"
+        runs-on: ubuntu-latest
+        steps:
+            -   name: Checkout
+                uses: actions/checkout@v4
 
-      - name: Check frontend results
+            -   name: Install Rust (nightly)
+                uses: dtolnay/rust-toolchain@master
+                with:
+                    toolchain: nightly
+                    components: clippy,rustfmt
+
+            -   name: Show rustc version
+                run: rustc -Vv
+
+            -   name: Cache cargo registry + build
+                uses: swatinem/rust-cache@v2
+                with:
+                    workspaces: .
+
+            -   name: Cache cargo bin directory
+                id: cache-cargo-bin
+                uses: actions/cache@v4
+                with:
+                    path: ~/.cargo/bin
+                    key: ${{ runner.os }}-cargo-bin-${{ hashFiles('Cargo.lock') }}
+                    restore-keys: |
+                        ${{ runner.os }}-cargo-bin-
+
+            -   name: Install cargo-audit
+                run: |
+                    if ! command -v cargo-audit &> /dev/null; then
+                      cargo install cargo-audit --locked
+                    fi
+
+            -   name: Install sqlx-cli
+                run: |
+                    if ! command -v sqlx &> /dev/null; then
+                      cargo install sqlx-cli --no-default-features --features postgres --locked
+                    fi
+
+    backend-clippy:
+        needs: [ changes, backend-prepare ]
+        if: ${{ needs.changes.outputs.backend == 'true' }}
+        runs-on: ubuntu-latest
+        steps:
+            -   name: Checkout
+                uses: actions/checkout@v4
+
+            -   name: Install Rust (nightly)
+                uses: dtolnay/rust-toolchain@master
+                with:
+                    toolchain: nightly
+                    components: clippy,rustfmt
+
+            -   name: Cache cargo registry + build
+                uses: swatinem/rust-cache@v2
+                with:
+                    workspaces: .
+
+            -   name: Cache cargo bin directory
+                uses: actions/cache@v4
+                with:
+                    path: ~/.cargo/bin
+                    key: ${{ runner.os }}-cargo-bin-${{ hashFiles('Cargo.lock') }}
+                    restore-keys: |
+                        ${{ runner.os }}-cargo-bin-
+
+            -   name: Clippy (strict)
+                env:
+                    SQLX_OFFLINE: true
+                run: |
+                    cargo clippy --workspace --all-targets --all-features -- \
+                      -D clippy::all -D warnings -D clippy::pedantic -D clippy::nursery
+
+    backend-format:
+        needs: [ changes, backend-prepare ]
+        if: ${{ needs.changes.outputs.backend == 'true' }}
+        runs-on: ubuntu-latest
+        steps:
+            -   name: Checkout
+                uses: actions/checkout@v4
+
+            -   name: Install Rust (nightly)
+                uses: dtolnay/rust-toolchain@master
+                with:
+                    toolchain: nightly
+                    components: clippy,rustfmt
+
+            -   name: Cache cargo registry + build
+                uses: swatinem/rust-cache@v2
+                with:
+                    workspaces: .
+
+            -   name: Format check
+                env:
+                    SQLX_OFFLINE: true
+                run: cargo fmt --check --all
+
+    backend-audit:
+        needs: [ changes, backend-prepare ]
+        if: ${{ needs.changes.outputs.backend == 'true' }}
+        runs-on: ubuntu-latest
+        steps:
+            -   name: Checkout
+                uses: actions/checkout@v4
+
+            -   name: Install Rust (nightly)
+                uses: dtolnay/rust-toolchain@master
+                with:
+                    toolchain: nightly
+                    components: clippy,rustfmt
+
+            -   name: Cache cargo registry + build
+                uses: swatinem/rust-cache@v2
+                with:
+                    workspaces: .
+
+            -   name: Cache cargo bin directory
+                uses: actions/cache@v4
+                with:
+                    path: ~/.cargo/bin
+                    key: ${{ runner.os }}-cargo-bin-${{ hashFiles('Cargo.lock') }}
+                    restore-keys: |
+                        ${{ runner.os }}-cargo-bin-
+
+            -   name: Install cargo-audit
+                run: |
+                    if ! command -v cargo-audit &> /dev/null; then
+                      cargo install cargo-audit --locked
+                    fi
+
+            -   name: Security audit
+                run: cargo audit
+
+    backend-tests:
+        needs: [ changes, backend-prepare ]
+        if: ${{ needs.changes.outputs.backend == 'true' }}
+        runs-on: ubuntu-latest
+        # Note: Using docker run instead of services: block to support workflow_call (reusable workflows)
+        steps:
+            -   name: Checkout
+                uses: actions/checkout@v4
+
+            -   name: Start PostgreSQL
+                run: |
+                    docker run -d --name postgres \
+                      -e POSTGRES_USER=postgres \
+                      -e POSTGRES_PASSWORD=postgres \
+                      -e POSTGRES_DB=rdata_test \
+                      -p 5432:5432 \
+                      postgres:18-alpine
+                    # Wait for postgres to be ready
+                    for i in {1..30}; do
+                      docker exec postgres pg_isready -U postgres && break
+                      echo "Waiting for postgres..."
+                      sleep 1
+                    done
+
+            -   name: Start Redis
+                run: |
+                    docker run -d --name redis \
+                      -p 6379:6379 \
+                      redis:8-alpine
+                    # Wait for redis to be ready
+                    for i in {1..30}; do
+                      docker exec redis redis-cli ping && break
+                      echo "Waiting for redis..."
+                      sleep 1
+                    done
+
+            -   name: Install Rust (nightly)
+                uses: dtolnay/rust-toolchain@master
+                with:
+                    toolchain: nightly
+                    components: clippy,rustfmt
+
+            -   name: Cache cargo registry + build
+                uses: swatinem/rust-cache@v2
+                with:
+                    workspaces: .
+
+            -   name: Cache cargo bin directory
+                uses: actions/cache@v4
+                with:
+                    path: ~/.cargo/bin
+                    key: ${{ runner.os }}-cargo-bin-${{ hashFiles('Cargo.lock') }}
+                    restore-keys: |
+                        ${{ runner.os }}-cargo-bin-
+
+            -   name: Install sqlx-cli
+                run: |
+                    if ! command -v sqlx &> /dev/null; then
+                      cargo install sqlx-cli --no-default-features --features postgres --locked
+                    fi
+
+            -   name: Run migrations
+                env:
+                    DATABASE_URL: postgres://postgres:postgres@localhost:5432/rdata_test
+                run: |
+                    sqlx migrate run
+
+            -   name: Run tests
+                env:
+                    DATABASE_URL: postgres://postgres:postgres@localhost:5432/rdata_test
+                    REDIS_URL: redis://localhost:6379
+                run: RUST_LOG=error cargo test --workspace
+
+    backend-build:
+        needs: [ changes, backend-prepare ]
+        if: ${{ needs.changes.outputs.backend == 'true' }}
+        runs-on: ubuntu-latest
+        steps:
+            -   name: Checkout
+                uses: actions/checkout@v4
+
+            -   name: Install Rust (nightly)
+                uses: dtolnay/rust-toolchain@master
+                with:
+                    toolchain: nightly
+                    components: clippy,rustfmt
+
+            -   name: Cache cargo registry + build
+                uses: swatinem/rust-cache@v2
+                with:
+                    workspaces: .
+
+            -   name: Build verification
+                env:
+                    SQLX_OFFLINE: true
+                run: cargo build --workspace --all-features
+
+    backend-ts-bindings:
+        name: TS bindings up to date
+        needs: [ changes, backend-prepare ]
+        if: ${{ needs.changes.outputs.backend == 'true' }}
+        runs-on: ubuntu-latest
+        steps:
+            -   name: Checkout
+                uses: actions/checkout@v4
+
+            -   name: Install Rust (nightly)
+                uses: dtolnay/rust-toolchain@master
+                with:
+                    toolchain: nightly
+                    components: clippy,rustfmt
+
+            -   name: Cache cargo registry + build
+                uses: swatinem/rust-cache@v2
+                with:
+                    workspaces: .
+
+            -   name: Generate TS bindings
+                env:
+                    SQLX_OFFLINE: true
+                run: |
+                    TS_RS_EXPORT_DIR=${{ github.workspace }}/fe/src/types/generated cargo test --workspace export_bindings 2>&1
+                    cargo run -p r_data_core_core --bin export_validation_constants > ./fe/src/types/generated/validation.ts
+
+            -   name: Check for stale bindings
+                run: |
+                    if ! git diff --exit-code fe/src/types/generated/; then
+                      echo "::error::Generated TypeScript bindings are out of date. Run 'rdt generate-ts' locally and commit the changes."
+                      exit 1
+                    fi
+
+    # ============================================================================
+    # Frontend Jobs - Only run when frontend files change
+    # ============================================================================
+    frontend-prepare:
+        needs: changes
         if: ${{ needs.changes.outputs.frontend == 'true' }}
-        run: |
-          if [[ "${{ needs.frontend-lint.result }}" != "success" ]] || \
-             [[ "${{ needs.frontend-tests.result }}" != "success" ]] || \
-             [[ "${{ needs.frontend-audit.result }}" != "success" ]] || \
-             [[ "${{ needs.frontend-build.result }}" != "success" ]]; then
-            echo "Frontend checks failed"
-            exit 1
-          fi
-          echo "All frontend checks passed"
+        runs-on: ubuntu-latest
+        steps:
+            -   name: Checkout
+                uses: actions/checkout@v4
 
-      - name: Check E2E results
+            -   name: Setup Node.js
+                uses: actions/setup-node@v4
+                with:
+                    node-version: '22'
+                    cache: 'npm'
+                    cache-dependency-path: fe/package-lock.json
+
+            -   name: Cache node_modules
+                uses: actions/cache@v4
+                with:
+                    path: fe/node_modules
+                    key: ${{ runner.os }}-node-modules-${{ hashFiles('fe/package-lock.json') }}
+                    restore-keys: |
+                        ${{ runner.os }}-node-modules-
+
+            -   name: Install dependencies
+                working-directory: fe
+                run: npm ci
+
+    frontend-lint:
+        needs: [ changes, frontend-prepare ]
+        if: ${{ needs.changes.outputs.frontend == 'true' }}
+        runs-on: ubuntu-latest
+        steps:
+            -   name: Checkout
+                uses: actions/checkout@v4
+
+            -   name: Setup Node.js
+                uses: actions/setup-node@v4
+                with:
+                    node-version: '22'
+                    cache: 'npm'
+                    cache-dependency-path: fe/package-lock.json
+
+            -   name: Cache node_modules
+                id: cache-node-modules
+                uses: actions/cache@v4
+                with:
+                    path: fe/node_modules
+                    key: ${{ runner.os }}-node-modules-${{ hashFiles('fe/package-lock.json') }}
+                    restore-keys: |
+                        ${{ runner.os }}-node-modules-
+
+            -   name: Install dependencies
+                if: steps.cache-node-modules.outputs.cache-hit != 'true'
+                working-directory: fe
+                run: npm ci
+
+            -   name: Lint
+                working-directory: fe
+                run: npm run lint
+
+    frontend-tests:
+        needs: [ changes, frontend-prepare ]
+        if: ${{ needs.changes.outputs.frontend == 'true' }}
+        runs-on: ubuntu-latest
+        steps:
+            -   name: Checkout
+                uses: actions/checkout@v4
+
+            -   name: Setup Node.js
+                uses: actions/setup-node@v4
+                with:
+                    node-version: '22'
+                    cache: 'npm'
+                    cache-dependency-path: fe/package-lock.json
+
+            -   name: Cache node_modules
+                id: cache-node-modules
+                uses: actions/cache@v4
+                with:
+                    path: fe/node_modules
+                    key: ${{ runner.os }}-node-modules-${{ hashFiles('fe/package-lock.json') }}
+                    restore-keys: |
+                        ${{ runner.os }}-node-modules-
+
+            -   name: Install dependencies
+                if: steps.cache-node-modules.outputs.cache-hit != 'true'
+                working-directory: fe
+                run: npm ci
+
+            -   name: Run tests
+                working-directory: fe
+                run: npm run test
+
+    frontend-audit:
+        needs: [ changes, frontend-prepare ]
+        if: ${{ needs.changes.outputs.frontend == 'true' }}
+        runs-on: ubuntu-latest
+        steps:
+            -   name: Checkout
+                uses: actions/checkout@v4
+
+            -   name: Setup Node.js
+                uses: actions/setup-node@v4
+                with:
+                    node-version: '22'
+                    cache: 'npm'
+                    cache-dependency-path: fe/package-lock.json
+
+            -   name: Cache node_modules
+                id: cache-node-modules
+                uses: actions/cache@v4
+                with:
+                    path: fe/node_modules
+                    key: ${{ runner.os }}-node-modules-${{ hashFiles('fe/package-lock.json') }}
+                    restore-keys: |
+                        ${{ runner.os }}-node-modules-
+
+            -   name: Install dependencies
+                if: steps.cache-node-modules.outputs.cache-hit != 'true'
+                working-directory: fe
+                run: npm ci
+
+            -   name: Security audit
+                working-directory: fe
+                run: npm audit --audit-level=moderate
+
+    frontend-build:
+        needs: [ changes, frontend-prepare ]
+        if: ${{ needs.changes.outputs.frontend == 'true' }}
+        runs-on: ubuntu-latest
+        steps:
+            -   name: Checkout
+                uses: actions/checkout@v4
+
+            -   name: Setup Node.js
+                uses: actions/setup-node@v4
+                with:
+                    node-version: '22'
+                    cache: 'npm'
+                    cache-dependency-path: fe/package-lock.json
+
+            -   name: Cache node_modules
+                id: cache-node-modules
+                uses: actions/cache@v4
+                with:
+                    path: fe/node_modules
+                    key: ${{ runner.os }}-node-modules-sharp-${{ hashFiles('fe/package-lock.json') }}
+                    restore-keys: |
+                        ${{ runner.os }}-node-modules-sharp-
+
+            -   name: Install system dependencies for sharp
+                if: steps.cache-node-modules.outputs.cache-hit != 'true'
+                run: |
+                    sudo apt-get update
+                    sudo apt-get install -y libvips-dev
+
+            -   name: Install dependencies
+                if: steps.cache-node-modules.outputs.cache-hit != 'true'
+                working-directory: fe
+                run: npm ci
+
+            -   name: Build
+                working-directory: fe
+                run: npm run build
+
+            -   name: Upload build artifacts
+                uses: actions/upload-artifact@v4
+                with:
+                    name: frontend-dist
+                    path: fe/dist
+                    retention-days: 7
+
+    # ============================================================================
+    # Frontend E2E Tests - Runs in parallel with other frontend/backend jobs
+    # ============================================================================
+    frontend-e2e:
+        needs: [ changes ]
         if: ${{ needs.changes.outputs.frontend == 'true' || needs.changes.outputs.backend == 'true' }}
-        run: |
-          if [[ "${{ needs.frontend-e2e.result }}" != "success" ]]; then
-            echo "E2E checks failed"
-            exit 1
-          fi
-          echo "E2E checks passed"
+        runs-on: ubuntu-latest
+        steps:
+            -   name: Checkout
+                uses: actions/checkout@v4
 
-      - name: Verify at least one component was checked
-        run: |
-          if [[ "${{ needs.changes.outputs.backend }}" != "true" ]] && \
-             [[ "${{ needs.changes.outputs.frontend }}" != "true" ]]; then
-            echo "No backend or frontend changes detected - nothing to check"
-          fi
-          echo "CI gate passed"
+            -   name: Setup Node.js
+                uses: actions/setup-node@v4
+                with:
+                    node-version: '22'
+                    cache: 'npm'
+                    cache-dependency-path: fe/package-lock.json
+
+            -   name: Cache node_modules
+                id: cache-node-modules
+                uses: actions/cache@v4
+                with:
+                    path: fe/node_modules
+                    key: ${{ runner.os }}-node-modules-${{ hashFiles('fe/package-lock.json') }}
+                    restore-keys: |
+                        ${{ runner.os }}-node-modules-
+
+            -   name: Install dependencies
+                if: steps.cache-node-modules.outputs.cache-hit != 'true'
+                working-directory: fe
+                run: npm ci
+
+            -   name: Install Playwright Chromium
+                working-directory: fe
+                run: npx playwright install --with-deps chromium
+
+            -   name: Start PostgreSQL
+                run: |
+                    docker run -d --name postgres \
+                      -e POSTGRES_USER=postgres \
+                      -e POSTGRES_PASSWORD=postgres \
+                      -e POSTGRES_DB=rdata \
+                      -p 5432:5432 \
+                      postgres:18-alpine
+                    for i in {1..30}; do
+                      docker exec postgres pg_isready -U postgres && break
+                      echo "Waiting for postgres..."
+                      sleep 1
+                    done
+
+            -   name: Start Redis
+                run: |
+                    docker run -d --name redis \
+                      -p 6379:6379 \
+                      redis:8-alpine
+                    for i in {1..30}; do
+                      docker exec redis redis-cli ping && break
+                      echo "Waiting for redis..."
+                      sleep 1
+                    done
+
+            -   name: Install Rust (nightly)
+                uses: dtolnay/rust-toolchain@master
+                with:
+                    toolchain: nightly
+
+            -   name: Cache cargo registry + build
+                uses: swatinem/rust-cache@v2
+                with:
+                    workspaces: .
+
+            -   name: Cache cargo bin directory
+                uses: actions/cache@v4
+                with:
+                    path: ~/.cargo/bin
+                    key: ${{ runner.os }}-cargo-bin-${{ hashFiles('Cargo.lock') }}
+                    restore-keys: |
+                        ${{ runner.os }}-cargo-bin-
+
+            -   name: Install sqlx-cli
+                run: |
+                    if ! command -v sqlx &> /dev/null; then
+                      cargo install sqlx-cli --no-default-features --features postgres --locked
+                    fi
+
+            -   name: Run migrations
+                env:
+                    DATABASE_URL: postgres://postgres:postgres@localhost:5432/rdata
+                run: sqlx migrate run
+
+            -   name: Build and start app
+                env:
+                    DATABASE_URL: postgres://postgres:postgres@localhost:5432/rdata
+                    REDIS_URL: redis://localhost:6379
+                    JWT_SECRET: development_secret_key
+                    JWT_EXPIRATION: 86400
+                    API_HOST: localhost
+                    API_PORT: 8080
+                    CORS_ORIGINS: '*'
+                    API_ENABLE_DOCS: true
+                    RUST_LOG: info
+                run: |
+                    cargo build --bin r_data_core
+                    cargo run --bin r_data_core &
+                    # Wait for app to be ready
+                    for i in {1..60}; do
+                      curl -sf http://localhost:8080/admin/api/v1/health && break
+                      echo "Waiting for app..."
+                      sleep 2
+                    done
+
+            -   name: Build and start frontend
+                working-directory: fe
+                env:
+                    VITE_API_BASE_URL: http://localhost:8080
+                    VITE_ADMIN_BASE_URL: http://localhost:5173
+                run: |
+                    npm run build
+                    npx vite preview --port 5173 --host 0.0.0.0 &
+                    for i in {1..30}; do
+                      curl -sf http://localhost:5173 && break
+                      echo "Waiting for frontend..."
+                      sleep 2
+                    done
+
+            -   name: Run Playwright tests
+                working-directory: fe
+                env:
+                    E2E_BASE_URL: http://localhost:5173
+                    E2E_API_BASE_URL: http://localhost:8080
+                run: npx playwright test --config=e2e/playwright.config.ts
+
+            -   name: Upload Playwright report
+                uses: actions/upload-artifact@v4
+                if: ${{ !cancelled() }}
+                with:
+                    name: playwright-report
+                    path: fe/e2e/playwright-report
+                    retention-days: 7
+
+            -   name: Upload test results
+                uses: actions/upload-artifact@v4
+                if: ${{ !cancelled() }}
+                with:
+                    name: playwright-test-results
+                    path: fe/e2e/test-results
+                    retention-days: 7
+
+    # ============================================================================
+    # CI Gate - Passes when all applicable checks pass
+    # ============================================================================
+    ci-gate:
+        needs:
+            - changes
+            - backend-clippy
+            - backend-format
+            - backend-audit
+            - backend-tests
+            - backend-build
+            - backend-ts-bindings
+            - frontend-lint
+            - frontend-tests
+            - frontend-audit
+            - frontend-build
+            - frontend-e2e
+        if: ${{ always() }}
+        runs-on: ubuntu-latest
+        steps:
+            -   name: Check backend results
+                if: ${{ needs.changes.outputs.backend == 'true' }}
+                run: |
+                    if [[ "${{ needs.backend-clippy.result }}" != "success" ]] || \
+                       [[ "${{ needs.backend-format.result }}" != "success" ]] || \
+                       [[ "${{ needs.backend-audit.result }}" != "success" ]] || \
+                       [[ "${{ needs.backend-tests.result }}" != "success" ]] || \
+                       [[ "${{ needs.backend-build.result }}" != "success" ]] || \
+                       [[ "${{ needs.backend-ts-bindings.result }}" != "success" ]]; then
+                      echo "Backend checks failed"
+                      exit 1
+                    fi
+                    echo "All backend checks passed"
+
+            -   name: Check frontend results
+                if: ${{ needs.changes.outputs.frontend == 'true' }}
+                run: |
+                    if [[ "${{ needs.frontend-lint.result }}" != "success" ]] || \
+                       [[ "${{ needs.frontend-tests.result }}" != "success" ]] || \
+                       [[ "${{ needs.frontend-audit.result }}" != "success" ]] || \
+                       [[ "${{ needs.frontend-build.result }}" != "success" ]]; then
+                      echo "Frontend checks failed"
+                      exit 1
+                    fi
+                    echo "All frontend checks passed"
+
+            -   name: Check E2E results
+                if: ${{ needs.changes.outputs.frontend == 'true' || needs.changes.outputs.backend == 'true' }}
+                run: |
+                    if [[ "${{ needs.frontend-e2e.result }}" != "success" ]]; then
+                      echo "E2E checks failed"
+                      exit 1
+                    fi
+                    echo "E2E checks passed"
+
+            -   name: Verify at least one component was checked
+                run: |
+                    if [[ "${{ needs.changes.outputs.backend }}" != "true" ]] && \
+                       [[ "${{ needs.changes.outputs.frontend }}" != "true" ]]; then
+                      echo "No backend or frontend changes detected - nothing to check"
+                    fi
+                    echo "CI gate passed"
