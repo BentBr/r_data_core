@@ -96,3 +96,60 @@ async fn outbox_settings_are_cached_and_update_invalidates_cache() -> anyhow::Re
     let _ = cache.delete(&SystemSettingKey::Outbox.cache_key()).await;
     Ok(())
 }
+
+/// A change made by another process (DB write without invalidating *this*
+/// process's in-memory cache) must become visible once the short settings TTL
+/// elapses — bounding cross-process staleness instead of leaving it until the
+/// default cache TTL or a restart.
+#[tokio::test]
+async fn outbox_settings_cache_refreshes_after_ttl() -> anyhow::Result<()> {
+    let Some(pool) = maybe_setup_test_db().await else {
+        return Ok(());
+    };
+    let cache = create_cache_manager();
+    // 1s TTL so the test exercises expiry without a long sleep.
+    let service = SettingsService::new(pool.pool.clone(), cache.clone()).with_settings_cache_ttl(1);
+    let repo = SystemSettingsRepository::new(pool.pool.clone());
+    let user_uuid = create_test_admin_user(&pool).await?;
+
+    repo.upsert_value(
+        SystemSettingKey::Outbox,
+        &serde_json::to_value(&OutboxSettings {
+            fetch_enabled: false,
+            push_enabled: false,
+        })?,
+        user_uuid,
+    )
+    .await?;
+
+    // Prime this process's cache.
+    let first = service.get_outbox_settings().await?;
+    assert!(!first.fetch_enabled);
+    assert!(!first.push_enabled);
+
+    // Simulate another process changing the value directly in the DB; this
+    // process's in-memory cache is not invalidated.
+    repo.upsert_value(
+        SystemSettingKey::Outbox,
+        &serde_json::to_value(&OutboxSettings {
+            fetch_enabled: true,
+            push_enabled: true,
+        })?,
+        user_uuid,
+    )
+    .await?;
+
+    // Still cached: the stale value is served within the TTL window.
+    let cached = service.get_outbox_settings().await?;
+    assert!(!cached.fetch_enabled);
+    assert!(!cached.push_enabled);
+
+    // After the TTL elapses, the entry expires and the fresh DB value is read.
+    tokio::time::sleep(std::time::Duration::from_millis(1_200)).await;
+    let refreshed = service.get_outbox_settings().await?;
+    assert!(refreshed.fetch_enabled);
+    assert!(refreshed.push_enabled);
+
+    let _ = cache.delete(&SystemSettingKey::Outbox.cache_key()).await;
+    Ok(())
+}

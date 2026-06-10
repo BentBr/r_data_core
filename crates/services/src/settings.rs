@@ -12,6 +12,17 @@ use r_data_core_core::settings::{
 };
 use r_data_core_persistence::SystemSettingsRepository;
 
+/// Default cache TTL for mutable system settings, in seconds.
+///
+/// System settings are toggled at runtime via the admin API but consumed by
+/// other processes (e.g. the workflow worker). The cache is two-tier: a shared
+/// Redis layer plus a per-process in-memory layer. An update only invalidates
+/// the writer's in-memory layer and the shared Redis entry — other processes'
+/// in-memory entries are never told to drop. A short TTL bounds how long those
+/// processes can serve a stale value to roughly this many seconds, instead of
+/// the much longer default cache TTL.
+pub const SETTINGS_CACHE_TTL_SECS: u64 = 10;
+
 /// Service for managing system settings with caching
 pub struct SettingsService {
     /// Database connection pool
@@ -20,6 +31,9 @@ pub struct SettingsService {
     pub cache: Arc<CacheManager>,
     /// Default outbox settings when no value is stored in DB.
     pub outbox_defaults: OutboxSettings,
+    /// TTL applied when caching settings, in seconds. Kept short so runtime
+    /// changes propagate across processes promptly. See [`SETTINGS_CACHE_TTL_SECS`].
+    pub settings_cache_ttl_secs: u64,
 }
 
 impl SettingsService {
@@ -37,6 +51,7 @@ impl SettingsService {
                 fetch_enabled: false,
                 push_enabled: false,
             },
+            settings_cache_ttl_secs: SETTINGS_CACHE_TTL_SECS,
         }
     }
 
@@ -44,6 +59,16 @@ impl SettingsService {
     #[must_use]
     pub const fn with_outbox_defaults(mut self, outbox_defaults: OutboxSettings) -> Self {
         self.outbox_defaults = outbox_defaults;
+        self
+    }
+
+    /// Override the TTL used when caching settings, in seconds.
+    ///
+    /// Production uses [`SETTINGS_CACHE_TTL_SECS`]; this exists mainly so tests
+    /// can exercise cache expiry without long sleeps.
+    #[must_use]
+    pub const fn with_settings_cache_ttl(mut self, ttl_secs: u64) -> Self {
+        self.settings_cache_ttl_secs = ttl_secs;
         self
     }
 
@@ -72,7 +97,7 @@ impl SettingsService {
         // Cache the settings
         let _ = self
             .cache
-            .set(&cache_key, &settings, None)
+            .set(&cache_key, &settings, Some(self.settings_cache_ttl_secs))
             .await
             .map_err(|e| {
                 log::warn!("Failed to cache settings: {e}");
@@ -103,7 +128,7 @@ impl SettingsService {
         // Cache the settings
         let _ = self
             .cache
-            .set(&cache_key, &settings, None)
+            .set(&cache_key, &settings, Some(self.settings_cache_ttl_secs))
             .await
             .map_err(|e| {
                 log::warn!("Failed to cache settings: {e}");
@@ -131,7 +156,7 @@ impl SettingsService {
 
         let _ = self
             .cache
-            .set(&cache_key, &settings, None)
+            .set(&cache_key, &settings, Some(self.settings_cache_ttl_secs))
             .await
             .map_err(|e| {
                 log::warn!("Failed to cache settings: {e}");
