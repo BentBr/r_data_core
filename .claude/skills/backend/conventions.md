@@ -7,7 +7,7 @@ description: Clippy policy, allow policy, MSRV, file length limits, and Rust cod
 
 ## MSRV
 
-Rust 1.92.0
+Rust 1.96.0
 
 ## Clippy Policy
 

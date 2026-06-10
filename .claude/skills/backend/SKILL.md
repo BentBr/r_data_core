@@ -40,6 +40,11 @@ cargo +nightly clippy -p <crate> --all-targets -- -D clippy::all -D warnings -D 
 cargo test -p <crate> <module>
 ```
 
+The `-p` flag takes the **package name** from `Cargo.toml`, not the directory name.
+Package names: `r_data_core_core`, `r_data_core_api`, `r_data_core_persistence`,
+`r_data_core_services`, `r_data_core_workflow`, `r_data_core_worker`,
+`r_data_core_license`, `r_data_core_test_support`.
+
 ## TypeScript bindings
 
 `core-domain` owns `#[derive(TS)]` / `#[ts(...)]` on exported structs; `api`

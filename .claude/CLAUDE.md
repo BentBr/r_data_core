@@ -76,7 +76,7 @@ Documentation is organized into grouped skills under `.claude/skills/<name>/SKIL
 ## Code Quality
 
 - Clippy enforced strictly: `-D clippy::all -D warnings -D clippy::pedantic -D clippy::nursery`
-- MSRV: 1.92.0
+- MSRV: 1.96.0
 - File length: 300 lines soft cap, 500 lines hard cap
 - See the `backend` skill's `conventions.md` for full policy
 
@@ -99,6 +99,7 @@ Task-runner commands also exist: `/build`, `/clippy`, `/test`, `/lint`, `/migrat
 
 ## Workflow Rules
 
+- **Be precise and brief.** Answer directly, no preamble or filler. Lead with the result; keep explanations to what's needed. Say what you actually did, did not do, or are unsure of — never pad.
 - **Never commit unless explicitly asked.** Do not auto-commit, stage, or create commits after completing work. The user reviews all changes before committing.
 
 ## Security Hooks
