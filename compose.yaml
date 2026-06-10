@@ -198,6 +198,7 @@ services:
             VERSION_PURGER_CRON: "0 */5 * * * *"
             REFRESH_TOKEN_CLEANUP_CRON: "10 */5 * * * *"
             WORKFLOW_RUN_LOGS_PURGER_CRON: "20 */5 * * * *"
+            OUTBOX_PURGER_CRON: "0 */10 * * * *"
             VIRTUAL_HOST: .maintenance.rdatacore.docker
             SYSTEM_SMTP_DSN: "smtp://mail.rdatacore.docker:1025?tls=false&from=system@rdatacore.local&from_name=RData%20System"
             WORKFLOW_SMTP_DSN: "smtp://mail.rdatacore.docker:1025?tls=false&from=workflow@rdatacore.local&from_name=RData%20Workflows"
