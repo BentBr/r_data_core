@@ -1,6 +1,7 @@
 ---
-name: workspace
-description: Workspace crate dependency graph, layering rules, key concepts, and architectural patterns
+name: architecture
+description: r_data_core system view — workspace crate dependency graph, layering rules, key concepts, and architectural patterns. Read by backend agents and conflict-resolver for boundary decisions.
+color: purple
 ---
 
 # Workspace Architecture

@@ -49,43 +49,53 @@ Rust API structs generate TypeScript type definitions via `ts-rs`.
 
 ## Workspace Crates
 
-| Crate | Path | Role | Skill |
+| Crate | Path | Role | Skill doc |
 |-------|------|------|-------|
-| core | `crates/core/` | Domain models, config, cache, field types | `crates/core` |
-| api | `crates/api/` | Actix-web HTTP endpoints, middleware, auth | `crates/api` |
-| persistence | `crates/persistence/` | SQLx repositories | `crates/persistence` |
-| services | `crates/services/` | Business logic, adapters | `crates/services` |
-| workflow | `crates/workflow/` | DSL engine, job queue | `crates/workflow` |
-| worker | `crates/worker/` | Background tasks, scheduler | `crates/worker` |
-| license | `crates/license/` | License verification | `crates/license` |
-| test-support | `crates/test-support/` | Test helpers (dev-only) | `crates/test-support` |
+| core | `crates/core/` | Domain models, config, cache, field types | `backend/core.md` |
+| api | `crates/api/` | Actix-web HTTP endpoints, middleware, auth | `backend/api.md` |
+| persistence | `crates/persistence/` | SQLx repositories | `backend/persistence.md` |
+| services | `crates/services/` | Business logic, adapters | `backend/services.md` |
+| workflow | `crates/workflow/` | DSL engine, job queue | `backend/workflow.md` |
+| worker | `crates/worker/` | Background tasks, scheduler | `backend/worker.md` |
+| license | `crates/license/` | License verification | `backend/license.md` |
+| test-support | `crates/test-support/` | Test helpers (dev-only) | `backend/SKILL.md` |
 
-Frontend: `fe/` — Vue3 + TypeScript + Vuetify admin dashboard. See `crates/frontend` skill.
+Frontend: `fe/` — Vue3 + TypeScript + Vuetify admin dashboard. See the `frontend` skill.
 
 ## Skills Reference
 
-Detailed documentation is organized into skills under `.claude/skills/`:
+Documentation is organized into grouped skills under `.claude/skills/<name>/SKILL.md`:
 
-### Conventions
-- **`conventions/git`** — Git hooks, conventional commits, hook customization
-- **`conventions/rust-conventions`** — Clippy policy, allow policy, MSRV, file length limits
-- **`conventions/frontend-conventions`** — Vue3, TypeScript, Vite, Vuetify patterns
-- **`conventions/code-quality`** — Quality standards, testing conventions, pre-push checks
-
-### Architecture
-- **`architecture/workspace`** — Crate dependency graph, layering rules, key concepts
-- **`architecture/api-reference`** — Full public and admin API endpoint tables
-- **`architecture/database`** — SQLx, migrations, compile-time verification, test DB
-
-### Per-Crate Documentation
-Each crate has a dedicated skill under `crates/` with module breakdowns, key exports, and patterns.
+- **`backend`** — crate dependency graph, layering rules, scoped-check commands, TS bindings. Supporting docs: `core.md`, `services.md`, `persistence.md`, `api.md`, `workflow.md`, `worker.md`, `license.md`, `database.md`, `api-reference.md`, `conventions.md` (clippy/MSRV/file-length), `quality.md` (testing/review).
+- **`frontend`** — Vue3/TS/Vite/Vuetify/Pinia, generated-types boundary, EN/DE i18n. Supporting: `conventions.md`.
+- **`architecture`** — system view: crate dependency graph, layering, key concepts.
+- **`git`** — conventional commits + decision matrix, pre-push pipeline, `GIT_HOOK_*` toggles. Supporting: `conflicts.md` (merge-conflict classification).
+- **`quality-assurance`** — the `/qa` pipeline (static gate → ts-binding check → agent delegation → review/sync).
+- **`devops`** — rdt, Docker compose, `.githooks`, CI, env, SQLx migration infra.
 
 ## Code Quality
 
 - Clippy enforced strictly: `-D clippy::all -D warnings -D clippy::pedantic -D clippy::nursery`
 - MSRV: 1.92.0
 - File length: 300 lines soft cap, 500 lines hard cap
-- See `conventions/rust-conventions` skill for full policy
+- See the `backend` skill's `conventions.md` for full policy
+
+## Agents
+
+Layer-specialist subagents under `.claude/agents/`. The orchestrator delegates scoped work; each has a fixed scope + delegation table, runs scoped checks only (never full `rdt test`/CI), reports back, and never commits.
+
+- **Backend:** `core-domain` (crates/core), `services` (services + workflow + worker), `persistence` (persistence + migrations), `api` (Actix/auth/DTOs/ts-bindings), `rust-tester` (tests only).
+- **Frontend:** `frontend-ui` (components/views/SCSS), `frontend-state` (Pinia/composables/services), `frontend-infrastructure` (router/plugins/types/zod), `frontend-tester` (vitest).
+- **Cross-cutting:** `devops`, `conflict-resolver`, `quality-assurance` (read-only), `skills-maintainer`, `docs-writer`, `i18n-translator` (`fe/translations/{en,de}.json` parity).
+
+## Meta-commands
+
+- **`/commit`** — propose conventional commits and commit (no push, no `Co-Authored-By`).
+- **`/push`** — push, drive the `.githooks/pre-push` pipeline, route failures to agents, monitor PRs.
+- **`/qa`** — run the QA pipeline (`.claude/skills/quality-assurance/SKILL.md`).
+- **`/analyze-claude`** — audit the `.claude/` setup and propose fixes in plan mode.
+
+Task-runner commands also exist: `/build`, `/clippy`, `/test`, `/lint`, `/migrate`, `/run`, `/docker`, `/entity`, `/workflow`, `/prepare-sqlx`, `/reset-db`, `/review`.
 
 ## Workflow Rules
 
@@ -93,4 +103,6 @@ Each crate has a dedicated skill under `crates/` with module breakdowns, key exp
 
 ## Security Hooks
 
-`.claude/settings.json` blocks access to `.env`, `.pem`, `.key`, `credentials/`, `secrets/` directories.
+- `protect_secrets.js` (PreToolUse) blocks access to `.env*`, `.pem`, `.key`, `credentials/`, `secrets/` for Read/Edit/Write/Bash/Glob/Grep.
+- `protect_generated.cjs` (PreToolUse) blocks hand-edits to `fe/src/types/generated/` — run `rdt generate-ts` instead.
+- PostToolUse format/lint hooks: `rustfmt` (`.rs`), `prettier` + `eslint` (`fe/` files).

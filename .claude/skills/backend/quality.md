@@ -1,6 +1,6 @@
 ---
-name: code-quality
-description: General code quality standards, testing conventions, and quality checks for r_data_core
+name: backend-quality
+description: Rust code quality standards, testing conventions, and quality checks for r_data_core (supporting doc of the backend skill)
 ---
 
 # Code Quality

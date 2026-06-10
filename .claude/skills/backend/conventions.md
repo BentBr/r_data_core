@@ -1,6 +1,6 @@
 ---
-name: rust-conventions
-description: Clippy policy, allow policy, MSRV, file length limits, and Rust coding standards for r_data_core
+name: backend-conventions
+description: Clippy policy, allow policy, MSRV, file length limits, and Rust coding standards for r_data_core (supporting doc of the backend skill)
 ---
 
 # Rust Conventions

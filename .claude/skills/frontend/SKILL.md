@@ -1,6 +1,7 @@
 ---
 name: frontend
-description: Admin frontend (fe/) — Vue3, TypeScript, Vite, Vuetify, Pinia, Playwright e2e
+description: Admin frontend (fe/) — Vue3, TypeScript, Vite, Vuetify, Pinia, Playwright e2e. Component/state/infrastructure layering, generated-types boundary, EN/DE translations. Read by all frontend subagents.
+color: blue
 ---
 
 # Admin Frontend
@@ -64,4 +65,32 @@ Runs in the `node` Docker container. Dev server accessible at the configured Doc
 - Components: PascalCase
 - Composables: kebab-case with `use-` prefix
 - TypeScript strict mode — avoid `any`
-- See `frontend-conventions` skill for full details
+- See the `conventions.md` supporting doc for full details
+
+## Layering (mirrors the subagent split)
+
+- **ui** (`frontend-ui`) — `fe/src` components, views, SCSS, Vuetify wrappers.
+- **state** (`frontend-state`) — Pinia stores, composables (`use*`), HTTP/API services.
+- **infrastructure** (`frontend-infrastructure`) — router, plugins, API client, zod
+  form schemas (`satisfies z.ZodType<GeneratedType>`), consumption of generated types.
+
+## Generated types — never hand-edit
+
+`fe/src/types/generated/` (TS types + `validation.ts`) come from `rdt generate-ts`,
+generated from the Rust structs (`#[derive(TS)]` in `crates/core`, `export_bindings`
+tests in `crates/api`). A PreToolUse hook (`protect_generated.cjs`) blocks edits to
+that directory. Change the Rust structs and regenerate instead.
+
+## i18n
+
+`fe/translations/{en,de}.json`, loaded by `fe/src/composables/useTranslations.ts`
+(dynamic import — not vue-i18n). Keep EN/DE keys in parity; the `i18n-translator`
+agent owns these files. Components/stores only reference keys.
+
+## Scoped checks (in the Docker `node` container)
+
+```bash
+docker compose exec -T node npx vue-tsc --noEmit
+docker compose exec -T node npx eslint <paths>
+docker compose exec -T node npm run test -- <file>
+```
