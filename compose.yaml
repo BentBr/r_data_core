@@ -69,7 +69,7 @@ services:
             dockerfile: ./.docker/app/Dockerfile
             target: r_data_core
             args:
-                RUST_VERSION: "1.92.0"
+                RUST_VERSION: "1.96.0"
                 BUILD_MODE: "debug"
                 PACKAGE_NAME: "r_data_core"
                 BINARY_NAME: "r_data_core"
@@ -119,7 +119,7 @@ services:
             dockerfile: ./.docker/app/Dockerfile
             target: r_data_core_worker
             args:
-                RUST_VERSION: "1.92.0"
+                RUST_VERSION: "1.96.0"
                 BUILD_MODE: "debug"
                 PACKAGE_NAME: "r_data_core_worker"
                 BINARY_NAME: "r_data_core_worker"
@@ -159,7 +159,7 @@ services:
             dockerfile: ./.docker/app/Dockerfile
             target: r_data_core_maintenance
             args:
-                RUST_VERSION: "1.92.0"
+                RUST_VERSION: "1.96.0"
                 BUILD_MODE: "debug"
                 PACKAGE_NAME: "r_data_core_worker"
                 BINARY_NAME: "r_data_core_maintenance"
