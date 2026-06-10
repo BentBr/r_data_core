@@ -45,5 +45,15 @@ export default defineConfig({
     build: {
         target: 'esnext',
         sourcemap: true,
+        // Content-hashed filenames for cache busting: when a file's content
+        // changes, its name changes, so browsers fetch the new asset on the
+        // next load instead of serving a stale cached copy.
+        rollupOptions: {
+            output: {
+                entryFileNames: 'assets/[name]-[hash].js',
+                chunkFileNames: 'assets/[name]-[hash].js',
+                assetFileNames: 'assets/[name]-[hash][extname]',
+            },
+        },
     },
 })
