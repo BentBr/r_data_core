@@ -55,7 +55,7 @@ impl MockEntityDefinitionService {
     }
 
     #[allow(clippy::unused_async)]
-    async fn get_entity_definition_by_entity_type(
+    fn get_entity_definition_by_entity_type(
         &self,
         entity_type: &str,
     ) -> Result<EntityDefinition> {
@@ -159,7 +159,7 @@ impl MockEntityDefinitionService {
     }
 
     #[allow(clippy::unused_async)]
-    async fn _get_entity_definition(&self, _uuid: &Uuid) -> Result<EntityDefinition> {
+    fn _get_entity_definition(&self, _uuid: &Uuid) -> Result<EntityDefinition> {
         if !self.entity_type_exists {
             return Err(r_data_core_core::error::Error::NotFound(
                 "Class definition not found".to_string(),
@@ -228,7 +228,7 @@ impl TestService {
         let entity_def = self
             .class_service
             .get_entity_definition_by_entity_type(entity_type)
-            .await?;
+            ?;
 
         if !entity_def.published {
             return Err(r_data_core_core::error::Error::NotFound(format!(
@@ -246,7 +246,7 @@ impl TestService {
         let entity_def = self
             .class_service
             .get_entity_definition_by_entity_type(&entity.entity_type)
-            .await?;
+            ?;
 
         if !entity_def.published {
             return Err(r_data_core_core::error::Error::NotFound(format!(

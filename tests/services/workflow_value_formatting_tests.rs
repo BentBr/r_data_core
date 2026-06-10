@@ -107,14 +107,14 @@ fn test_reserved_fields_constant() {
     assert!(RESERVED_FIELDS.contains(&"uuid"));
     assert!(RESERVED_FIELDS.contains(&"path"));
     assert!(RESERVED_FIELDS.contains(&"published"));
-    assert!(RESERVED_FIELDS.len() == 10);
+    assert_eq!(RESERVED_FIELDS.len(), 10);
 }
 
 #[test]
 fn test_protected_fields_constant() {
     assert!(PROTECTED_FIELDS.contains(&"created_at"));
     assert!(PROTECTED_FIELDS.contains(&"created_by"));
-    assert!(PROTECTED_FIELDS.len() == 2);
+    assert_eq!(PROTECTED_FIELDS.len(), 2);
 }
 
 #[test]
