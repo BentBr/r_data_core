@@ -363,14 +363,14 @@ pub async fn admin_register(
         Ok(uuid) => {
             if is_authenticated {
                 ApiResponse::ok(serde_json::json!({
-                    "message": format!("User registration processed successfully. User is active and published."),
+                    "message": "User registration processed successfully. User is active and published.",
                     "uuid": uuid.to_string(),
                     "is_authenticated": is_authenticated,
                     "creator_uuid": creator_uuid.to_string()
                 }))
             } else {
                 ApiResponse::ok(serde_json::json!({
-                    "message": format!("User registration processed successfully. User must be activated by an admin."),
+                    "message": "User registration processed successfully. User must be activated by an admin.",
                     "uuid": uuid.to_string(),
                     "is_authenticated": is_authenticated,
                     "creator_uuid": creator_uuid.to_string()
