@@ -13,7 +13,7 @@ no_docker_compose = true
         "description" = "Runs all unit tests"
     [commands.test-fe]
         "alias" = "test-fe"
-        "execution" = "docker compose exec node npm run test"
+        "execution" = "docker compose exec node pnpm test"
         "description" = "Runs vitest for FE testing"
     [commands.clippy]
         "alias" = "clippy"
@@ -21,15 +21,15 @@ no_docker_compose = true
         "description" = "Runs clippy with all lints enabled"
     [commands.lint]
         "alias" = "lint"
-        "execution" = "docker compose exec node npm run lint"
+        "execution" = "docker compose exec node pnpm lint"
         "description" = "Runs ESLint (with prettier) and fixes it's findings"
     [commands.test-e2e]
         "alias" = "test-e2e"
-        "execution" = "docker compose --profile e2e up -d && sleep 3 && docker compose --profile e2e exec playwright sh -c 'npm install && npx playwright test --config=e2e/playwright.config.ts'"
+        "execution" = "docker compose --profile e2e up -d && sleep 3 && docker compose --profile e2e exec playwright sh -c 'corepack enable && corepack prepare pnpm@10.33.4 --activate && pnpm install && pnpm exec playwright test --config=e2e/playwright.config.ts'"
         "description" = "Runs Playwright E2E browser tests"
     [commands.test-e2e-report]
         "alias" = "test-e2e-report"
-        "execution" = "docker compose --profile e2e exec playwright npx playwright show-report e2e/playwright-report --host 0.0.0.0 --port 9323"
+        "execution" = "docker compose --profile e2e exec playwright pnpm exec playwright show-report e2e/playwright-report --host 0.0.0.0 --port 9323"
         "description" = "Serves Playwright report at http://playwright.rdatacore.docker"
     [commands.clean-e2e]
         "alias" = "clean-e2e"
@@ -45,7 +45,7 @@ no_docker_compose = true
         "description" = "Generates TS bindings and fails if any generated files differ from committed versions"
     [commands.coverage]
         "alias" = "coverage"
-        "execution" = "./scripts/coverage.sh all && docker compose exec -T node npm run coverage"
+        "execution" = "./scripts/coverage.sh all && docker compose exec -T node pnpm coverage"
         "description" = "Runs backend (cargo-llvm-cov) and frontend (vitest) coverage with thresholds"
     [commands.coverage-be]
         "alias" = "coverage-be"
@@ -53,7 +53,7 @@ no_docker_compose = true
         "description" = "Runs backend coverage via scripts/coverage.sh (profile + lcov + json + summary + check)"
     [commands.coverage-fe]
         "alias" = "coverage-fe"
-        "execution" = "docker compose exec -T node npm run coverage"
+        "execution" = "docker compose exec -T node pnpm coverage"
         "description" = "Runs frontend vitest coverage in the node container"
 # Mandatory node
 [environments]
