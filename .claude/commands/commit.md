@@ -13,7 +13,7 @@ Read `.claude/skills/git/SKILL.md`, then perform the commit workflow (no push).
 
 1. **Inspect** — Run `git status` and `git diff HEAD`. If the tree is clean, stop and report "nothing to commit".
 
-2. **Separate the commit set from unrelated WIP** *(skipped in commit-all mode)* — Working trees often mix the current work with stale edits, generated lockfiles (`Cargo.lock`, `fe/package-lock.json`), regenerated `.sqlx/` or `fe/src/types/generated/`, or experiments. Identify each modified file's purpose. List anything unrelated and ask whether to include it. Default: stage only files matching the current intent; leave unrelated WIP unstaged.
+2. **Separate the commit set from unrelated WIP** *(skipped in commit-all mode)* — Working trees often mix the current work with stale edits, generated lockfiles (`Cargo.lock`, `fe/pnpm-lock.yaml`), regenerated `.sqlx/` or `fe/src/types/generated/`, or experiments. Identify each modified file's purpose. List anything unrelated and ask whether to include it. Default: stage only files matching the current intent; leave unrelated WIP unstaged.
 
 3. **Review (conditional)** — For non-trivial diffs, delegate a code review to the **quality-assurance** agent with the staged diff and ask it to flag issues before committing. **Skip** for trivial commits (pure docs/comments, single-line typo, formatting-only, dependency bumps). If issues are found, present them and ask whether to fix first.
 

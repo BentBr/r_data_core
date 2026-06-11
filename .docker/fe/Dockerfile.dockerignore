@@ -57,3 +57,6 @@ docker-compose*.yml
 
 # Node modules (will be installed fresh)
 fe/node_modules/
+
+# pnpm store (regenerated in the builder)
+fe/.pnpm-store/

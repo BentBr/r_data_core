@@ -135,7 +135,7 @@ jobs:
 
     # ==========================================================================
     # Frontend coverage — vitest v8. The line threshold lives in
-    # fe/vitest.config.ts (thresholds.lines), so `npm run coverage` exits non-zero
+    # fe/vitest.config.ts (thresholds.lines), so `pnpm coverage` exits non-zero
     # below it and fails the build. Publishes the badge JSON on push-to-main.
     # The 30s test timeout is baked into the `coverage` script: v8 instrumentation
     # pushes a few heavy component tests past the default 5s.
@@ -149,20 +149,31 @@ jobs:
             -   name: Checkout
                 uses: actions/checkout@v4
 
+            -   name: Setup pnpm
+                uses: pnpm/action-setup@v6
+                with:
+                    version: 10.33.4
+
             -   name: Setup Node.js
                 uses: actions/setup-node@v4
                 with:
                     node-version: '22'
-                    cache: 'npm'
-                    cache-dependency-path: fe/package-lock.json
+
+            -   name: Cache pnpm store
+                uses: actions/cache@v4
+                with:
+                    path: fe/.pnpm-store
+                    key: ${{ runner.os }}-pnpm-store-${{ hashFiles('fe/pnpm-lock.yaml') }}
+                    restore-keys: |
+                        ${{ runner.os }}-pnpm-store-
 
             -   name: Install dependencies
                 working-directory: fe
-                run: npm ci
+                run: pnpm install --frozen-lockfile
 
             -   name: Run FE coverage (fails below threshold)
                 working-directory: fe
-                run: npm run coverage
+                run: pnpm coverage
 
             -   name: Append FE coverage summary to step summary
                 run: |

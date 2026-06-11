@@ -41,9 +41,9 @@ If a store/service needs a type or client capability that doesn't exist, **stop 
 4. **Never hand-edit `fe/src/types/generated/`.**
 5. **Scoped checks only.** Verify your slice:
    ```bash
-   docker compose exec -T node npx vue-tsc --noEmit
-   docker compose exec -T node npx eslint <touched paths>
-   docker compose exec -T node npm run test -- <existing test>
+   docker compose exec -T node pnpm exec vue-tsc --noEmit
+   docker compose exec -T node pnpm exec eslint <touched paths>
+   docker compose exec -T node pnpm test -- <existing test>
    ```
 6. **Never commit, push, or stash.**
 

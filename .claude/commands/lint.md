@@ -20,9 +20,6 @@ rdt lint
 
 ```bash
 # Admin frontend
-docker compose exec node npm run lint
-docker compose exec node npm run lint:fix
-
-# Or directly in fe/ directory
-cd fe && npm run lint
+docker compose exec node pnpm lint
+docker compose exec node pnpm lint:fix
 ```

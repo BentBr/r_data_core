@@ -4,7 +4,7 @@ A Rust-based Master Data Management (MDM) system. Modular workspace with Actix-w
 
 ## Quick Reference
 
-This project uses `rdt` (rusty_dev_tool) as the standard task runner. **Always prefer `rdt` commands** over raw `cargo`/`npm` invocations. **Never run `npm` locally** — all frontend commands run inside the Docker `node` container.
+This project uses `rdt` (rusty_dev_tool) as the standard task runner. **Always prefer `rdt` commands** over raw `cargo`/`npm`/`pnpm` invocations. **Never run `npm`/`pnpm`/`node` on the host** — all frontend commands run inside the Docker `node` container.
 
 ```bash
 rdt test            # Run all workspace tests

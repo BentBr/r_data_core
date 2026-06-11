@@ -61,9 +61,9 @@ docker compose exec core /usr/local/bin/clear_cache --all
 # Hash password
 docker compose exec core /usr/local/bin/hash_password 'newpassword'
 
-# Frontend npm commands
-docker compose exec node npm run lint
-docker compose exec node npm run build
+# Frontend pnpm commands
+docker compose exec node pnpm lint
+docker compose exec node pnpm build
 ```
 
 ### Rebuild images

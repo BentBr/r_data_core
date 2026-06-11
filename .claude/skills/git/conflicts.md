@@ -1,6 +1,6 @@
 ---
 name: git-conflicts
-description: Conflict-classification table for r_data_core — Cargo.lock, migrations, generated TS, .sqlx, package-lock, and code-file resolution strategies. Read by conflict-resolver and /push.
+description: Conflict-classification table for r_data_core — Cargo.lock, migrations, generated TS, .sqlx, pnpm-lock, and code-file resolution strategies. Read by conflict-resolver and /push.
 ---
 
 # Merge-conflict classification (r_data_core)
@@ -10,7 +10,7 @@ on code files. Resolve manifests + code first, lockfiles last.
 
 | Pattern | Strategy |
 |---|---|
-| `Cargo.lock`, `fe/package-lock.json` | Never hand-merge. Resolve the manifest first, take one side's lock, then `cargo update -p <pkg>` / `npm install <pkg>` for **only the changed packages**. |
+| `Cargo.lock`, `fe/pnpm-lock.yaml` | Never hand-merge. Resolve the manifest first, take one side's lock, then `cargo update -p <pkg>` / `pnpm install <pkg>` for **only the changed packages**. |
 | `Cargo.toml`, `fe/package.json` | Union the dependency entries; surface real version-constraint conflicts — never silently pick one. |
 | `migrations/*.sql` | Keep both sides' migrations; rename on timestamp collision; never hand-merge a migration body. |
 | `fe/src/types/generated/**` | Never hand-merge — take one side + `rdt generate-ts`. |
@@ -26,7 +26,7 @@ on code files. Resolve manifests + code first, lockfiles last.
 git diff --check                                   # no remaining markers
 git status --short                                 # no unmerged paths
 SQLX_OFFLINE=true cargo check --workspace          # if any .rs touched
-docker compose exec -T node npx vue-tsc --noEmit   # if any .ts/.vue touched
+docker compose exec -T node pnpm exec vue-tsc --noEmit   # if any .ts/.vue touched
 ```
 
 Never commit, push, abort, or continue the merge/rebase on your own — leave the

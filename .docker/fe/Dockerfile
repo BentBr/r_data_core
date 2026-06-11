@@ -17,11 +17,15 @@ RUN apk add --no-cache \
     vips-dev
 
 WORKDIR /app
-COPY fe/package*.json ./
-RUN npm ci
+
+# Install pnpm at the workspace-pinned version via corepack.
+RUN corepack enable && corepack prepare pnpm@10.33.4 --activate
+
+COPY fe/package.json fe/pnpm-lock.yaml fe/.npmrc ./
+RUN pnpm install --frozen-lockfile
 COPY fe/ ./
 RUN rm -rf node_modules/.vite node_modules/.cache
-RUN npm run build
+RUN pnpm build
 
 # Stage 2: Serve with nginx
 FROM nginx:alpine AS production

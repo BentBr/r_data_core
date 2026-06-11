@@ -44,7 +44,7 @@ fe/
 
 ## Running Commands
 
-**Never run `npm` (or `npx`) locally.** All frontend commands must run inside the Docker `node` container.
+**Never run `npm`/`pnpm`/`node` on the host.** All frontend commands must run inside the Docker `node` container.
 
 Use `rdt` (preferred) or `docker compose exec node`:
 
@@ -54,7 +54,7 @@ rdt lint                               # ESLint + Prettier
 rdt test-e2e                           # Playwright E2E browser tests
 rdt test-e2e-report                    # Serve Playwright report
 rdt clean-e2e                          # Remove E2E test data from DB
-docker compose exec node npm run dev   # Only if no rdt alias exists
+docker compose exec node pnpm dev      # Only if no rdt alias exists
 ```
 
 Runs in the `node` Docker container. Dev server accessible at the configured Docker hostname.
@@ -90,7 +90,7 @@ agent owns these files. Components/stores only reference keys.
 ## Scoped checks (in the Docker `node` container)
 
 ```bash
-docker compose exec -T node npx vue-tsc --noEmit
-docker compose exec -T node npx eslint <paths>
-docker compose exec -T node npm run test -- <file>
+docker compose exec -T node pnpm exec vue-tsc --noEmit
+docker compose exec -T node pnpm exec eslint <paths>
+docker compose exec -T node pnpm test -- <file>
 ```

@@ -40,9 +40,9 @@ You are the platform specialist for the r_data_core admin frontend. You build ro
 3. **TypeScript strict** — no `any`; use `unknown` only at the fetch/axios boundary, then narrow.
 4. **Scoped checks only.** Verify your slice:
    ```bash
-   docker compose exec -T node npx vue-tsc --noEmit
-   docker compose exec -T node npx eslint <touched paths>
-   docker compose exec -T node npm run test -- <existing test>
+   docker compose exec -T node pnpm exec vue-tsc --noEmit
+   docker compose exec -T node pnpm exec eslint <touched paths>
+   docker compose exec -T node pnpm test -- <existing test>
    ```
 5. **Never commit, push, or stash.**
 

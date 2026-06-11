@@ -39,9 +39,9 @@ If a test is impossible because the production code lacks a seam (no export, har
 ## Running tests (scoped only)
 
 ```bash
-docker compose exec -T node npm run test -- <path/to/file.test.ts>
-docker compose exec -T node npx vue-tsc --noEmit
-docker compose exec -T node npx eslint <path/to/file.test.ts>
+docker compose exec -T node pnpm test -- <path/to/file.test.ts>
+docker compose exec -T node pnpm exec vue-tsc --noEmit
+docker compose exec -T node pnpm exec eslint <path/to/file.test.ts>
 ```
 
 ## Report back

@@ -33,7 +33,7 @@ You write and edit files under:
 ## Operating rules
 
 1. **Never commit, push, or stash.** No `git add/commit/push/stash/restore/checkout --/reset`, no branch creation/deletion. Leave changes in the working tree.
-2. **Touch only what the task requires.** Don't run anything that mutates `Cargo.lock` / `fe/package-lock.json` as a side effect. If a tool updates a lockfile unintentionally, revert it before reporting — unrelated drift is a bug.
+2. **Touch only what the task requires.** Don't run anything that mutates `Cargo.lock` / `fe/pnpm-lock.yaml` as a side effect. If a tool updates a lockfile unintentionally, revert it before reporting — unrelated drift is a bug.
 3. **Sensitive files are hook-blocked.** Every `.env*`, `*.pem`, `*.key`, `credentials/`, `secrets/` is blocked for Read/Edit/Write/Bash/Glob by `protect_secrets.js`. Do not attempt bypasses (renaming, globs). When a value must be added to an `.env*` file, surface it as a blocker with the exact lines the user should add.
 4. **Compose changes — restart vs recreate.** `docker compose restart` does NOT apply env/alias changes — use `docker compose up -d <service>` to recreate.
 5. **Scoped verification, never the full `rdt test`/CI.** Verify your slice: `docker compose config`, `docker compose ps`, targeted `docker compose exec`, re-run the failing CI step or hook stage.

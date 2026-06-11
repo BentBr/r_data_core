@@ -37,7 +37,7 @@ fe/
 
 ## Running Commands
 
-**Never run `npm` locally.** All frontend commands must run inside the Docker `node` container.
+**Never run `npm`/`pnpm`/`node` on the host.** All frontend commands must run inside the Docker `node` container.
 
 Use `rdt` (preferred) or `docker compose exec node`:
 
@@ -45,7 +45,7 @@ Use `rdt` (preferred) or `docker compose exec node`:
 rdt test-fe                            # Run vitest via Docker
 rdt lint                               # Run ESLint + Prettier via Docker
 rdt test-e2e                           # Run Playwright E2E tests via Docker
-docker compose exec node npm run dev   # Only if no rdt alias exists
+docker compose exec node pnpm dev      # Only if no rdt alias exists
 ```
 
 ## Key Patterns

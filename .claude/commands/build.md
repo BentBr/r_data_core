@@ -28,14 +28,12 @@ SQLX_OFFLINE=true cargo build --workspace
 
 ### Admin frontend (fe/)
 ```bash
-docker compose exec node npm run build
-# or
-cd fe && npm run build
+docker compose exec node pnpm build
 ```
 
 ### Static website
 ```bash
-docker compose exec node-static npm run build
+docker compose exec node-static pnpm build
 ```
 
 ## Binaries produced

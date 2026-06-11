@@ -6,7 +6,7 @@
     "type": "module",
     "scripts": {
         "dev": "vite",
-        "build": "npm run generate:favicons && vue-tsc && vite build",
+        "build": "pnpm generate:favicons && vue-tsc && vite build",
         "preview": "vite preview",
         "typecheck": "vue-tsc --noEmit",
         "lint": "vue-tsc --noEmit && eslint . --fix",
@@ -16,10 +16,10 @@
         "test:run": "vue-tsc --noEmit && vitest run",
         "test:coverage": "vue-tsc --noEmit && vitest run --coverage",
         "coverage": "vitest run --coverage --test-timeout=30000",
-        "test:e2e": "npx playwright test --config=e2e/playwright.config.ts",
-        "test:e2e:headed": "npx playwright test --config=e2e/playwright.config.ts --headed",
-        "test:e2e:debug": "npx playwright test --config=e2e/playwright.config.ts --debug",
-        "test:e2e:report": "npx playwright show-report e2e/playwright-report --host 0.0.0.0 --port 9323",
+        "test:e2e": "pnpm exec playwright test --config=e2e/playwright.config.ts",
+        "test:e2e:headed": "pnpm exec playwright test --config=e2e/playwright.config.ts --headed",
+        "test:e2e:debug": "pnpm exec playwright test --config=e2e/playwright.config.ts --debug",
+        "test:e2e:report": "pnpm exec playwright show-report e2e/playwright-report --host 0.0.0.0 --port 9323",
         "lint:e2e": "eslint e2e/",
         "generate:favicons": "node scripts/generate-favicons.js"
     },
@@ -31,6 +31,13 @@
         "vue-router": "^4.3.0",
         "vuetify": "^3.5.14",
         "zod": "^4.0.13"
+    },
+    "packageManager": "pnpm@10.33.4",
+    "pnpm": {
+        "onlyBuiltDependencies": [
+            "esbuild",
+            "sharp"
+        ]
     },
     "devDependencies": {
         "@playwright/test": "^1.58.2",
