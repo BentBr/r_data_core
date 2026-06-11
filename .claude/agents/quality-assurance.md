@@ -23,7 +23,7 @@ Useful scoped reads:
 ```bash
 cargo +nightly clippy -p <crate> --all-targets -- -D clippy::all -D warnings -D clippy::pedantic -D clippy::nursery
 cargo test -p <crate> <module>
-docker compose exec -T node npx vue-tsc --noEmit
+docker compose exec -T node pnpm exec vue-tsc --noEmit
 ```
 
 ## Output contract — non-negotiable

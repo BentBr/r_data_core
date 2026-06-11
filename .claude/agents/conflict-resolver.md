@@ -1,6 +1,6 @@
 ---
 name: conflict-resolver
-description: "Git merge-conflict specialist for r_data_core. Use when `git status` shows unmerged paths after a merge, rebase, cherry-pick, or pre-push hook failure. Analyses each conflicted file, classifies it (code / Cargo.lock / package-lock / migration / generated TS / .sqlx / env / skill / binary), proposes a semantic resolution, and applies it on confirmation. Does not commit — leaves the resolved, staged tree for the orchestrator."
+description: "Git merge-conflict specialist for r_data_core. Use when `git status` shows unmerged paths after a merge, rebase, cherry-pick, or pre-push hook failure. Analyses each conflicted file, classifies it (code / Cargo.lock / pnpm-lock / migration / generated TS / .sqlx / env / skill / binary), proposes a semantic resolution, and applies it on confirmation. Does not commit — leaves the resolved, staged tree for the orchestrator."
 model: sonnet
 tools: "Bash, Read, Edit, Write, Grep, Glob, mcp__context7__*"
 maxTurns: 40
@@ -24,13 +24,13 @@ A `git merge`, `git rebase`, `git cherry-pick`, or the pre-push hook left unmerg
 1. **Inventory** — `git status --short`, `git diff --check`, `git diff --name-only --diff-filter=U`. Identify direction: `cat .git/MERGE_HEAD .git/REBASE_HEAD .git/CHERRY_PICK_HEAD 2>/dev/null`; `git log -1 --oneline HEAD` (ours) vs `MERGE_HEAD` (theirs).
 2. **Classify** each file against `.claude/skills/git/conflicts.md`. Read both sides before choosing a strategy.
 3. **Propose** per file: `File / Classification / Ours / Theirs / Proposed resolution / Risk (low|med|high)`. Group by classification. **Wait for orchestrator confirmation** before applying.
-4. **Execute** in order: production code + manifests first (remove all `<<<<<<<`/`=======`/`>>>>>>>`, match project style, `git add`); **lockfiles last** — take one side + refresh only the changed packages (`cargo update -p …` / `npm install …`), never an arg-less update; regenerate `fe/src/types/generated/` (`rdt generate-ts`) and `.sqlx/` (`cargo sqlx prepare`) rather than hand-merging.
+4. **Execute** in order: production code + manifests first (remove all `<<<<<<<`/`=======`/`>>>>>>>`, match project style, `git add`); **lockfiles last** — take one side + refresh only the changed packages (`cargo update -p …` / `pnpm install <pkg>`), never an arg-less update; regenerate `fe/src/types/generated/` (`rdt generate-ts`) and `.sqlx/` (`cargo sqlx prepare`) rather than hand-merging.
 5. **Verify**:
    ```bash
    git diff --check
    git status --short
    SQLX_OFFLINE=true cargo check --workspace      # if any .rs touched
-   docker compose exec -T node npx vue-tsc --noEmit # if any .ts/.vue touched
+   docker compose exec -T node pnpm exec vue-tsc --noEmit # if any .ts/.vue touched
    ```
 6. **Hand back** — do NOT commit. Leave the working tree clean of markers, resolutions staged, ready for the orchestrator to commit and resume the original operation.
 

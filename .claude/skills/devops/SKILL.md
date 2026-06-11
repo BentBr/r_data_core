@@ -17,7 +17,7 @@ rdt test | test-unit | test-fe | clippy | lint | test-e2e | test-e2e-report | cl
 ## Docker services
 
 `postgres`, `pg-test`, `redis`, `node` (frontend). All frontend commands run via
-`docker compose exec -T node …` — never `npm`/`node` on the host.
+`docker compose exec -T node …` — never `npm`/`pnpm`/`node` on the host.
 `docker compose restart` does NOT apply env-var or network-alias changes — use
 `docker compose up -d <service>` to recreate.
 
@@ -50,4 +50,4 @@ blockers with the exact lines to add — never attempt a bypass.
 
 - Never commit, push, or stash — leave changes in the working tree.
 - Don't mutate lockfiles as a side effect; if a tool updates `Cargo.lock` /
-  `fe/package-lock.json` unintentionally, revert it before reporting.
+  `fe/pnpm-lock.yaml` unintentionally, revert it before reporting.
