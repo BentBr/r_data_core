@@ -135,7 +135,7 @@ jobs:
 
     # ==========================================================================
     # Frontend coverage — vitest v8. The line threshold lives in
-    # fe/vitest.config.ts (thresholds.lines), so `npm run coverage` exits non-zero
+    # fe/vitest.config.ts (thresholds.lines), so `pnpm coverage` exits non-zero
     # below it and fails the build. Publishes the badge JSON on push-to-main.
     # The 30s test timeout is baked into the `coverage` script: v8 instrumentation
     # pushes a few heavy component tests past the default 5s.
