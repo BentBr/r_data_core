@@ -191,6 +191,34 @@ impl AdminUserRepositoryTrait for AdminUserRepository {
         Ok(())
     }
 
+    async fn update_lockout_state(
+        &self,
+        uuid: &Uuid,
+        status: &r_data_core_core::admin_user::UserStatus,
+        failed_login_attempts: i32,
+    ) -> Result<()> {
+        let status_str = match status {
+            r_data_core_core::admin_user::UserStatus::Active => "Active",
+            r_data_core_core::admin_user::UserStatus::Inactive => "Inactive",
+            r_data_core_core::admin_user::UserStatus::Locked => "Locked",
+            r_data_core_core::admin_user::UserStatus::PendingActivation => "PendingActivation",
+        };
+        sqlx::query(
+            "UPDATE admin_users SET status = $1, failed_login_attempts = $2, updated_at = NOW() \
+             WHERE uuid = $3",
+        )
+        .bind(status_str)
+        .bind(failed_login_attempts)
+        .bind(uuid)
+        .execute(&*self.pool)
+        .await
+        .map_err(|e| {
+            error!("Error updating lockout state: {e:?}");
+            r_data_core_core::error::Error::Database(e)
+        })?;
+        Ok(())
+    }
+
     async fn create_admin_user<'a>(
         &self,
         params: &crate::admin_user_repository_trait::CreateAdminUserParams<'a>,

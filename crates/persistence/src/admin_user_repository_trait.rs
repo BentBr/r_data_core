@@ -116,6 +116,17 @@ pub trait AdminUserRepositoryTrait: Send + Sync {
     /// Delete an admin user
     async fn delete_admin_user(&self, uuid: &Uuid) -> Result<()>;
 
+    /// Persist the lockout-tracking fields for a user.
+    ///
+    /// # Errors
+    /// Returns an error if the update fails.
+    async fn update_lockout_state(
+        &self,
+        uuid: &Uuid,
+        status: &r_data_core_core::admin_user::UserStatus,
+        failed_login_attempts: i32,
+    ) -> Result<()>;
+
     /// List admin users with pagination and sorting
     ///
     /// # Arguments
