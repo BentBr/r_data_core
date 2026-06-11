@@ -1,5 +1,32 @@
 # Changelog
 
+## [0.4.10](https://github.com/BentBr/r_data_core/compare/core-v0.4.9...core-v0.4.10) (2026-06-11)
+
+
+### Features
+
+* **claude:** port ugg-orkestra agent/hook/skill standard ([7b980b1](https://github.com/BentBr/r_data_core/commit/7b980b10ce46f8c8bf0c78a8cfa564a66fa59afd))
+* **outbox:** make retry backoff configurable and harden dispatch paths ([d0f7686](https://github.com/BentBr/r_data_core/commit/d0f768643dfc7d638996db8ec44018e567f76412))
+* **outbox:** notify worker on outbox inserts ([4f992ab](https://github.com/BentBr/r_data_core/commit/4f992ab22d0b5b5af94dddfc0041a8aab9aaaa2f))
+
+
+### Bug Fixes
+
+* **api:** surface dispatch warnings in run upload responses ([c6fcd49](https://github.com/BentBr/r_data_core/commit/c6fcd49a705ae2db4029c9f3d7e6ad4a606f0c2a))
+* bumping rust usage in docker file to 1.96 ([5a6af6b](https://github.com/BentBr/r_data_core/commit/5a6af6b1d7620d584a507584486e2692f6b9fffd))
+* clear clippy lints in admin routes (useless_format, needless_borrow) ([fabcb1a](https://github.com/BentBr/r_data_core/commit/fabcb1aeb42d8bdd214909885af846d2926460b4))
+* **deps:** bump lettre to 0.11.22 to clear RUSTSEC-2026-0141 ([a2dcb86](https://github.com/BentBr/r_data_core/commit/a2dcb867ca96103ed4e25fb9b20fc13cf1498398))
+* **fe:** patch dependency vulnerabilities via npm audit fix ([7cf2365](https://github.com/BentBr/r_data_core/commit/7cf236518d66e463f836e17a2041a9c429abd52a))
+* **fe:** switch ESLint typed-linting to projectService ([59c0743](https://github.com/BentBr/r_data_core/commit/59c0743b5c5b4fcd6645dacf15f9398b4ea36c91))
+* **fe:** use logical OR instead of nullish coalescing in Vuetify rules ([ae7bbb8](https://github.com/BentBr/r_data_core/commit/ae7bbb8daedcae477dd775f388e1ec0b4469274e))
+* **hooks:** strip fe/ prefix for eslint/prettier in node container ([4bb406c](https://github.com/BentBr/r_data_core/commit/4bb406c1bb719fe8ec48530a95294e7698142595))
+* making sure with 10s ttl settings are reloaded frequently ([9910343](https://github.com/BentBr/r_data_core/commit/9910343f2c0e997e7a9f0ee27dae8d01aa6864c2))
+* **outbox:** fix(outbox):  ([7dda2aa](https://github.com/BentBr/r_data_core/commit/7dda2aaebe8b24f329fc08566d2e8e46449e11ca))
+* **outbox:** cap workflow push payloads and simplify clear_cache dry-run ([4aacd8e](https://github.com/BentBr/r_data_core/commit/4aacd8e7eb5ad4162d40b0197fd84063e07077bc))
+* **outbox:** classify permanent fetch queue failures as dead letters ([2cd45cc](https://github.com/BentBr/r_data_core/commit/2cd45ccc9e1cf7a02288a7f8dd077c190abd8c3e))
+* **outbox:** guard status transitions by lock owner ([86257fe](https://github.com/BentBr/r_data_core/commit/86257fe2cd96b90fea0bab4511e4a634f9f9658f))
+* **outbox:** harden dispatch transitions and retry classification ([b8d60e9](https://github.com/BentBr/r_data_core/commit/b8d60e90d47d8d78dbbba50c1ae8c5d8898b0be4))
+
 ## [0.4.9](https://github.com/BentBr/r_data_core/compare/core-v0.4.8...core-v0.4.9) (2026-04-19)
 
 
