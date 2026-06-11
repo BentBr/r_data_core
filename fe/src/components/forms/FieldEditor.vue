@@ -26,7 +26,7 @@
                                 name="name"
                                 :label="t('entity_definitions.fields.field_name')"
                                 :rules="[
-                                    v => !!v ?? t('entity_definitions.fields.field_name_required'),
+                                    v => !!v || t('entity_definitions.fields.field_name_required'),
                                     v =>
                                         /^[a-zA-Z_][a-zA-Z0-9_]*$/.test(v) ||
                                         t('entity_definitions.fields.field_name_invalid'),
@@ -43,7 +43,7 @@
                                 :label="t('entity_definitions.fields.display_name')"
                                 :rules="[
                                     v =>
-                                        !!v ?? t('entity_definitions.fields.display_name_required'),
+                                        !!v || t('entity_definitions.fields.display_name_required'),
                                 ]"
                                 required
                             />
@@ -61,7 +61,7 @@
                                 item-value="value"
                                 :label="t('entity_definitions.fields.field_type')"
                                 :rules="[
-                                    v => !!v ?? t('entity_definitions.fields.field_type_required'),
+                                    v => !!v || t('entity_definitions.fields.field_type_required'),
                                 ]"
                                 required
                             />
