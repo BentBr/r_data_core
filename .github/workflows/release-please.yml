@@ -49,46 +49,87 @@ jobs:
                     echo "PRs created: $PRS_CREATED"
                     echo "PRs: $PRS_JSON"
 
-            -   name: Get PR head SHA
+            -   name: Resolve release PR head needing CI
                 id: get-pr-sha
-                if: ${{ steps.release.outputs.prs_created == 'true' }}
+                # Runs on every push-to-main release-please run (not only when the
+                # PR was just created) so a PR left without a ci-gate status can
+                # self-heal on a later push. Skipped when a release is being cut.
+                if: ${{ steps.release.outputs.release_created != 'true' }}
                 uses: actions/github-script@v7
                 env:
                     PRS_OUTPUT: ${{ steps.release.outputs.prs }}
                 with:
                     script: |
+                        const { owner, repo } = context.repo;
+                        const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+                        // Identify the open release-please PR: prefer this run's
+                        // output; otherwise find the open PR on a release branch.
+                        let prNumber = null;
                         const prsOutput = process.env.PRS_OUTPUT;
-                        console.log('PRs output:', prsOutput);
-
-                        if (!prsOutput) {
-                          console.log('No PRs output available');
-                          return;
+                        if (prsOutput) {
+                          try {
+                            const prs = JSON.parse(prsOutput);
+                            if (Array.isArray(prs) && prs.length > 0) {
+                              prNumber = prs[0].number;
+                            }
+                          } catch (e) {
+                            core.info(`Could not parse PRS_OUTPUT: ${e.message}`);
+                          }
+                        }
+                        if (!prNumber) {
+                          const { data: open } = await github.rest.pulls.list({
+                            owner, repo, state: 'open', per_page: 50,
+                          });
+                          const relPr = open.find((p) => p.head.ref.startsWith('release-please--'));
+                          if (!relPr) {
+                            core.info('No open release-please PR found; nothing to do.');
+                            return;
+                          }
+                          prNumber = relPr.number;
                         }
 
-                        // PRs output is a JSON array of PR objects
-                        let prs;
-                        try {
-                          prs = JSON.parse(prsOutput);
-                        } catch (e) {
-                          console.log('Could not parse PRs output:', e);
-                          return;
-                        }
-
-                        if (!Array.isArray(prs) || prs.length === 0) {
-                          console.log('No PRs found in output');
-                          return;
-                        }
-
-                        // Get the first PR's SHA (we'll run CI for all PRs)
-                        const prNumber = prs[0].number;
-                        console.log(`Fetching PR #${prNumber}`);
                         const { data: pr } = await github.rest.pulls.get({
-                          owner: context.repo.owner,
-                          repo: context.repo.repo,
-                          pull_number: prNumber
+                          owner, repo, pull_number: prNumber,
                         });
-                        core.setOutput('sha', pr.head.sha);
-                        console.log(`PR #${prNumber} head SHA: ${pr.head.sha}`);
+                        const branch = pr.head.ref;
+
+                        // release-please force-pushes the release branch, and the
+                        // PR head field can lag (read-after-write). Resolve the
+                        // branch ref directly and poll until two reads agree, so we
+                        // never post ci-gate on a stale SHA.
+                        let last = null;
+                        let sha = null;
+                        for (let i = 0; i < 8; i++) {
+                          const { data: ref } = await github.rest.git.getRef({
+                            owner, repo, ref: `heads/${branch}`,
+                          });
+                          const cur = ref.object.sha;
+                          core.info(`poll ${i}: ${branch} -> ${cur}`);
+                          if (cur === last) { sha = cur; break; }
+                          last = cur;
+                          await sleep(5000);
+                        }
+                        sha = sha || last;
+                        if (!sha) {
+                          core.info('Could not resolve branch head SHA.');
+                          return;
+                        }
+
+                        // Self-heal guard: only (re)run CI when the current head
+                        // lacks a successful ci-gate status, so routine main pushes
+                        // do not redundantly re-run CI on an already-green head.
+                        const { data: combined } = await github.rest.repos.getCombinedStatus({
+                          owner, repo, ref: sha,
+                        });
+                        const gate = combined.statuses.find((s) => s.context === 'ci-gate');
+                        if (gate && gate.state === 'success') {
+                          core.info(`ci-gate already success on ${sha}; nothing to do.`);
+                          return;
+                        }
+
+                        core.setOutput('sha', sha);
+                        core.info(`PR #${prNumber} (${branch}) head ${sha} needs ci-gate (current: ${gate ? gate.state : 'none'}).`);
 
     # Run CI for release-please PRs (GITHUB_TOKEN events don't trigger other workflows)
     ci-for-release-pr:
