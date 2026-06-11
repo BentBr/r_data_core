@@ -1,4 +1,7 @@
 use log::{debug, error, warn};
+use r_data_core_core::entity_definition::definition::EntityDefinition;
+use r_data_core_core::error::Result;
+use r_data_core_core::DynamicEntity;
 use serde_json::Value as JsonValue;
 use std::fmt::Write;
 use uuid::Uuid;
@@ -6,9 +9,8 @@ use uuid::Uuid;
 use crate::dynamic_entity_mapper;
 use crate::dynamic_entity_repository_trait::FilterEntitiesParams;
 use crate::dynamic_entity_utils;
-use r_data_core_core::error::Result;
-use r_data_core_core::DynamicEntity;
 
+use super::identifier;
 use super::DynamicEntityRepository;
 
 /// Check if an error is the "cached plan must not change result type" error
@@ -31,8 +33,16 @@ pub async fn filter_entities_impl(
 ) -> Result<Vec<DynamicEntity>> {
     let view_name = dynamic_entity_utils::get_view_name(entity_type);
 
+    // Get the entity definition first so we can validate identifiers
+    let entity_def = dynamic_entity_utils::get_entity_definition(
+        &repo.pool,
+        entity_type,
+        repo.cache_manager.clone(),
+    )
+    .await?;
+
     // Build query prefix with field selection
-    let query_prefix = build_query_prefix(&view_name, params.fields.as_ref());
+    let query_prefix = build_query_prefix(&view_name, params.fields.as_ref(), &entity_def)?;
 
     // Build WHERE clause with filters and search
     let (mut query, _param_index) = build_where_clause(
@@ -40,7 +50,8 @@ pub async fn filter_entities_impl(
         params.filters.as_ref(),
         params.filter_operators.as_ref(),
         params.search.as_ref(),
-    );
+        &entity_def,
+    )?;
 
     // Add sort and pagination
     add_sort_and_pagination(
@@ -48,17 +59,10 @@ pub async fn filter_entities_impl(
         params.sort.as_ref(),
         params.limit,
         params.offset,
-    );
+        &entity_def,
+    )?;
 
     debug!("Executing filter query: {query}");
-
-    // Get the entity definition for mapping
-    let entity_def = dynamic_entity_utils::get_entity_definition(
-        &repo.pool,
-        entity_type,
-        repo.cache_manager.clone(),
-    )
-    .await?;
 
     // Execute query with proper parameter binding
     let rows = execute_filter_query(
@@ -81,33 +85,38 @@ pub async fn filter_entities_impl(
 }
 
 /// Build query prefix with field selection
-fn build_query_prefix(view_name: &str, fields: Option<&Vec<String>>) -> String {
-    fields.map_or_else(
-        || format!("SELECT * FROM {view_name}"),
-        |field_list| {
-            // Always include system fields
-            let mut selected_fields = vec![
-                "uuid".to_string(),
-                "created_at".to_string(),
-                "updated_at".to_string(),
-                "created_by".to_string(),
-                "updated_by".to_string(),
-                "published".to_string(),
-                "version".to_string(),
-                "path".to_string(),
-                "parent_uuid".to_string(),
-            ];
+fn build_query_prefix(
+    view_name: &str,
+    fields: Option<&Vec<String>>,
+    entity_def: &EntityDefinition,
+) -> Result<String> {
+    let Some(field_list) = fields else {
+        return Ok(format!("SELECT * FROM {view_name}"));
+    };
 
-            // Add requested fields
-            for field in field_list {
-                if !selected_fields.contains(field) {
-                    selected_fields.push(field.clone());
-                }
-            }
+    let mut selected: Vec<String> = [
+        "uuid",
+        "created_at",
+        "updated_at",
+        "created_by",
+        "updated_by",
+        "published",
+        "version",
+        "path",
+        "parent_uuid",
+    ]
+    .iter()
+    .map(|f| identifier::validate_and_quote(f, entity_def))
+    .collect::<Result<Vec<_>>>()?;
 
-            format!("SELECT {} FROM {view_name}", selected_fields.join(", "))
-        },
-    )
+    for field in field_list {
+        let quoted = identifier::validate_and_quote(field, entity_def)?;
+        if !selected.contains(&quoted) {
+            selected.push(quoted);
+        }
+    }
+
+    Ok(format!("SELECT {} FROM {view_name}", selected.join(", ")))
 }
 
 /// Build WHERE clause with filters and search
@@ -116,7 +125,8 @@ fn build_where_clause(
     filters: Option<&std::collections::HashMap<String, JsonValue>>,
     filter_operators: Option<&std::collections::HashMap<String, String>>,
     search: Option<&(String, Vec<String>)>,
-) -> (String, i32) {
+    entity_def: &EntityDefinition,
+) -> Result<(String, i32)> {
     let mut param_index = 1;
 
     // Add filter conditions if provided
@@ -130,12 +140,22 @@ fn build_where_clause(
                     query.push_str(" AND ");
                 }
 
+                // Validate filter key (allows synthetic keys like path_prefix)
+                identifier::validate_filter_key(field, entity_def)?;
+
                 // Get operator for this field, default to "="
                 let operator = filter_operators
                     .and_then(|ops| ops.get(field))
                     .map_or("=", std::string::String::as_str);
 
-                param_index = add_filter_condition(&mut query, field, value, operator, param_index);
+                param_index = add_filter_condition(
+                    &mut query,
+                    field,
+                    value,
+                    operator,
+                    param_index,
+                    entity_def,
+                )?;
                 is_first = false;
             }
         }
@@ -150,14 +170,13 @@ fn build_where_clause(
                 query.push_str(" AND ");
             }
 
-            let search_conditions: Vec<String> = search_fields
-                .iter()
-                .map(|field| {
-                    let condition = format!("{field} ILIKE ${param_index}");
-                    param_index += 1;
-                    condition
-                })
-                .collect();
+            let mut search_conditions: Vec<String> = Vec::new();
+            for field in search_fields {
+                let quoted = identifier::validate_and_quote(field, entity_def)?;
+                let condition = format!("{quoted} ILIKE ${param_index}");
+                param_index += 1;
+                search_conditions.push(condition);
+            }
 
             // Note: search_term is used in execute_filter_query for binding
 
@@ -169,7 +188,7 @@ fn build_where_clause(
         }
     }
 
-    (query, param_index)
+    Ok((query, param_index))
 }
 
 /// Add a single filter condition to the query
@@ -180,16 +199,21 @@ fn build_where_clause(
 /// * `value` - The filter value
 /// * `operator` - The comparison operator (=, >, <, <=, >=, IN, NOT IN)
 /// * `param_index` - Current parameter index for SQL parameter binding
+/// * `entity_def` - Entity definition for identifier validation
 ///
 /// # Returns
 /// The next parameter index to use
+///
+/// # Errors
+/// Returns [`r_data_core_core::error::Error::Validation`] if the field identifier is unknown.
 fn add_filter_condition(
     query: &mut String,
     field: &str,
     value: &JsonValue,
     operator: &str,
     param_index: i32,
-) -> i32 {
+    entity_def: &EntityDefinition,
+) -> Result<i32> {
     // Sanitize operator to prevent SQL injection - only allow whitelisted operators
     let sanitized_operator = match operator {
         "=" | ">" | "<" | "<=" | ">=" | "IN" | "NOT IN" => operator,
@@ -199,20 +223,23 @@ fn add_filter_condition(
         }
     };
 
-    // Special handling for path-based filters (these ignore operator)
+    // Special handling for path-based filters (safe literal SQL constants — no identifier interpolation)
     if field == "path_prefix" {
         let _ = write!(query, "path LIKE ${param_index} || '/%'");
-        return param_index + 1;
+        return Ok(param_index + 1);
     }
     if field == "path_equals" || field == "path" {
         let _ = write!(query, "path = ${param_index}");
-        return param_index + 1;
+        return Ok(param_index + 1);
     }
+
+    // Validate and quote the field identifier
+    let quoted = identifier::validate_and_quote(field, entity_def)?;
 
     // Handle NULL values
     if value == &JsonValue::Null {
-        let _ = write!(query, "{field} IS NULL");
-        return param_index;
+        let _ = write!(query, "{quoted} IS NULL");
+        return Ok(param_index);
     }
 
     // Handle IN and NOT IN operators with array values
@@ -225,7 +252,7 @@ fn add_filter_condition(
                 } else {
                     "1 = 1"
                 });
-                return param_index;
+                return Ok(param_index);
             }
             // Build IN clause with multiple parameters
             let placeholders: Vec<String> = (0..arr.len())
@@ -236,44 +263,44 @@ fn add_filter_condition(
                 .collect();
             let _ = write!(
                 query,
-                "{field} {sanitized_operator} ({})",
+                "{quoted} {sanitized_operator} ({})",
                 placeholders.join(", ")
             );
-            return param_index + i32::try_from(arr.len()).unwrap_or(i32::MAX);
+            return Ok(param_index + i32::try_from(arr.len()).unwrap_or(i32::MAX));
         }
         // If value is not an array for IN/NOT IN, treat as single value
-        let _ = write!(query, "{field} {sanitized_operator} (${param_index})");
-        return param_index + 1;
+        let _ = write!(query, "{quoted} {sanitized_operator} (${param_index})");
+        return Ok(param_index + 1);
     }
 
     // Standard comparison operators (=, >, <, <=, >=)
-    let _ = write!(query, "{field} {sanitized_operator} ${param_index}");
-    param_index + 1
+    let _ = write!(query, "{quoted} {sanitized_operator} ${param_index}");
+    Ok(param_index + 1)
 }
 
 /// Add sort and pagination to query
+///
+/// # Errors
+/// Returns [`r_data_core_core::error::Error::Validation`] if the sort field identifier is unknown.
 fn add_sort_and_pagination(
     query: &mut String,
     sort: Option<&(String, String)>,
     limit: i64,
     offset: i64,
-) {
-    // Add sort if provided
+    entity_def: &EntityDefinition,
+) -> Result<()> {
     if let Some((field, direction)) = sort {
-        // Sanitize the direction to prevent SQL injection
+        let quoted = identifier::validate_and_quote(field, entity_def)?;
         let sanitized_direction = match direction.to_uppercase().as_str() {
             "ASC" => "ASC",
             _ => "DESC",
         };
-
-        let _ = write!(query, " ORDER BY {field} {sanitized_direction}");
+        let _ = write!(query, " ORDER BY {quoted} {sanitized_direction}");
     } else {
-        // Default sort
         query.push_str(" ORDER BY created_at DESC");
     }
-
-    // Add pagination
     let _ = write!(query, " LIMIT {limit} OFFSET {offset}");
+    Ok(())
 }
 
 /// Execute the filter query with proper parameter binding and retry logic for schema changes
@@ -496,5 +523,30 @@ mod tests {
         let sqlx_err = sqlx::Error::RowNotFound;
         let err = r_data_core_core::error::Error::Database(sqlx_err);
         assert!(!is_cached_plan_error(&err));
+    }
+
+    #[test]
+    fn build_query_prefix_rejects_unknown_field() {
+        let def = r_data_core_core::entity_definition::definition::EntityDefinition::default();
+        let fields = vec!["uuid".to_string(), "name); DROP TABLE x; --".to_string()];
+        let result = build_query_prefix("entity_view", Some(&fields), &def);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn build_query_prefix_quotes_system_fields() {
+        let def = r_data_core_core::entity_definition::definition::EntityDefinition::default();
+        let fields = vec!["uuid".to_string()];
+        let sql = build_query_prefix("entity_view", Some(&fields), &def).unwrap();
+        assert!(sql.contains("\"uuid\""));
+        assert!(sql.contains("FROM entity_view"));
+    }
+
+    #[test]
+    fn add_sort_and_pagination_rejects_unknown_sort_field() {
+        let def = r_data_core_core::entity_definition::definition::EntityDefinition::default();
+        let mut q = String::from("SELECT * FROM v");
+        let sort = ("name; DROP TABLE x".to_string(), "ASC".to_string());
+        assert!(add_sort_and_pagination(&mut q, Some(&sort), 10, 0, &def).is_err());
     }
 }
