@@ -39,7 +39,7 @@ cd "$(dirname "$0")/.."
 IGNORE='(/src/bin/|/main\.rs$|(^|/)src/bootstrap\.rs$|crates/worker/src/(runtime|registrars)/)'
 
 # Minimum line-coverage threshold (percent). CI fails the build below this.
-MIN_LINES=60
+MIN_LINES=70
 
 # Integration tests spawn the server binary, whose instrumented runtime drops
 # stray `default_*.profraw` files into the repo root (the spawned process's
