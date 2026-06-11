@@ -109,9 +109,10 @@ impl<'r> FromRow<'r, PgRow> for AdminUser {
         // Get optional fields or use defaults for missing columns
         let last_login: Option<OffsetDateTime> = row.try_get("last_login").ok().flatten();
 
-        // Use default values for fields that might not exist in the DB
-        let status = UserStatus::Active; // Default status
-        let failed_login_attempts = 0; // Default value
+        // Lockout fields (columns added in migration 20260611000000_admin_user_lockout).
+        // Fall back to defaults for any caller selecting a narrower column set.
+        let status: UserStatus = row.try_get("status").unwrap_or(UserStatus::Active);
+        let failed_login_attempts: i32 = row.try_get("failed_login_attempts").unwrap_or(0);
         let super_admin = row.try_get("super_admin").unwrap_or(false); // Default to false
         let is_admin = false; // Default value
 
