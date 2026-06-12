@@ -17,6 +17,43 @@ async fn default_404_handler() -> impl actix_web::Responder {
     ApiResponse::<()>::not_found("Resource not found")
 }
 
+/// Build the CORS layer from configured origins.
+///
+/// In production an empty or wildcard origin list is a hard error (fail closed).
+/// In non-production we allow any origin so the local http compose setup works.
+///
+/// # Errors
+/// Returns `Err` with a human-readable message when production is configured
+/// with an empty or wildcard (`*`) origin list.
+fn build_cors(origins: &[String], is_production: bool) -> Result<Cors, String> {
+    let base = Cors::default()
+        .allow_any_method()
+        .allow_any_header()
+        .expose_headers(vec!["content-disposition"])
+        .max_age(3600);
+
+    let wildcard = origins.iter().any(|o| o == "*");
+
+    if is_production {
+        if origins.is_empty() || wildcard {
+            return Err(
+                "CORS misconfiguration: production requires explicit non-wildcard \
+                 CORS_ORIGINS, got empty or '*'"
+                    .to_string(),
+            );
+        }
+        Ok(origins
+            .iter()
+            .fold(base, |cors, origin| cors.allowed_origin(origin)))
+    } else if wildcard || origins.is_empty() {
+        Ok(base.allow_any_origin())
+    } else {
+        Ok(origins
+            .iter()
+            .fold(base, |cors, origin| cors.allowed_origin(origin)))
+    }
+}
+
 #[actix_web::main]
 async fn main() -> r_data_core_core::error::Result<()> {
     // Load configuration
@@ -70,14 +107,16 @@ async fn main() -> r_data_core_core::error::Result<()> {
     let bind_address_clone = bind_address.clone();
     info!("Starting HTTP server at http://{bind_address}");
 
+    // Validate CORS policy once, before spawning workers (fail closed in prod).
+    let cors_origins = config.api.cors_origins.clone();
+    let is_production = config.is_production();
+    // Validate only; the per-worker closure rebuilds the layer.
+    drop(build_cors(&cors_origins, is_production).map_err(r_data_core_core::error::Error::Config)?);
+
     // Start HTTP server
     HttpServer::new(move || {
-        let cors = Cors::default()
-            .allow_any_origin()
-            .allow_any_method()
-            .allow_any_header()
-            .expose_headers(vec!["content-disposition"])
-            .max_age(3600);
+        let cors =
+            build_cors(&cors_origins, is_production).expect("CORS config validated at startup");
 
         let api_config = r_data_core_api::ApiConfiguration {
             enable_auth: false,
@@ -103,4 +142,27 @@ async fn main() -> r_data_core_core::error::Result<()> {
     .run()
     .await
     .map_err(|e| r_data_core_core::error::Error::Api(format!("HTTP server error: {e}")))
+}
+
+#[cfg(test)]
+mod cors_tests {
+    use super::build_cors;
+
+    #[test]
+    fn production_rejects_wildcard_or_empty() {
+        assert!(build_cors(&["*".to_string()], true).is_err());
+        assert!(build_cors(&[], true).is_err());
+    }
+
+    #[test]
+    fn production_accepts_explicit_origin() {
+        assert!(build_cors(&["https://admin.example.com".to_string()], true).is_ok());
+    }
+
+    #[test]
+    fn development_allows_wildcard_and_empty() {
+        assert!(build_cors(&["*".to_string()], false).is_ok());
+        assert!(build_cors(&[], false).is_ok());
+        assert!(build_cors(&["http://localhost:3000".to_string()], false).is_ok());
+    }
 }
