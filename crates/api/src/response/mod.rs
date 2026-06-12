@@ -461,3 +461,6 @@ impl ResponseError for ApiError {
         }
     }
 }
+
+#[cfg(test)]
+mod tests;
