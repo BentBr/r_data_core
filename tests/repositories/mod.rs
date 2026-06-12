@@ -19,6 +19,7 @@ pub mod refresh_token_repository_tests;
 pub mod system_log_audit_tests;
 pub mod system_log_tests;
 pub mod version_repository_tests;
+pub mod workflow_repository_mod_tests;
 pub mod workflow_versioning_repository_tests;
 
 use r_data_core_persistence::EntityDefinitionRepository;
