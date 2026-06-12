@@ -9,6 +9,7 @@ pub mod dynamic_entity_repository_tests;
 pub mod dynamic_entity_repository_tests_additional;
 pub mod email_template_tests;
 pub mod entity_definition_repository_tests;
+pub mod entity_definition_versioning_repository_tests;
 pub mod filter_entities_tests;
 pub mod outbox_repository_tests;
 pub mod password_reset_tests;
