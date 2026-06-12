@@ -2558,6 +2558,7 @@ dependencies = [
  "r_data_core_workflow",
  "redis",
  "reqwest",
+ "serde",
  "serde_json",
  "serial_test",
  "sha2",

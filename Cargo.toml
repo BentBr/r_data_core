@@ -28,6 +28,8 @@ r_data_core_worker = { path = "crates/worker" }
 r_data_core_license = { path = "crates/license" }
 anyhow = "1.0"
 tempfile = "3.10"
+serde = { version = "1.0", features = ["derive"] }
+time = { version = "0.3", features = ["serde", "formatting", "parsing", "macros"] }
 
 # The rest of the dependencies
 [dependencies]
