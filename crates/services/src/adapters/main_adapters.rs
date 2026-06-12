@@ -271,6 +271,18 @@ impl r_data_core_persistence::AdminUserRepositoryTrait for AdminUserRepositoryAd
         self.inner.update_last_login(uuid).await
     }
 
+    async fn update_lockout_state(
+        &self,
+        uuid: &Uuid,
+        status: &r_data_core_core::admin_user::UserStatus,
+        failed_login_attempts: i32,
+    ) -> Result<()> {
+        log::debug!("AdminUserRepositoryAdapter::update_lockout_state called with uuid: {uuid}");
+        self.inner
+            .update_lockout_state(uuid, status, failed_login_attempts)
+            .await
+    }
+
     async fn create_admin_user<'a>(
         &self,
         params: &r_data_core_persistence::CreateAdminUserParams<'a>,
