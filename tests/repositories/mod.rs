@@ -6,6 +6,7 @@ pub mod component_version_repository_tests;
 pub mod dashboard_stats_repository_tests;
 pub mod dynamic_entity_public_repository_tests;
 pub mod dynamic_entity_query_repository_tests;
+pub mod dynamic_entity_repository_mod_tests;
 pub mod dynamic_entity_repository_tests;
 pub mod dynamic_entity_repository_tests_additional;
 pub mod email_template_tests;
