@@ -303,6 +303,12 @@ mod tests {
             async fn find_by_username_or_email(&self, username_or_email: &str) -> Result<Option<AdminUser>>;
             async fn find_by_uuid(&self, uuid: &Uuid) -> Result<Option<AdminUser>>;
             async fn update_last_login(&self, uuid: &Uuid) -> Result<()>;
+            async fn update_lockout_state(
+                &self,
+                uuid: &Uuid,
+                status: &UserStatus,
+                failed_login_attempts: i32,
+            ) -> Result<()>;
             async fn create_admin_user<'a>(
                 &self,
                 params: &r_data_core_persistence::admin_user_repository_trait::CreateAdminUserParams<'a>,
