@@ -3,6 +3,7 @@ pub mod admin_user_repository_tests;
 pub mod admin_user_repository_tests_more;
 pub mod api_key_repository_tests;
 pub mod api_key_repository_tests_extended;
+pub mod api_key_repository_tests_more;
 pub mod component_version_repository_tests;
 pub mod dashboard_stats_repository_tests;
 pub mod dynamic_entity_public_repository_tests;
