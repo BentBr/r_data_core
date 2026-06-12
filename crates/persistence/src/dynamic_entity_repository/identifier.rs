@@ -1,18 +1,6 @@
+use crate::dynamic_entity_utils::SYSTEM_FIELDS;
 use r_data_core_core::entity_definition::definition::EntityDefinition;
 use r_data_core_core::error::{Error, Result};
-
-/// System columns always present on an entity view, always selectable/filterable.
-const SYSTEM_FIELDS: &[&str] = &[
-    "uuid",
-    "created_at",
-    "updated_at",
-    "created_by",
-    "updated_by",
-    "published",
-    "version",
-    "path",
-    "parent_uuid",
-];
 
 /// Synthetic filter keys handled specially by the query builder (not real columns).
 const SYNTHETIC_FILTER_KEYS: &[&str] = &["path_prefix", "path_equals"];
@@ -72,6 +60,13 @@ mod tests {
             validate_and_quote("created_at", &def).unwrap(),
             "\"created_at\""
         );
+        // Regression: entity_key is a registry-projected system column and must
+        // be filterable/sortable even when absent from the entity definition.
+        assert_eq!(
+            validate_and_quote("entity_key", &def).unwrap(),
+            "\"entity_key\""
+        );
+        assert!(validate_filter_key("entity_key", &def).is_ok());
     }
 
     #[test]

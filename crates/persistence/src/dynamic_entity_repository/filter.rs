@@ -94,20 +94,11 @@ fn build_query_prefix(
         return Ok(format!("SELECT * FROM {view_name}"));
     };
 
-    let mut selected: Vec<String> = [
-        "uuid",
-        "created_at",
-        "updated_at",
-        "created_by",
-        "updated_by",
-        "published",
-        "version",
-        "path",
-        "parent_uuid",
-    ]
-    .iter()
-    .map(|f| identifier::validate_and_quote(f, entity_def))
-    .collect::<Result<Vec<_>>>()?;
+    // Always include the canonical system columns, then the requested fields.
+    let mut selected: Vec<String> = crate::dynamic_entity_utils::SYSTEM_FIELDS
+        .iter()
+        .map(|f| identifier::validate_and_quote(f, entity_def))
+        .collect::<Result<Vec<_>>>()?;
 
     for field in field_list {
         let quoted = identifier::validate_and_quote(field, entity_def)?;

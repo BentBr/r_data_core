@@ -199,6 +199,28 @@ pub const REGISTRY_FIELDS: &[&str] = &[
     "version",
 ];
 
+/// System/reserved columns present on every entity view.
+///
+/// Projected from `entities_registry`; always valid to select, filter, and sort
+/// on, and kept as-is (not remapped to entity-definition field names) when a row
+/// is mapped back to a `DynamicEntity`.
+///
+/// Single source of truth: consumed by the row mapper, the dynamic-filter
+/// identifier validator, and the filter query builder. Do not duplicate this
+/// list — reference this constant.
+pub const SYSTEM_FIELDS: &[&str] = &[
+    "uuid",
+    "created_at",
+    "updated_at",
+    "created_by",
+    "updated_by",
+    "published",
+    "version",
+    "path",
+    "entity_key",
+    "parent_uuid",
+];
+
 /// Fetch valid column names for a given table from `information_schema`
 ///
 /// # Errors
