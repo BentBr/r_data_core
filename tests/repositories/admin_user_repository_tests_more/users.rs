@@ -1,5 +1,6 @@
 #![deny(clippy::all, clippy::pedantic, clippy::nursery, warnings)]
 #![allow(clippy::missing_errors_doc)]
+#![allow(clippy::must_use_candidate)]
 
 use r_data_core_core::admin_user::UserStatus;
 use r_data_core_core::error::Result;
