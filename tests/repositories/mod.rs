@@ -1,5 +1,6 @@
 #![deny(clippy::all, clippy::pedantic, clippy::nursery, warnings)]
 pub mod admin_user_repository_tests;
+pub mod admin_user_repository_tests_more;
 pub mod api_key_repository_tests;
 pub mod api_key_repository_tests_extended;
 pub mod component_version_repository_tests;

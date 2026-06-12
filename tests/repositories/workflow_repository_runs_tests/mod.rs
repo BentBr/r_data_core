@@ -17,11 +17,7 @@ use r_data_core_workflow::data::requests::CreateWorkflowRequest;
 use uuid::Uuid;
 
 /// Seed a minimal consumer workflow.
-pub async fn seed_workflow(
-    repo: &WorkflowRepository,
-    creator: Uuid,
-    name: &str,
-) -> Result<Uuid> {
+pub async fn seed_workflow(repo: &WorkflowRepository, creator: Uuid, name: &str) -> Result<Uuid> {
     repo.create(
         &CreateWorkflowRequest {
             name: name.to_string(),
