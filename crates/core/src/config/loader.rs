@@ -519,5 +519,5 @@ pub fn load_cache_config() -> Result<(CacheConfig, String)> {
 }
 
 #[cfg(test)]
-#[path = "loader_tests.rs"]
+#[path = "loader_tests/mod.rs"]
 mod tests;
