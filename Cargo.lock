@@ -2577,7 +2577,6 @@ dependencies = [
  "argon2",
  "futures",
  "futures-util",
- "jsonwebtoken",
  "log",
  "r_data_core_core",
  "r_data_core_license",
@@ -2648,7 +2647,6 @@ dependencies = [
 name = "r_data_core_persistence"
 version = "0.4.10"
 dependencies = [
- "argon2",
  "async-trait",
  "dotenvy",
  "log",
