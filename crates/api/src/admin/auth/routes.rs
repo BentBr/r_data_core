@@ -273,16 +273,21 @@ pub async fn admin_login(
         }
     };
 
-    // Reject locked / inactive accounts before doing any password work.
-    if !user.can_login() {
-        rate_limit::record_failure(data.cache_manager(), &rl_key, attempts).await;
-        log::debug!("Login blocked: account not in a loginable state");
-        return ApiResponse::inactive("Account locked or not active");
-    }
-
+    // Verify the password FIRST. A wrong password returns the generic 401 —
+    // identical to an unknown user — so the locked/inactive state below can only
+    // be observed by someone who already holds valid credentials. This avoids
+    // leaking account existence/state (username enumeration).
     if !user.verify_password(&login_req.password) {
         return handle_password_failure(user, &repo, &data, &rl_key, attempts, &login_req.username)
             .await;
+    }
+
+    // Credentials are valid: only now is it safe to reveal a locked/inactive
+    // account. Do NOT count this against the IP rate limit (the password was
+    // correct — it is not a brute-force attempt) and do NOT reset the counter.
+    if !user.can_login() {
+        log::debug!("Login blocked: valid credentials but account is locked/inactive");
+        return ApiResponse::inactive("Account locked or not active");
     }
 
     // Successful login clears the IP's failed-attempt counter.

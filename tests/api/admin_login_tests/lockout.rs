@@ -125,7 +125,7 @@ async fn test_pre_locked_account_returns_403() -> r_data_core_core::error::Resul
     let username = repo.find_by_uuid(&user_uuid).await?.unwrap().username;
 
     sqlx::query(
-        "UPDATE admin_users SET status = 'Locked', failed_login_attempts = 5 WHERE uuid = $1",
+        "UPDATE admin_users SET status = 'locked', failed_login_attempts = 5 WHERE uuid = $1",
     )
     .bind(user_uuid)
     .execute(&pool.pool)
@@ -137,6 +137,39 @@ async fn test_pre_locked_account_returns_403() -> r_data_core_core::error::Resul
         status,
         StatusCode::FORBIDDEN,
         "pre-locked account → 403 even with correct password"
+    );
+
+    clear_test_db(&pool).await?;
+    Ok(())
+}
+
+/// Security: a locked account probed with the WRONG password returns the generic
+/// 401 — identical to an unknown user — so the locked state is never disclosed to
+/// someone without valid credentials (no account enumeration). The 403 lock
+/// message is only reachable once the correct password has been supplied.
+#[tokio::test]
+#[serial]
+async fn test_locked_account_wrong_password_is_generic_401() -> r_data_core_core::error::Result<()>
+{
+    let (app, pool) = setup_app().await?;
+
+    let user_uuid = create_test_admin_user(&pool).await?;
+    let repo = AdminUserRepository::new(Arc::new(pool.pool.clone()));
+    let username = repo.find_by_uuid(&user_uuid).await?.unwrap().username;
+
+    sqlx::query(
+        "UPDATE admin_users SET status = 'locked', failed_login_attempts = 5 WHERE uuid = $1",
+    )
+    .bind(user_uuid)
+    .execute(&pool.pool)
+    .await
+    .expect("failed to pre-lock account");
+
+    let status = attempt_login(&app, &username, "definitely_wrong_password").await;
+    assert_eq!(
+        status,
+        StatusCode::UNAUTHORIZED,
+        "locked account + wrong password must return 401 (not 403) — no enumeration"
     );
 
     clear_test_db(&pool).await?;
