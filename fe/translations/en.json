@@ -18,7 +18,9 @@
                 "validation_failed": "Login failed due to validation error",
                 "network_error": "Network error, please try again",
                 "server_error": "Server error, please try again later",
-                "authentication_required": "Authentication required"
+                "authentication_required": "Authentication required",
+                "locked": "Your account is locked or inactive. Please contact an administrator.",
+                "rate_limited": "Too many login attempts. Please wait a few minutes and try again."
             }
         },
         "forgot_password": {
