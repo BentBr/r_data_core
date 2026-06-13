@@ -6,6 +6,7 @@ use std::sync::{
 };
 
 use httpmock::{Method::POST, MockServer};
+use r_data_core_core::outbox::OutboxStatus;
 use r_data_core_persistence::WorkflowRepositoryTrait;
 use r_data_core_persistence::{OutboxRepository, WorkflowRepository};
 use r_data_core_services::workflow::outbox::{
@@ -329,7 +330,7 @@ async fn insert_run_queued_with_fetch_outbox_persists_claimable_message() -> any
     let claimed = outbox_repo.claim_due(10, "repo-test-worker").await?;
     assert_eq!(claimed.len(), 1);
     assert_eq!(claimed[0].uuid, outbox_uuid);
-    assert_eq!(claimed[0].status, "processing");
+    assert_eq!(claimed[0].status, OutboxStatus::Processing);
 
     outbox_repo
         .mark_delivered(outbox_uuid, Some("repo-test-worker"))
