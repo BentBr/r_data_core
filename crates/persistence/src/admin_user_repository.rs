@@ -133,7 +133,7 @@ impl AdminUserRepository {
     pub async fn reset_password(&self, uuid: &Uuid, password_hash: &str) -> Result<()> {
         sqlx::query(
             "UPDATE admin_users \
-             SET password_hash = $1, status = 'Active', failed_login_attempts = 0, \
+             SET password_hash = $1, status = 'active', failed_login_attempts = 0, \
                  updated_at = NOW() \
              WHERE uuid = $2",
         )
@@ -242,17 +242,11 @@ impl AdminUserRepositoryTrait for AdminUserRepository {
         status: &r_data_core_core::admin_user::UserStatus,
         failed_login_attempts: i32,
     ) -> Result<()> {
-        let status_str = match status {
-            r_data_core_core::admin_user::UserStatus::Active => "Active",
-            r_data_core_core::admin_user::UserStatus::Inactive => "Inactive",
-            r_data_core_core::admin_user::UserStatus::Locked => "Locked",
-            r_data_core_core::admin_user::UserStatus::PendingActivation => "PendingActivation",
-        };
         sqlx::query(
             "UPDATE admin_users SET status = $1, failed_login_attempts = $2, updated_at = NOW() \
              WHERE uuid = $3",
         )
-        .bind(status_str)
+        .bind(status)
         .bind(failed_login_attempts)
         .bind(uuid)
         .execute(&*self.pool)

@@ -36,7 +36,7 @@ const mockUser = {
     first_name: 'Test',
     last_name: 'User',
     role_uuids: ['01234567-89ab-7def-8123-456789abcde1'],
-    status: 'Active',
+    status: 'active',
     is_active: true,
     is_admin: false,
     super_admin: false,
