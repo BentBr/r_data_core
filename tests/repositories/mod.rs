@@ -25,6 +25,7 @@ pub mod version_repository_tests;
 pub mod workflow_repository_crud_tests;
 pub mod workflow_repository_mod_tests;
 pub mod workflow_repository_runs_tests;
+pub mod workflow_repository_trait_tests;
 pub mod workflow_versioning_repository_tests;
 
 use r_data_core_persistence::EntityDefinitionRepository;
