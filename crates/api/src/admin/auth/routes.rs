@@ -116,10 +116,7 @@ async fn handle_password_failure(
     {
         log::error!("Failed to persist lockout state: {e:?}");
     }
-    let _ = data
-        .cache_manager()
-        .set::<u32>(rl_key, &(attempts + 1), Some(rate_limit::WINDOW_SECS))
-        .await;
+    rate_limit::record_failure(data.cache_manager(), rl_key, attempts).await;
     log::debug!("Password verification failed for user: {username}");
     if let Some(log_svc) = data.system_log_service() {
         log_svc
@@ -265,7 +262,11 @@ pub async fn admin_login(
 
     let user = match repo.find_by_username_or_email(&login_req.username).await {
         Ok(Some(user)) => user,
-        Ok(None) => return ApiResponse::unauthorized("Invalid credentials"),
+        Ok(None) => {
+            // Count username-enumeration probes against the IP, too.
+            rate_limit::record_failure(data.cache_manager(), &rl_key, attempts).await;
+            return ApiResponse::unauthorized("Invalid credentials");
+        }
         Err(e) => {
             log::error!("Database error: {e:?}");
             return ApiResponse::internal_error("Authentication failed");
@@ -274,6 +275,7 @@ pub async fn admin_login(
 
     // Reject locked / inactive accounts before doing any password work.
     if !user.can_login() {
+        rate_limit::record_failure(data.cache_manager(), &rl_key, attempts).await;
         log::debug!("Login blocked: account not in a loginable state");
         return ApiResponse::inactive("Account locked or not active");
     }
@@ -283,6 +285,8 @@ pub async fn admin_login(
             .await;
     }
 
+    // Successful login clears the IP's failed-attempt counter.
+    rate_limit::reset(data.cache_manager(), &rl_key).await;
     complete_login(user, repo, &data).await
 }
 
