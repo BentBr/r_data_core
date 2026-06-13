@@ -122,20 +122,20 @@ async fn test_list_versions_multiple_descending() -> Result<()> {
 }
 
 // ---------------------------------------------------------------------------
-// Bug documentation — create/update bind timestamps as text
+// create() persists timestamps — regression guard for the 42804 binding bug
 // ---------------------------------------------------------------------------
 
-/// `EntityRepository::create` extracts `created_at`/`updated_at` from the
-/// serialized JSON as `&str` and binds them as text parameters, but the
-/// backing column is `TIMESTAMPTZ`.  Postgres refuses implicit text→timestamptz
-/// casts for parameterized queries (error code 42804).
+/// Regression test: `EntityRepository::create` must persist an entity whose
+/// `created_at`/`updated_at` are real `time::OffsetDateTime` values.
 ///
-/// BUG: owning layer is `persistence` (`crates/persistence/src/repository.rs`).
-/// The fix is to parse the timestamp strings into `time::OffsetDateTime` (or
-/// bind them with an explicit `::timestamptz` cast) before binding.
+/// Previously `create` extracted those fields as `&str` and bound them as text
+/// into `TIMESTAMPTZ` columns, which (a) never matched `time`'s array-based
+/// serde encoding and (b) failed with Postgres error 42804 when it was a string.
+/// The repository now deserializes them back into `OffsetDateTime` and binds the
+/// typed value. This test creates a row and reads it back to prove the round-trip.
 #[tokio::test]
 #[serial]
-async fn test_create_fails_due_to_timestamp_text_binding_bug() -> Result<()> {
+async fn test_create_persists_entity_and_timestamps() -> Result<()> {
     use serde_json::json;
     use time::OffsetDateTime;
 
@@ -147,35 +147,87 @@ async fn test_create_fails_due_to_timestamp_text_binding_bug() -> Result<()> {
 
     let r: EntityRepository<TestItem> = db.pool.repository_with_table("test_items");
 
-    // Construct a JSON-serializable value that matches what create() reads.
-    // The repo extracts "uuid", "path", "created_at", "updated_at", etc.
-    let now = OffsetDateTime::now_utc()
-        .format(&time::format_description::well_known::Rfc3339)
-        .expect("format");
+    let uuid = Uuid::now_v7();
+    let created_by = Uuid::now_v7();
+    let now = OffsetDateTime::now_utc();
+    let item = TestItem {
+        uuid,
+        path: "/created/via/repo".to_string(),
+        created_at: now,
+        updated_at: now,
+        created_by: Some(created_by),
+        updated_by: None,
+        published: true,
+        version: 1,
+        custom_fields: json!({ "k": "v" }),
+    };
 
-    let fake_entity = json!({
-        "uuid": Uuid::now_v7().to_string(),
-        "path": "/test",
-        "created_at": now,
-        "updated_at": now,
-        "created_by": Uuid::now_v7().to_string(),
-        "updated_by": null,
-        "published": false,
-        "version": 1_i64,
-        "custom_fields": {}
-    });
+    // create() must succeed (no 42804) and return the row's uuid.
+    let returned = r.create(&item).await?;
+    assert_eq!(returned, uuid);
 
-    // Deserialize to TestItem so we can call create().
-    let item: TestItem = serde_json::from_value(fake_entity).expect("deserialize");
+    // Read it back and confirm every field round-tripped.
+    let fetched = r.get_by_uuid(&uuid).await?;
+    assert_eq!(fetched.path, "/created/via/repo");
+    assert!(fetched.published);
+    assert_eq!(fetched.version, 1);
+    assert_eq!(fetched.created_by, Some(created_by));
+    assert_eq!(fetched.custom_fields, json!({ "k": "v" }));
+    // Timestamps persist at Postgres microsecond precision; compare whole seconds.
+    assert_eq!(fetched.created_at.unix_timestamp(), now.unix_timestamp());
+    assert_eq!(fetched.updated_at.unix_timestamp(), now.unix_timestamp());
 
-    let result = r.create(&item).await;
+    Ok(())
+}
 
-    // BUG: this errors with Postgres 42804 "expression is of type text"
-    // because create() binds created_at/updated_at as text parameters.
-    assert!(
-        result.is_err(),
-        "EntityRepository::create should fail (bug: timestamps bound as text)"
-    );
+/// Regression test for the same 42804 binding bug on the `update` path:
+/// `update` must persist the new `updated_at` `OffsetDateTime` and mutated fields.
+#[tokio::test]
+#[serial]
+async fn test_update_persists_changes_and_updated_at() -> Result<()> {
+    use serde_json::json;
+    use time::OffsetDateTime;
+
+    use super::create_test_table;
+
+    let db = setup_test_db().await;
+    clear_test_db(&db).await?;
+    create_test_table(&db.pool).await;
+
+    let r: EntityRepository<TestItem> = db.pool.repository_with_table("test_items");
+
+    let uuid = Uuid::now_v7();
+    let created = OffsetDateTime::now_utc();
+    let original = TestItem {
+        uuid,
+        path: "/before".to_string(),
+        created_at: created,
+        updated_at: created,
+        created_by: None,
+        updated_by: None,
+        published: false,
+        version: 1,
+        custom_fields: json!({}),
+    };
+    r.create(&original).await?;
+
+    let later = OffsetDateTime::now_utc();
+    let updated = TestItem {
+        path: "/after".to_string(),
+        updated_at: later,
+        published: true,
+        version: 2,
+        custom_fields: json!({ "changed": true }),
+        ..original
+    };
+    r.update(&uuid, &updated).await?;
+
+    let fetched = r.get_by_uuid(&uuid).await?;
+    assert_eq!(fetched.path, "/after");
+    assert!(fetched.published);
+    assert_eq!(fetched.version, 2);
+    assert_eq!(fetched.custom_fields, json!({ "changed": true }));
+    assert_eq!(fetched.updated_at.unix_timestamp(), later.unix_timestamp());
 
     Ok(())
 }

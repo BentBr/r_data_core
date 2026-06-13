@@ -3,13 +3,15 @@
 //! Integration tests for the generic `EntityRepository<T>` and
 //! `PgPoolExtension` in `crates/persistence/src/repository.rs`.
 //!
-//! `EntityRepository::create` and `EntityRepository::update` bind timestamp
-//! fields as `&str` (text) but real tables have `TIMESTAMPTZ` columns.
-//! Postgres rejects implicit text→timestamptz casts for parameterized queries
-//! (error 42804).  The BUG is documented via `test_create_returns_type_error`.
+//! `EntityRepository::create` / `update` deserialize the entity's `created_at`
+//! / `updated_at` JSON back into `time::OffsetDateTime` and bind the typed value
+//! — binding the raw value as text fails with Postgres error 42804, and `time`'s
+//! serde encodes the value as a component array rather than a string.
+//! `versioning_tests::test_create_persists_entity_and_timestamps` exercises that
+//! round-trip end-to-end.
 //!
-//! All other methods (`get_by_uuid`, `list`, `count`, `delete`,
-//! `get_version`, `list_versions`) are tested by seeding rows with raw SQL.
+//! The read methods (`get_by_uuid`, `list`, `count`, `delete`, `get_version`,
+//! `list_versions`) are tested by seeding rows with raw SQL.
 
 pub mod crud_tests;
 pub mod versioning_tests;
@@ -19,17 +21,23 @@ pub use r_data_core_persistence::{EntityRepository, PgPoolExtension};
 pub use r_data_core_test_support::setup_test_db;
 use serde::{Deserialize, Serialize};
 use sqlx::FromRow;
+use time::OffsetDateTime;
 pub use uuid::Uuid;
 
 // ---------------------------------------------------------------------------
 // Minimal test struct
 // ---------------------------------------------------------------------------
 
-/// Columns returned by `SELECT *` on `test_items`.
+/// Columns returned by `SELECT *` on `test_items`. Carries the timestamp + audit
+/// columns so it round-trips faithfully through `EntityRepository::create`.
 #[derive(Debug, Clone, Serialize, Deserialize, FromRow)]
 pub struct TestItem {
     pub uuid: Uuid,
     pub path: String,
+    pub created_at: OffsetDateTime,
+    pub updated_at: OffsetDateTime,
+    pub created_by: Option<Uuid>,
+    pub updated_by: Option<Uuid>,
     pub published: bool,
     pub version: i64,
     pub custom_fields: serde_json::Value,
