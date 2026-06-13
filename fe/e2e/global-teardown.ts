@@ -2,6 +2,7 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { login, deleteByPrefix } from './helpers/api-client'
+import { clearLoginRateLimit } from './helpers/redis'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const TEST_DATA_FILE = path.resolve(__dirname, '.e2e-test-data.json')
@@ -10,6 +11,9 @@ export default async function globalTeardown(): Promise<void> {
     console.log('[E2E Teardown] Starting global teardown...')
 
     try {
+        // The rate-limit spec may have tripped the per-IP 429; clear it before
+        // the cleanup login so teardown isn't itself rate-limited.
+        await clearLoginRateLimit()
         const token = await login()
 
         // Delete all e2e_ prefixed test data
