@@ -2,6 +2,6 @@
 
 /**
  * Admin user account status. Backed by the Postgres `admin_user_status` enum;
- * serialised snake_case to match the other status enums across the codebase.
+ * serialised `snake_case` to match the other status enums across the codebase.
  */
 export type UserStatus = "active" | "inactive" | "locked" | "pending_activation";
