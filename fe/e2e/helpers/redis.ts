@@ -14,33 +14,31 @@ const CLEAR_SCRIPT =
 /**
  * Clear all admin-login rate-limit counters from the e2e Redis.
  *
- * Dependency-free (raw RESP over a socket). Used by the global setup/teardown
- * hooks and the rate-limit spec so a triggered 429 never throttles the shared
- * test-runner IP for subsequent logins.
+ * Dependency-free (raw RESP over a socket). BEST-EFFORT: any connection error
+ * (e.g. Redis not reachable under `E2E_REDIS_HOST` in CI) is swallowed so it can
+ * never abort global setup/teardown. Locally (compose) it reaches `redis` and
+ * clears the counter; in CI each run gets a fresh Redis so a no-op is harmless.
  */
 export function clearLoginRateLimit(): Promise<void> {
-    return new Promise((resolve, reject) => {
+    return new Promise(resolve => {
         const socket = net.connect(REDIS_PORT, REDIS_HOST)
         socket.setTimeout(3_000)
+        const done = (warn?: string): void => {
+            if (warn) console.warn(`[E2E] login rate-limit clear skipped: ${warn}`)
+            socket.destroy()
+            resolve()
+        }
         const args = ['EVAL', CLEAR_SCRIPT, '1', 'login_rl:*']
         const command =
             `*${args.length}\r\n` + args.map(a => `$${Buffer.byteLength(a)}\r\n${a}\r\n`).join('')
         socket.on('connect', () => socket.write(command))
         socket.on('data', data => {
             const reply = data.toString()
-            // ':N\r\n' = integer (count deleted); '-...' = error.
-            if (reply.startsWith(':')) {
-                socket.end()
-                resolve()
-            } else if (reply.startsWith('-')) {
-                socket.end()
-                reject(new Error(`Redis error clearing rate limit: ${reply.trim()}`))
-            }
+            // ':N\r\n' = integer (count deleted); '-...' = a Redis error reply.
+            if (reply.startsWith(':')) done()
+            else if (reply.startsWith('-')) done(`redis replied ${reply.trim()}`)
         })
-        socket.on('timeout', () => {
-            socket.destroy()
-            reject(new Error('Redis rate-limit clear timed out'))
-        })
-        socket.on('error', reject)
+        socket.on('timeout', () => done('timed out'))
+        socket.on('error', e => done(e.message))
     })
 }
