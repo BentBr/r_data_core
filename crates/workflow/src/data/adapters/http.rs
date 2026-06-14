@@ -94,6 +94,22 @@ pub(super) const fn is_blocked_ip(ip: IpAddr) -> bool {
     }
 }
 
+/// Decide whether a resolved address must be blocked for a given host.
+///
+/// Shared by `guard_url` and `SsrfResolver` so the allowlist is honored
+/// consistently (finding #3): in strict mode a blocked IP is rejected *unless*
+/// its host is in `SSRF_ALLOWED_HOSTS`. Outside strict mode nothing is blocked.
+fn addr_blocked_for_host(host: &str, ip: IpAddr, strict: bool, allowlist: &[String]) -> bool {
+    if !strict {
+        return false;
+    }
+    let host_lc = host.to_lowercase();
+    if allowlist.iter().any(|allowed| allowed == &host_lc) {
+        return false;
+    }
+    is_blocked_ip(ip)
+}
+
 /// reqwest DNS resolver that drops SSRF-blocked addresses in strict mode.
 ///
 /// By plugging in at the DNS layer rather than in `guard_url`, every address
@@ -114,11 +130,12 @@ impl Resolve for SsrfResolver {
         let host = name.as_str().to_string();
         Box::pin(async move {
             let strict = ssrf_strict_mode();
+            let allowlist = ssrf_allowlist();
             let addrs = tokio::net::lookup_host(format!("{host}:0"))
                 .await
                 .map_err(|e| -> Box<dyn std::error::Error + Send + Sync> { Box::new(e) })?;
             let filtered: Vec<std::net::SocketAddr> = addrs
-                .filter(|a| !strict || !is_blocked_ip(a.ip()))
+                .filter(|a| !addr_blocked_for_host(&host, a.ip(), strict, &allowlist))
                 .collect();
             if filtered.is_empty() {
                 return Err::<Addrs, Box<dyn std::error::Error + Send + Sync>>(
@@ -162,7 +179,8 @@ pub(super) async fn guard_url(uri: &str) -> r_data_core_core::error::Result<()> 
         .host_str()
         .ok_or_else(|| r_data_core_core::error::Error::Validation("URI has no host".to_string()))?;
 
-    if ssrf_allowlist().contains(&host.to_lowercase()) {
+    let allowlist = ssrf_allowlist();
+    if allowlist.contains(&host.to_lowercase()) {
         return Ok(());
     }
 
@@ -172,7 +190,7 @@ pub(super) async fn guard_url(uri: &str) -> r_data_core_core::error::Result<()> 
     })?;
 
     for addr in addrs {
-        if is_blocked_ip(addr.ip()) {
+        if addr_blocked_for_host(host, addr.ip(), true, &allowlist) {
             return Err(r_data_core_core::error::Error::Validation(format!(
                 "URI resolves to a blocked address: {host}"
             )));
@@ -183,8 +201,44 @@ pub(super) async fn guard_url(uri: &str) -> r_data_core_core::error::Result<()> 
 
 #[cfg(test)]
 mod ssrf_tests {
-    use super::{guard_url, is_blocked_ip};
+    use super::{addr_blocked_for_host, guard_url, is_blocked_ip};
     use std::net::IpAddr;
+
+    // --- Finding #3: resolver/guard_url block decision honors the allowlist ---
+
+    #[test]
+    fn addr_block_decision_honors_strict_and_allowlist() {
+        let private: IpAddr = "10.0.0.5".parse().unwrap();
+        let public: IpAddr = "8.8.8.8".parse().unwrap();
+        let allow = vec!["internal.svc".to_string()];
+
+        // strict + not allowlisted + private → blocked
+        assert!(addr_blocked_for_host("evil.example", private, true, &allow));
+        // strict + allowlisted host + private → NOT blocked (the fix: the resolver
+        // must let an allowlisted internal host through, matching guard_url)
+        assert!(!addr_blocked_for_host(
+            "internal.svc",
+            private,
+            true,
+            &allow
+        ));
+        // allowlist match is case-insensitive
+        assert!(!addr_blocked_for_host(
+            "INTERNAL.SVC",
+            private,
+            true,
+            &allow
+        ));
+        // non-strict (dev/compose) → nothing blocked
+        assert!(!addr_blocked_for_host(
+            "evil.example",
+            private,
+            false,
+            &allow
+        ));
+        // strict + public IP → not blocked
+        assert!(!addr_blocked_for_host("evil.example", public, true, &allow));
+    }
 
     #[test]
     fn blocks_loopback_private_and_metadata() {
