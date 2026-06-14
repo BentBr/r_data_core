@@ -10,7 +10,7 @@ use r_data_core_core::DynamicEntity;
 
 mod create;
 mod filter;
-pub(super) mod identifier;
+pub(crate) mod identifier;
 mod query;
 mod update;
 
