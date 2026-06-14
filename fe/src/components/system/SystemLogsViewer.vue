@@ -252,14 +252,16 @@
                     >
                         <h4 class="text-subtitle-2 mb-2">{{ t('system.logs.details') }}</h4>
 
-                        <!-- Email HTML preview -->
-                        <div
+                        <!-- Email HTML preview (sandboxed: no scripts, no navigation) -->
+                        <iframe
                             v-if="
                                 detailLog.log_type === 'email_sent' &&
                                 getHtmlPreview(detailLog.details)
                             "
                             class="email-preview-frame mb-4"
-                            v-html="getHtmlPreview(detailLog.details)"
+                            sandbox=""
+                            :srcdoc="getHtmlPreview(detailLog.details)"
+                            title="Email preview"
                         />
 
                         <!-- Raw JSON -->
@@ -481,13 +483,12 @@
 
 <style scoped>
     .email-preview-frame {
-        border: 1px solid rgba(0, 0, 0, 0.12);
+        width: 100%;
+        min-height: 300px;
+        border: 0;
         border-radius: 4px;
-        padding: 16px;
         background: white;
-        color: #333;
         max-height: 400px;
-        overflow-y: auto;
     }
 
     .json-details {

@@ -8,7 +8,7 @@ use utoipa::ToSchema;
 use uuid::Uuid;
 use validator::Validate;
 
-use r_data_core_core::admin_user::AdminUser;
+use r_data_core_core::admin_user::{AdminUser, UserStatus};
 
 /// User response DTO (for API serialization)
 #[derive(Debug, Clone, Serialize, Deserialize, ToSchema, TS)]
@@ -31,7 +31,7 @@ pub struct UserResponse {
     #[ts(type = "string[]")]
     pub role_uuids: Vec<Uuid>,
     /// User account status
-    pub status: String,
+    pub status: UserStatus,
     /// Whether user is active
     pub is_active: bool,
     /// Whether user is admin
@@ -69,7 +69,7 @@ impl UserResponse {
             first_name: user.first_name.clone(),
             last_name: user.last_name.clone(),
             role_uuids: role_uuids.to_vec(),
-            status: format!("{:?}", user.status),
+            status: user.status.clone(),
             is_active: user.is_active,
             is_admin: user.is_admin,
             super_admin: user.super_admin,

@@ -1,13 +1,20 @@
 #![deny(clippy::all, clippy::pedantic, clippy::nursery, warnings)]
 pub mod admin_user_repository_tests;
+pub mod admin_user_repository_tests_more;
 pub mod api_key_repository_tests;
+pub mod api_key_repository_tests_extended;
+pub mod api_key_repository_tests_more;
 pub mod component_version_repository_tests;
 pub mod dashboard_stats_repository_tests;
 pub mod dynamic_entity_public_repository_tests;
+pub mod dynamic_entity_query_repository_tests;
+pub mod dynamic_entity_repository_mod_tests;
 pub mod dynamic_entity_repository_tests;
 pub mod dynamic_entity_repository_tests_additional;
 pub mod email_template_tests;
 pub mod entity_definition_repository_tests;
+pub mod entity_definition_versioning_repository_tests;
+pub mod entity_repository_tests;
 pub mod filter_entities_tests;
 pub mod outbox_repository_tests;
 pub mod password_reset_tests;
@@ -15,6 +22,11 @@ pub mod refresh_token_repository_tests;
 pub mod system_log_audit_tests;
 pub mod system_log_tests;
 pub mod version_repository_tests;
+pub mod workflow_repository_crud_tests;
+pub mod workflow_repository_mod_tests;
+pub mod workflow_repository_runs_tests;
+pub mod workflow_repository_trait_tests;
+pub mod workflow_versioning_repository_tests;
 
 use r_data_core_persistence::EntityDefinitionRepository;
 use r_data_core_test_support::{setup_test_db, TestDatabase};

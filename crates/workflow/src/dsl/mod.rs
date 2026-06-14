@@ -35,6 +35,9 @@ pub struct DslStep {
 }
 
 #[cfg(test)]
+mod program_tests;
+
+#[cfg(test)]
 mod tests {
     use super::*;
     use serde_json::json;

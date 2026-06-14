@@ -517,3 +517,7 @@ pub fn load_cache_config() -> Result<(CacheConfig, String)> {
 
     Ok((cache, redis_url))
 }
+
+#[cfg(test)]
+#[path = "loader_tests/mod.rs"]
+mod tests;

@@ -19,8 +19,10 @@ pub const WORKFLOW_PUSH_ENQUEUE_KIND: &str = "http.uri";
 /// `PostgreSQL` notification channel used to wake the workflow outbox worker.
 pub const WORKFLOW_OUTBOX_NOTIFY_CHANNEL: &str = "workflow_outbox_available";
 
-/// Lifecycle state for outbox messages.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+/// Lifecycle state for outbox messages. Backed by the Postgres `outbox_status`
+/// enum; `snake_case` to match the other status enums in the schema.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, sqlx::Type)]
+#[sqlx(type_name = "outbox_status", rename_all = "snake_case")]
 #[serde(rename_all = "snake_case")]
 pub enum OutboxStatus {
     Pending,

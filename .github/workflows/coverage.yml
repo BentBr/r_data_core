@@ -9,9 +9,10 @@ on:
     # don't fire pull_request. The caller posts the `coverage` commit status.
     workflow_call:
 
-# contents: write is needed only by the gh-pages badge push (push-to-main).
+# Badge-publish steps (push-to-main) need contents: write; all other contexts
+# get read-only. Per-job overrides are set below.
 permissions:
-    contents: write
+    contents: read
 
 jobs:
     # ==========================================================================
@@ -21,6 +22,8 @@ jobs:
     # ==========================================================================
     backend-coverage:
         runs-on: ubuntu-latest
+        permissions:
+            contents: write
         steps:
             -   name: Checkout
                 uses: actions/checkout@v4
@@ -142,6 +145,8 @@ jobs:
     # ==========================================================================
     frontend-coverage:
         runs-on: ubuntu-latest
+        permissions:
+            contents: write
         # Keep this in sync with thresholds.lines in fe/vitest.config.ts.
         env:
             FE_THRESHOLD: "70"

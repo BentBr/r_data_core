@@ -64,9 +64,15 @@ impl DynamicEntityQueryRepository {
                     "ASC"
                 }
             });
-            // Sanitize sort_by to prevent SQL injection (only allow alphanumeric and underscore)
-            if sort_by.chars().all(|c| c.is_alphanumeric() || c == '_') {
-                let _ = write!(sql, " ORDER BY {sort_by} {direction}");
+            // Validate + quote the sort field through the canonical allowlist
+            // helper (system fields ∪ entity definition); fall back to the
+            // default sort for any unknown identifier so callers can't order by
+            // an arbitrary column.
+            if let Ok(quoted) = crate::dynamic_entity_repository::identifier::validate_and_quote(
+                sort_by,
+                &entity_def,
+            ) {
+                let _ = write!(sql, " ORDER BY {quoted} {direction}");
             } else {
                 sql.push_str(" ORDER BY created_at DESC");
             }

@@ -51,6 +51,24 @@ pub struct AppConfig {
     pub password_reset_throttle_seconds: u64,
 }
 
+impl AppConfig {
+    /// Returns `true` when running in a production environment.
+    ///
+    /// Used to gate environment-sensitive security policy (strict CORS, SSRF
+    /// blocking). Non-production environments (development, staging, test) keep
+    /// the relaxed behavior required by the local Docker-compose setup.
+    #[must_use]
+    pub fn is_production(&self) -> bool {
+        Self::env_is_production(&self.environment)
+    }
+
+    /// Pure check used by [`AppConfig::is_production`]; kept separate for testing.
+    #[must_use]
+    pub const fn env_is_production(environment: &str) -> bool {
+        environment.eq_ignore_ascii_case("production")
+    }
+}
+
 /// Worker-specific configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct WorkerConfig {
@@ -129,4 +147,19 @@ pub struct MaintenanceConfig {
     pub license: LicenseConfig,
     /// API configuration (for admin URI and CORS origins)
     pub api: ApiConfig,
+}
+
+#[cfg(test)]
+mod tests {
+    use super::AppConfig;
+
+    #[test]
+    fn is_production_only_true_for_production() {
+        assert!(AppConfig::env_is_production("production"));
+        assert!(AppConfig::env_is_production("Production"));
+        assert!(AppConfig::env_is_production("PRODUCTION"));
+        assert!(!AppConfig::env_is_production("development"));
+        assert!(!AppConfig::env_is_production("staging"));
+        assert!(!AppConfig::env_is_production(""));
+    }
 }

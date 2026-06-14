@@ -366,6 +366,22 @@ impl ApiResponse<()> {
     }
 
     #[must_use]
+    pub fn too_many_requests(message: &str) -> HttpResponse {
+        let response = Self {
+            status: Status::Error,
+            message: message.to_string(),
+            data: None,
+            meta: Some(ResponseMeta {
+                pagination: None,
+                request_id: Some(Uuid::now_v7()),
+                timestamp: Some(time::OffsetDateTime::now_utc().to_string()),
+                custom: Some(serde_json::json!({"error_code": "TOO_MANY_REQUESTS"})),
+            }),
+        };
+        response.to_http_response(StatusCode::TOO_MANY_REQUESTS)
+    }
+
+    #[must_use]
     pub fn unprocessable_entity(message: &str) -> HttpResponse {
         let response = Self {
             status: Status::Error,
@@ -445,3 +461,6 @@ impl ResponseError for ApiError {
         }
     }
 }
+
+#[cfg(test)]
+mod tests;

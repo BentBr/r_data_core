@@ -210,3 +210,78 @@ async fn test_password_reset_token_has_expiry_fields() -> Result<()> {
 
     Ok(())
 }
+
+/// A locked account that resets its password is unlocked by the reset flow
+/// (`PasswordResetService::reset_password` clears the lockout state).
+#[tokio::test]
+#[serial]
+async fn test_reset_password_unlocks_locked_account() -> Result<()> {
+    use r_data_core_core::admin_user::UserStatus;
+    use r_data_core_core::config::parse_smtp_dsn;
+    use r_data_core_persistence::{
+        AdminUserRepository, AdminUserRepositoryTrait, EmailTemplateRepository,
+    };
+    use r_data_core_services::{MailService, PasswordResetService};
+    use r_data_core_test_support::test_queue_client_async;
+    use sha2::{Digest, Sha256};
+    use std::sync::Arc;
+    use time::OffsetDateTime;
+
+    let pool = setup_test_db().await;
+    clear_test_db(&pool).await?;
+
+    let user_uuid = create_test_admin_user(&pool.pool).await?;
+    let user_repo = Arc::new(AdminUserRepository::new(Arc::new(pool.pool.clone())));
+    // Lock the account.
+    user_repo
+        .update_lockout_state(&user_uuid, &UserStatus::Locked, 5)
+        .await?;
+
+    // Build the service. The reset path only touches the repos; mail/template/
+    // queue are constructed but unused (no SMTP I/O — tls=false builds a transport).
+    let reset_repo = Arc::new(PasswordResetRepository::new(pool.pool.clone()));
+    let smtp =
+        parse_smtp_dsn("smtp://localhost:1025?tls=false&from=test@example.com&from_name=Test")
+            .expect("smtp dsn");
+    let service = PasswordResetService::new(
+        reset_repo.clone(),
+        user_repo.clone(),
+        Arc::new(EmailTemplateRepository::new(pool.pool.clone())),
+        test_queue_client_async().await,
+        Arc::new(MailService::new(&smtp).expect("mail service")),
+        60,
+        "http://localhost".to_string(),
+    );
+
+    // Seed a valid token whose SHA-256 matches the raw token the caller submits.
+    let raw_token = "reset-token-unlock-abc123";
+    let token_hash = hex::encode(Sha256::digest(raw_token.as_bytes()));
+    reset_repo
+        .insert_token(
+            user_uuid,
+            &token_hash,
+            OffsetDateTime::now_utc() + Duration::hours(1),
+        )
+        .await?;
+
+    service
+        .reset_password(raw_token, "new-strong-password-123")
+        .await?;
+
+    let user = user_repo
+        .find_by_uuid(&user_uuid)
+        .await?
+        .expect("user exists");
+    assert_eq!(
+        user.status,
+        UserStatus::Active,
+        "password reset must unlock a locked account"
+    );
+    assert_eq!(
+        user.failed_login_attempts, 0,
+        "password reset must clear the failed-attempt counter"
+    );
+
+    clear_test_db(&pool).await?;
+    Ok(())
+}

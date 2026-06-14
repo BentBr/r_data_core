@@ -658,6 +658,11 @@ jobs:
                 env:
                     E2E_BASE_URL: http://localhost:5173
                     E2E_API_BASE_URL: http://localhost:8080
+                    # Redis runs as a docker container published on the runner's
+                    # localhost (see "Start Redis"); the e2e rate-limit helper
+                    # connects here to clear the per-IP login counter.
+                    E2E_REDIS_HOST: localhost
+                    E2E_REDIS_PORT: '6379'
                 run: pnpm exec playwright test --config=e2e/playwright.config.ts
 
             -   name: Upload Playwright report

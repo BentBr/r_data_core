@@ -1,5 +1,5 @@
 use super::{DataSource, SourceContext};
-use crate::data::adapters::http::uri_http_client;
+use crate::data::adapters::http::{guard_url, uri_http_client};
 use async_trait::async_trait;
 use bytes::Bytes;
 use futures::{stream, Stream};
@@ -36,6 +36,7 @@ impl DataSource for UriSource {
                     "URI source requires 'uri' in config".to_string(),
                 )
             })?;
+        guard_url(uri).await?;
         let client = uri_http_client()?;
         let mut request = client.get(uri);
 

@@ -3,6 +3,7 @@ import { ref, computed, readonly } from 'vue'
 import { typedHttpClient } from '@/api/typed-client'
 import { env } from '@/env-check'
 import { useTranslations } from '@/composables/useTranslations'
+import { HttpError } from '@/api/errors'
 import { getRefreshToken, setRefreshToken, deleteRefreshToken } from '@/utils/cookies'
 import { useLicenseStore } from './license'
 import { useVersionStore } from './versions'
@@ -11,7 +12,7 @@ import type { LoginRequest, User } from '@/types/schemas'
 
 export const useAuthStore = defineStore('auth', () => {
     // Translation system
-    const { translateError } = useTranslations()
+    const { t, translateError } = useTranslations()
 
     // State - access token only in memory, refresh token in secure cookie
     const access_token = ref<string | null>(null)
@@ -137,11 +138,19 @@ export const useAuthStore = defineStore('auth', () => {
                 })
             }
         } catch (err) {
-            const rawErrorMessage = err instanceof Error ? err.message : 'Login failed'
-            const translatedErrorMessage = translateError(rawErrorMessage)
+            let translatedErrorMessage: string
+            if (err instanceof HttpError && err.statusCode === 403) {
+                translatedErrorMessage = t('auth.login.errors.locked')
+            } else if (err instanceof HttpError && err.statusCode === 429) {
+                translatedErrorMessage = t('auth.login.errors.rate_limited')
+            } else {
+                const rawErrorMessage = err instanceof Error ? err.message : 'Login failed'
+                translatedErrorMessage = translateError(rawErrorMessage)
+            }
             error.value = translatedErrorMessage
 
             if (env.enableApiLogging) {
+                const rawErrorMessage = err instanceof Error ? err.message : 'Login failed'
                 console.error('[Auth] Login failed:', {
                     rawError: rawErrorMessage,
                     translatedError: translatedErrorMessage,

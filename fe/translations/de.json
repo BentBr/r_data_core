@@ -18,7 +18,9 @@
                 "validation_failed": "Anmeldung aufgrund eines Validierungsfehlers fehlgeschlagen",
                 "network_error": "Netzwerkfehler, bitte versuchen Sie es erneut",
                 "server_error": "Serverfehler, bitte versuchen Sie es später erneut",
-                "authentication_required": "Authentifizierung erforderlich"
+                "authentication_required": "Authentifizierung erforderlich",
+                "locked": "Ihr Konto ist gesperrt oder inaktiv. Bitte wenden Sie sich an einen Administrator.",
+                "rate_limited": "Zu viele Anmeldeversuche. Bitte warten Sie einige Minuten und versuchen Sie es erneut."
             }
         },
         "forgot_password": {

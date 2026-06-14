@@ -29,7 +29,7 @@ pub struct OutboxMessageRecord {
     pub aggregate_id: String,
     pub payload: serde_json::Value,
     pub headers: serde_json::Value,
-    pub status: String,
+    pub status: OutboxStatus,
     pub attempt_count: i32,
     pub available_at: OffsetDateTime,
     pub locked_at: Option<OffsetDateTime>,
@@ -44,11 +44,6 @@ impl OutboxMessageRecord {
     /// Convert the row into the core message representation.
     #[must_use]
     pub fn into_message(self) -> OutboxMessage {
-        let status = self
-            .status
-            .parse::<OutboxStatus>()
-            .unwrap_or(OutboxStatus::Pending);
-
         OutboxMessage {
             uuid: self.uuid,
             topic: self.topic,
@@ -57,7 +52,7 @@ impl OutboxMessageRecord {
             aggregate_id: self.aggregate_id,
             payload: self.payload,
             headers: self.headers,
-            status,
+            status: self.status,
             attempt_count: self.attempt_count,
             available_at: self.available_at,
             locked_at: self.locked_at,

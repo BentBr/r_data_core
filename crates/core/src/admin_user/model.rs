@@ -6,42 +6,23 @@ use crate::error::{Error, Result};
 use base64::engine::Engine as _;
 use serde::{Deserialize, Serialize};
 use sha2::Digest;
-use sqlx::{
-    decode::Decode,
-    postgres::{PgRow, PgTypeInfo, PgValueRef},
-    FromRow, Row, Type,
-};
+use sqlx::{postgres::PgRow, FromRow, Row};
 use time::OffsetDateTime;
+use ts_rs::TS;
 use utoipa::ToSchema;
 use uuid::Uuid;
 
-/// Admin user status
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, ToSchema)]
+/// Admin user account status. Backed by the Postgres `admin_user_status` enum;
+/// serialised `snake_case` to match the other status enums across the codebase.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, ToSchema, TS, sqlx::Type)]
+#[sqlx(type_name = "admin_user_status", rename_all = "snake_case")]
+#[serde(rename_all = "snake_case")]
+#[ts(export)]
 pub enum UserStatus {
     Active,
     Inactive,
     Locked,
     PendingActivation,
-}
-
-impl Type<sqlx::Postgres> for UserStatus {
-    fn type_info() -> PgTypeInfo {
-        PgTypeInfo::with_name("VARCHAR")
-    }
-}
-
-impl<'r> Decode<'r, sqlx::Postgres> for UserStatus {
-    fn decode(value: PgValueRef<'r>) -> std::result::Result<Self, sqlx::error::BoxDynError> {
-        let value = <String as Decode<sqlx::Postgres>>::decode(value)?;
-
-        match value.as_str() {
-            "Active" => Ok(Self::Active),
-            "Inactive" => Ok(Self::Inactive),
-            "Locked" => Ok(Self::Locked),
-            "PendingActivation" => Ok(Self::PendingActivation),
-            _ => Err("Invalid user status".into()),
-        }
-    }
 }
 
 /// Admin user representation
@@ -109,9 +90,10 @@ impl<'r> FromRow<'r, PgRow> for AdminUser {
         // Get optional fields or use defaults for missing columns
         let last_login: Option<OffsetDateTime> = row.try_get("last_login").ok().flatten();
 
-        // Use default values for fields that might not exist in the DB
-        let status = UserStatus::Active; // Default status
-        let failed_login_attempts = 0; // Default value
+        // Lockout fields (columns added in migration 20260611000000_admin_user_lockout).
+        // Fall back to defaults for any caller selecting a narrower column set.
+        let status: UserStatus = row.try_get("status").unwrap_or(UserStatus::Active);
+        let failed_login_attempts: i32 = row.try_get("failed_login_attempts").unwrap_or(0);
         let super_admin = row.try_get("super_admin").unwrap_or(false); // Default to false
         let is_admin = false; // Default value
 

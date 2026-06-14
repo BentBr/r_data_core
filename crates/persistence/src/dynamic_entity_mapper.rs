@@ -202,19 +202,8 @@ pub fn map_row_to_entity(
     // Database columns are lowercase, but entity definition uses original case
     let mut mapped_field_data = HashMap::new();
 
-    // System/reserved fields that should always be kept as-is
-    let system_fields = [
-        "uuid",
-        "created_at",
-        "updated_at",
-        "created_by",
-        "updated_by",
-        "published",
-        "version",
-        "path",
-        "entity_key",
-        "parent_uuid",
-    ];
+    // System/reserved fields that should always be kept as-is (canonical list)
+    let system_fields = crate::dynamic_entity_utils::SYSTEM_FIELDS;
 
     for (db_column_name, value) in &field_data {
         // Check if this is a system field - if so, keep it as-is

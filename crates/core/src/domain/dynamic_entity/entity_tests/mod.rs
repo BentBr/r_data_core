@@ -7,7 +7,13 @@ use serde_json::json;
 use crate::domain::dynamic_entity::entity::DynamicEntity;
 use crate::entity_definition::definition::EntityDefinition;
 
-fn create_test_entity() -> DynamicEntity {
+mod construction;
+mod dynamic_fields_trait;
+mod from_value;
+mod serde_roundtrip;
+mod version_and_validation;
+
+pub(super) fn create_test_entity() -> DynamicEntity {
     let definition = Arc::new(EntityDefinition::default());
     DynamicEntity::new("test_type".to_string(), definition)
 }
