@@ -3,6 +3,7 @@
 use std::sync::Arc;
 
 use base64::Engine as _;
+use r_data_core_core::admin_user::UserStatus;
 use r_data_core_core::error::{Error, Result};
 use r_data_core_persistence::{EmailTemplateRepositoryTrait, PasswordResetRepositoryTrait};
 use r_data_core_workflow::data::job_queue::JobQueue;
@@ -187,6 +188,19 @@ impl PasswordResetService {
         user.password_hash = new_hash;
 
         self.user_repo.update_admin_user(&user).await?;
+
+        // A password reset is account recovery: clear a lockout and reset the
+        // failed-attempt counter so the user can log in with the new password.
+        // A deactivated (`Inactive`/`PendingActivation`) account keeps its status —
+        // resetting a password must not silently reactivate it.
+        let recovered_status = if user.status == UserStatus::Locked {
+            UserStatus::Active
+        } else {
+            user.status.clone()
+        };
+        self.user_repo
+            .update_lockout_state(&user.uuid, &recovered_status, 0)
+            .await?;
 
         // Mark token as used.
         self.repo.mark_used(record.id).await?;
