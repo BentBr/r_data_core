@@ -1,0 +1,20 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT table_name\n        FROM information_schema.tables\n        WHERE table_schema = current_schema()\n        AND table_name LIKE 'entity_%'\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "table_name",
+        "type_info": "Name"
+      }
+    ],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": [
+      true
+    ]
+  },
+  "hash": "dcdf4583d1ddca5449edc35c9f22186971c5071a0f495b8156881abb96be0993"
+}
