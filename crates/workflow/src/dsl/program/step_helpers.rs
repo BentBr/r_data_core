@@ -61,8 +61,9 @@ pub fn prepare_step<'a>(
         }
     }
 
-    // Apply sync transforms only (Arithmetic, Concat); async transforms handled by caller
-    apply_sync_transform(step_idx, &step.transform, &mut normalized)?;
+    // Apply sync transforms only (Arithmetic, Concat); BuildPath is deferred
+    // (it may depend on async results) and applied later via apply_build_path.
+    apply_sync_transform(step_idx, &step.transform, &mut normalized, true)?;
 
     Ok((normalized, &step.transform))
 }

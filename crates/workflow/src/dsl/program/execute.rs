@@ -53,7 +53,7 @@ pub fn execute(
             }
         }
 
-        apply_sync_transform(step_idx, &step.transform, &mut normalized)?;
+        apply_sync_transform(step_idx, &step.transform, &mut normalized, false)?;
 
         let out_mapping = to::mapping_of(&step.to);
         let produced = if out_mapping.is_empty() {
@@ -124,7 +124,7 @@ pub fn apply(program: &DslProgram, input: &Value) -> r_data_core_core::error::Re
             }
         }
 
-        apply_sync_transform(step_idx, &step.transform, &mut normalized)?;
+        apply_sync_transform(step_idx, &step.transform, &mut normalized, false)?;
 
         let out_mapping = to::mapping_of(&step.to);
         let produced = if out_mapping.is_empty() {
@@ -155,11 +155,18 @@ pub fn apply(program: &DslProgram, input: &Value) -> r_data_core_core::error::Re
 }
 
 /// Apply synchronous transforms (`Arithmetic`, `Concat`, `BuildPath`) to normalized data.
-/// Async transforms (`ResolveEntityPath`, `GetOrCreateEntity`, `Authenticate`, `SendEmail`) are skipped.
+///
+/// `Arithmetic` and `Concat` are always applied. `BuildPath` is applied inline
+/// during full execution, but deferred when `defer_build_path` is set:
+/// step-by-step execution applies it separately via `apply_build_path` because
+/// it can depend on the results of async transforms. Async transforms
+/// (`ResolveEntityPath`, `GetOrCreateEntity`, `Authenticate`, `SendEmail`) are
+/// always skipped here (handled in the services layer).
 pub(super) fn apply_sync_transform(
     step_idx: usize,
     transform: &Transform,
     normalized: &mut Value,
+    defer_build_path: bool,
 ) -> r_data_core_core::error::Result<()> {
     match transform {
         Transform::Arithmetic(ar) => {
@@ -212,7 +219,7 @@ pub(super) fn apply_sync_transform(
                 }
             }
         }
-        Transform::BuildPath(bp) => {
+        Transform::BuildPath(bp) if !defer_build_path => {
             use crate::dsl::path_resolution::build_path_from_fields;
             match build_path_from_fields::<std::collections::hash_map::RandomState>(
                 &bp.template,
@@ -231,11 +238,12 @@ pub(super) fn apply_sync_transform(
                 }
             }
         }
-        // ResolveEntityPath, GetOrCreateEntity, Authenticate, and SendEmail require
-        // async database/service access and are handled in the services layer during
-        // workflow execution. They are validated here but execution happens in services.
-        // Transform::None is a no-op.
-        Transform::ResolveEntityPath(_)
+        // Deferred BuildPath (step-by-step mode, applied later via
+        // `apply_build_path`) and async transforms (`ResolveEntityPath`/
+        // `GetOrCreateEntity`/`Authenticate`/`SendEmail`, handled in the services
+        // layer) are skipped here. `Transform::None` is a no-op.
+        Transform::BuildPath(_)
+        | Transform::ResolveEntityPath(_)
         | Transform::GetOrCreateEntity(_)
         | Transform::Authenticate(_)
         | Transform::SendEmail(_)

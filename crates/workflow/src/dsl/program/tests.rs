@@ -296,3 +296,80 @@ fn apply_build_path_non_build_path_transform_is_noop() {
     // normalized unchanged
     assert_eq!(normalized["x"], json!(1));
 }
+
+// ── BuildPath defer semantics (apply_sync_transform `defer_build_path`) ─────────
+//
+// BuildPath can depend on the output of async transforms (resolved later in the
+// services layer), so step-by-step execution MUST defer it: `prepare_step` does
+// not build the path, while full `execute`/`apply` build it inline. These tests
+// pin both branches and that they converge.
+
+/// Single step whose `BuildPath` template references fields present in the input.
+fn build_path_config() -> serde_json::Value {
+    json!({
+        "steps": [{
+            "from": {
+                "type": "format",
+                "source": { "source_type": "uri", "config": { "uri": "http://example.com/data.json" }, "auth": null },
+                "format": { "format_type": "json", "options": {} },
+                "mapping": {}
+            },
+            "transform": {
+                "type": "build_path",
+                "target": "result_path",
+                "template": "{base}/{name}",
+                "separator": "/"
+            },
+            "to": {
+                "type": "format",
+                "output": { "mode": "api" },
+                "format": { "format_type": "json", "options": {} },
+                "mapping": {}
+            }
+        }]
+    })
+}
+
+#[test]
+fn execute_applies_build_path_inline() {
+    let prog = DslProgram::from_config(&build_path_config()).unwrap();
+    let input = json!({ "base": "alpha", "name": "beta" });
+    let results = prog.execute(&input).unwrap();
+    let (_to, produced) = &results[0];
+    assert!(
+        produced
+            .get("result_path")
+            .and_then(|v| v.as_str())
+            .is_some(),
+        "full execution must build the path inline: {produced}"
+    );
+}
+
+#[test]
+fn prepare_step_defers_build_path_until_apply() {
+    use crate::dsl::transform::Transform;
+    let prog = DslProgram::from_config(&build_path_config()).unwrap();
+    let input = json!({ "base": "alpha", "name": "beta" });
+
+    // Step-by-step prepare must NOT build the path (it may depend on async results).
+    let (mut normalized, transform) = prog.prepare_step(0, &input, None).unwrap();
+    assert!(
+        normalized.get("result_path").is_none(),
+        "prepare_step must defer BuildPath, not apply it: {normalized}"
+    );
+    assert!(matches!(transform, Transform::BuildPath(_)));
+
+    // Applying it explicitly afterwards builds the path.
+    DslProgram::apply_build_path(0, transform, &mut normalized).unwrap();
+    assert!(
+        normalized
+            .get("result_path")
+            .and_then(|v| v.as_str())
+            .is_some(),
+        "apply_build_path must build the deferred path: {normalized}"
+    );
+
+    // The deferred result matches what full execution produces inline.
+    let produced = &prog.execute(&input).unwrap()[0].1;
+    assert_eq!(produced["result_path"], normalized["result_path"]);
+}
