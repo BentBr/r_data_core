@@ -1,102 +1,24 @@
+#![deny(clippy::all, clippy::pedantic, clippy::nursery, warnings)]
+
 use actix_web::{web, HttpResponse};
-use log::{error, info};
+use log::info;
 use serde_json::{json, Value};
 use std::collections::HashMap;
 use uuid::Uuid;
 
 use crate::api_state::{ApiStateTrait, ApiStateWrapper};
 use crate::auth::auth_enum::CombinedRequiredAuth;
+use crate::public::dynamic_entities::models::{DynamicEntityResponse, EntityResponse};
+use crate::public::dynamic_entities::routes::helpers::{
+    extract_field_from_unique_message, handle_entity_error, to_dynamic_entity_response,
+    to_dynamic_entity_response_with_children_count, validate_requested_fields,
+};
 use crate::query::StandardQuery;
 use crate::response::{ApiResponse, ValidationViolation};
 use r_data_core_core::domain::dynamic_entity::validator::{
     validate_entity_with_violations, FieldViolation,
 };
 use r_data_core_core::DynamicEntity;
-
-/// Register routes for dynamic entities
-pub fn register_routes(cfg: &mut web::ServiceConfig) {
-    info!("Registering dynamic entity routes");
-    cfg.service(
-        web::scope("")
-            .route("/{entity_type}", web::get().to(list_entities))
-            .route("/{entity_type}", web::post().to(create_entity))
-            .route("/{entity_type}/{uuid}", web::get().to(get_entity))
-            .route("/{entity_type}/{uuid}", web::put().to(update_entity))
-            .route("/{entity_type}/{uuid}", web::delete().to(delete_entity)),
-    );
-}
-
-use crate::public::dynamic_entities::models::{DynamicEntityResponse, EntityResponse};
-
-// Helper function to convert DynamicEntity to DynamicEntityResponse
-// Cannot use From trait since DynamicEntity is from another crate
-fn to_dynamic_entity_response(entity: DynamicEntity) -> DynamicEntityResponse {
-    DynamicEntityResponse {
-        entity_type: entity.entity_type,
-        field_data: entity.field_data,
-        children_count: None,
-    }
-}
-
-// Helper function to convert DynamicEntity to DynamicEntityResponse with children count
-fn to_dynamic_entity_response_with_children_count(
-    entity: DynamicEntity,
-    children_count: Option<i64>,
-) -> DynamicEntityResponse {
-    DynamicEntityResponse {
-        entity_type: entity.entity_type,
-        field_data: entity.field_data,
-        children_count,
-    }
-}
-
-/// Helper to validate requested fields against entity definition
-async fn validate_requested_fields(
-    data: &web::Data<ApiStateWrapper>,
-    entity_type: &str,
-    fields: Option<&Vec<String>>,
-) -> Result<(), HttpResponse> {
-    if let Some(fields) = fields {
-        let entity_def_service = data.entity_definition_service();
-        match entity_def_service
-            .get_entity_definition_by_entity_type(entity_type)
-            .await
-        {
-            Ok(entity_def) => {
-                // Always include these system fields
-                let system_fields = [
-                    "uuid",
-                    "created_at",
-                    "updated_at",
-                    "created_by",
-                    "updated_by",
-                    "published",
-                    "version",
-                    "path",
-                ];
-
-                // Validate the requested fields
-                let invalid_fields: Vec<String> = fields
-                    .iter()
-                    .filter(|field| {
-                        !system_fields.contains(&field.as_str())
-                            && entity_def.get_field(field).is_none()
-                    })
-                    .cloned()
-                    .collect();
-
-                if !invalid_fields.is_empty() {
-                    return Err(ApiResponse::<()>::unprocessable_entity(&format!(
-                        "Invalid fields requested: {}",
-                        invalid_fields.join(", ")
-                    )));
-                }
-            }
-            Err(e) => return Err(handle_entity_error(e, entity_type)),
-        }
-    }
-    Ok(())
-}
 
 /// List entities of a specific type with pagination and filtering
 #[utoipa::path(
@@ -514,34 +436,24 @@ pub async fn delete_entity(
     }
 }
 
-/// Extract field name from unique violation message
-/// Message format: "Field '`field_name`' must be unique..."
-fn extract_field_from_unique_message(msg: &str) -> String {
-    if let Some(start) = msg.find("Field '") {
-        let rest = &msg[start + 7..];
-        if let Some(end) = rest.find('\'') {
-            return rest[..end].to_string();
-        }
-    }
-    "unknown".to_string()
-}
-
-/// Helper function to handle entity-related errors
-fn handle_entity_error(error: r_data_core_core::error::Error, entity_type: &str) -> HttpResponse {
-    match error {
-        r_data_core_core::error::Error::NotFound(_) => ApiResponse::<()>::not_found(&format!(
-            "Entity type '{entity_type}' not found or not published"
-        )),
-        r_data_core_core::error::Error::Validation(msg) => {
-            ApiResponse::<()>::unprocessable_entity(&msg)
-        }
-        r_data_core_core::error::Error::Database(_) => {
-            error!("Database error: {error}");
-            ApiResponse::<()>::internal_error("Database error")
-        }
-        _ => {
-            error!("Internal error: {error}");
-            ApiResponse::<()>::internal_error("Internal server error")
-        }
-    }
+/// Register routes for dynamic entities
+pub fn register_routes(cfg: &mut actix_web::web::ServiceConfig) {
+    info!("Registering dynamic entity routes");
+    cfg.service(
+        actix_web::web::scope("")
+            .route("/{entity_type}", actix_web::web::get().to(list_entities))
+            .route("/{entity_type}", actix_web::web::post().to(create_entity))
+            .route(
+                "/{entity_type}/{uuid}",
+                actix_web::web::get().to(get_entity),
+            )
+            .route(
+                "/{entity_type}/{uuid}",
+                actix_web::web::put().to(update_entity),
+            )
+            .route(
+                "/{entity_type}/{uuid}",
+                actix_web::web::delete().to(delete_entity),
+            ),
+    );
 }
