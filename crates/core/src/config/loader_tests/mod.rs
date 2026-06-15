@@ -40,6 +40,7 @@ pub(super) struct EnvGuard {
 impl EnvGuard {
     /// Save current values for each key in `overrides`, then apply the
     /// override.  `Some(val)` sets the var; `None` removes it.
+    #[allow(unsafe_code)] // test-only env mutation; guarded by ENV_MUTEX
     pub(super) fn new(overrides: &[(&str, Option<&str>)]) -> Self {
         let mut saved = HashMap::new();
         for &(k, v) in overrides {
@@ -54,6 +55,7 @@ impl EnvGuard {
 }
 
 impl Drop for EnvGuard {
+    #[allow(unsafe_code)] // test-only env restore; guarded by ENV_MUTEX
     fn drop(&mut self) {
         for (k, v) in &self.saved {
             match v {

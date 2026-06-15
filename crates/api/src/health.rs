@@ -25,6 +25,8 @@ pub async fn health_check_handler(req: HttpRequest) -> impl Responder {
         .to_string();
 
     // Create health data
+    // Rfc3339 formatting of a UTC datetime is infallible
+    #[allow(clippy::unwrap_used)]
     let health_data = HealthData {
         date: OffsetDateTime::now_utc().format(&Rfc3339).unwrap(),
         uuid: health_id,

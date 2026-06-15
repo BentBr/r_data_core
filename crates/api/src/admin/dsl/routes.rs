@@ -599,6 +599,7 @@ pub async fn validate_dsl(
     ),
     security(("jwt" = []))
 )]
+#[allow(clippy::unwrap_used)] // serializing hardcoded literals — infallible
 #[get("/from/options")]
 pub async fn list_from_options(auth: RequiredAuth) -> impl Responder {
     // Check permission
@@ -674,6 +675,7 @@ pub async fn list_from_options(auth: RequiredAuth) -> impl Responder {
     ),
     security(("jwt" = []))
 )]
+#[allow(clippy::unwrap_used)] // serializing hardcoded literals — infallible
 #[get("/to/options")]
 pub async fn list_to_options(
     data: web::Data<ApiStateWrapper>,
@@ -740,6 +742,7 @@ pub async fn list_to_options(
     ),
     security(("jwt" = []))
 )]
+#[allow(clippy::unwrap_used)] // serializing hardcoded literals — infallible
 #[get("/transform/options")]
 pub async fn list_transform_options(
     data: web::Data<ApiStateWrapper>,

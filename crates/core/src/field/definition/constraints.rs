@@ -25,7 +25,9 @@ impl FieldDefinition {
                         validate_string_constraint(constraint_value)?;
 
                         // Test if pattern is a valid regex
-                        let pattern = constraint_value.as_str().unwrap();
+                        // as_str() is infallible here: validate_string_constraint already
+                        // returned Err if the value is not a string
+                        let pattern = constraint_value.as_str().unwrap_or_default();
                         if let Err(e) = Regex::new(pattern) {
                             return Err(Error::Validation(format!("Invalid regex pattern: {e}")));
                         }

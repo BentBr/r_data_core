@@ -1,5 +1,12 @@
-msrv = "1.92.0"
+msrv = "1.96.0"
 too-many-arguments-threshold = 7
 type-complexity-threshold = 250
 max-struct-bools = 4
 too-many-lines-threshold = 120
+
+# Restriction lints (unwrap_used / expect_used / panic) are denied in production
+# code via the per-crate crate-root attributes, but `.unwrap()` / `.expect()` /
+# `panic!` are idiomatic and acceptable inside tests.
+allow-unwrap-in-tests = true
+allow-expect-in-tests = true
+allow-panic-in-tests = true

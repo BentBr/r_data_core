@@ -37,9 +37,7 @@ impl InMemoryCache {
     /// Panics if `max_size` is 0 and `NonZeroUsize::new(1)` fails (should never happen)
     #[must_use]
     pub fn new(default_ttl: u64, max_size: usize) -> Self {
-        let capacity = NonZeroUsize::new(max_size).unwrap_or_else(|| {
-            NonZeroUsize::new(1).expect("NonZeroUsize::new(1) should never fail")
-        });
+        let capacity = NonZeroUsize::new(max_size).unwrap_or(NonZeroUsize::MIN);
         Self {
             data: RwLock::new(LruCache::new(capacity)),
             default_ttl,

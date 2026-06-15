@@ -86,7 +86,9 @@ async fn bootstrap_worker() -> r_data_core_core::error::Result<WorkerBootstrap> 
         }
         Err(e) => {
             error!("Failed to load configuration: {e}");
-            panic!("Failed to load configuration: {e}");
+            return Err(r_data_core_core::error::Error::Config(format!(
+                "Failed to load configuration: {e}"
+            )));
         }
     };
 

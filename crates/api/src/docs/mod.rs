@@ -228,6 +228,8 @@ impl Modify for SecurityAddon {
                 "description": "API Key for accessing the API"
             });
 
+            // serializing a hardcoded literal — infallible
+            #[allow(clippy::unwrap_used)]
             components.security_schemes.insert(
                 "apiKey".to_string(),
                 serde_json::from_value(api_key_scheme).unwrap(),

@@ -1,4 +1,12 @@
+#![deny(unsafe_code)]
 #![deny(clippy::all, clippy::pedantic, clippy::nursery, warnings)]
+#![deny(
+    clippy::unwrap_used,
+    clippy::expect_used,
+    clippy::panic,
+    clippy::todo,
+    clippy::unimplemented
+)]
 
 use actix_cors::Cors;
 use actix_web::middleware::Logger;
@@ -115,6 +123,9 @@ async fn main() -> r_data_core_core::error::Result<()> {
 
     // Start HTTP server
     HttpServer::new(move || {
+        // Validated fail-closed at startup (above) before any worker spawned;
+        // actix's `Cors` factory is not `Clone`, so it must be rebuilt per worker.
+        #[allow(clippy::expect_used)]
         let cors =
             build_cors(&cors_origins, is_production).expect("CORS config validated at startup");
 

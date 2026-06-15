@@ -140,10 +140,13 @@ where
             has_next: page < total_pages,
         };
 
+        // Rfc3339 formatting of a UTC datetime is infallible
+        #[allow(clippy::unwrap_used)]
+        let timestamp = OffsetDateTime::now_utc().format(&Rfc3339).unwrap();
         let meta = ResponseMeta {
             pagination: Some(pagination),
             request_id: Some(Uuid::now_v7()),
-            timestamp: Some(OffsetDateTime::now_utc().format(&Rfc3339).unwrap()),
+            timestamp: Some(timestamp),
             custom: None,
         };
 
@@ -179,10 +182,13 @@ where
             "error_code": error_code
         });
 
+        // Rfc3339 formatting of a UTC datetime is infallible
+        #[allow(clippy::unwrap_used)]
+        let timestamp = OffsetDateTime::now_utc().format(&Rfc3339).unwrap();
         let meta = meta.unwrap_or_else(|| ResponseMeta {
             pagination: None,
             request_id: Some(Uuid::now_v7()),
-            timestamp: Some(OffsetDateTime::now_utc().format(&Rfc3339).unwrap()),
+            timestamp: Some(timestamp),
             custom: Some(custom),
         });
 
