@@ -289,7 +289,7 @@ fn get_next_step_input_next_step_to_returns_produced() {
 
 #[test]
 fn apply_build_path_non_build_path_transform_is_noop() {
-    use super::transform::Transform;
+    use crate::dsl::transform::Transform;
     let mut normalized = json!({ "x": 1 });
     let result = DslProgram::apply_build_path(0, &Transform::None, &mut normalized);
     assert!(result.is_ok());
