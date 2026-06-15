@@ -3,5 +3,6 @@ pub mod definition;
 mod definition_tests;
 pub mod repository_trait;
 pub mod schema;
+mod sql_gen;
 
 pub use definition::*;

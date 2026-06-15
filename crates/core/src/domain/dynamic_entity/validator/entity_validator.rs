@@ -5,93 +5,10 @@ use serde_json::Value;
 use time::{macros::format_description, Date, OffsetDateTime};
 use uuid::Uuid;
 
-use crate::entity_definition::definition::EntityDefinition;
 use crate::error::Result;
 use crate::field::{FieldDefinition, FieldType};
 
-// Create a ValidationContext struct to encapsulate common validation parameters
-pub struct ValidationContext<'a> {
-    field_def: &'a FieldDefinition,
-    field_name: &'a str,
-    value: &'a Value,
-}
-
-impl<'a> ValidationContext<'a> {
-    #[must_use]
-    pub fn new(field_def: &'a FieldDefinition, value: &'a Value) -> Self {
-        Self {
-            field_def,
-            field_name: &field_def.name,
-            value,
-        }
-    }
-
-    #[must_use]
-    pub const fn with_field_name(
-        field_def: &'a FieldDefinition,
-        value: &'a Value,
-        field_name: &'a str,
-    ) -> Self {
-        Self {
-            field_def,
-            field_name,
-            value,
-        }
-    }
-
-    #[must_use]
-    pub fn create_validation_error(&self, message: &str) -> crate::error::Error {
-        crate::error::Error::Validation(format!("Field '{}' {}", self.field_name, message))
-    }
-
-    /// # Errors
-    /// Returns an error if validation fails
-    pub fn validate_number_range(&self, num_value: f64) -> Result<()> {
-        // Range validation
-        if let Some(min_value) = &self.field_def.validation.min_value {
-            let min = min_value
-                .as_f64()
-                .ok_or_else(|| self.create_validation_error("has invalid min_value"))?;
-            if num_value < min {
-                return Err(self.create_validation_error(&format!("must be at least {min}")));
-            }
-        }
-
-        if let Some(max_value) = &self.field_def.validation.max_value {
-            let max = max_value
-                .as_f64()
-                .ok_or_else(|| self.create_validation_error("has invalid max_value"))?;
-            if num_value > max {
-                return Err(self.create_validation_error(&format!("must be no more than {max}")));
-            }
-        }
-
-        // Positive only validation
-        if self.field_def.validation.positive_only == Some(true) && num_value < 0.0 {
-            return Err(self.create_validation_error("must be a positive number"));
-        }
-
-        Ok(())
-    }
-
-    /// # Panics
-    /// May panic if value is not a string when checking for empty strings
-    ///
-    /// # Errors
-    /// Returns an error if validation fails
-    pub fn check_required(&self) -> Result<bool> {
-        // Check if the field is required and the value is null or empty
-        if self.field_def.required
-            && (self.value.is_null()
-                || (self.value.is_string() && self.value.as_str().unwrap().is_empty()))
-        {
-            return Err(self.create_validation_error("is required"));
-        }
-
-        // If the value is null and the field is not required, skip validation
-        Ok(!self.value.is_null())
-    }
-}
+use super::context::ValidationContext;
 
 /// Validator for dynamic entities
 pub struct DynamicEntityValidator;
@@ -140,7 +57,9 @@ impl DynamicEntityValidator {
             return Err(ctx.create_validation_error("must be a string"));
         }
 
-        let string_value = ctx.value.as_str().unwrap();
+        let Some(string_value) = ctx.value.as_str() else {
+            return Err(ctx.create_validation_error("must be a string"));
+        };
 
         // Length validation
         if let Some(min_length) = ctx.field_def.validation.min_length {
@@ -183,7 +102,9 @@ impl DynamicEntityValidator {
     /// Validate integer fields
     fn validate_integer(ctx: &ValidationContext) -> Result<()> {
         let int_value = match ctx.value {
+            #[allow(clippy::unwrap_used)] // guarded by is_i64() / is_u64() — infallible
             Value::Number(n) if n.is_i64() => n.as_i64().unwrap(),
+            #[allow(clippy::unwrap_used)] // guarded by is_i64() / is_u64() — infallible
             Value::Number(n) if n.is_u64() => n.as_u64().unwrap().try_into().unwrap_or(i64::MAX),
             Value::String(s) => s
                 .parse::<i64>()
@@ -202,6 +123,8 @@ impl DynamicEntityValidator {
     /// Validate float fields
     fn validate_float(ctx: &ValidationContext) -> Result<()> {
         let float_value = match ctx.value {
+            #[allow(clippy::unwrap_used)]
+            // Value::Number always yields Some from as_f64() — infallible
             Value::Number(n) => n.as_f64().unwrap(),
             Value::String(s) => s
                 .parse::<f64>()
@@ -414,210 +337,4 @@ impl DynamicEntityValidator {
 
         Ok(())
     }
-}
-
-/// # Errors
-/// Returns an error if validation fails
-pub fn validate_field(field_def: &Value, value: &Value, field_name: &str) -> Result<()> {
-    let field_type = field_def
-        .get("type")
-        .and_then(Value::as_str)
-        .ok_or_else(|| {
-            crate::error::Error::Validation(format!("Missing type for field {field_name}"))
-        })?;
-
-    match field_type {
-        "string" => {
-            if !value.is_string() {
-                return Err(crate::error::Error::Validation(format!(
-                    "Field {field_name} must be a string"
-                )));
-            }
-            Ok(())
-        }
-        "number" | "integer" => {
-            if !value.is_number() {
-                return Err(crate::error::Error::Validation(format!(
-                    "Field {field_name} must be a number"
-                )));
-            }
-            Ok(())
-        }
-        "boolean" => {
-            if !value.is_boolean() {
-                return Err(crate::error::Error::Validation(format!(
-                    "Field {field_name} must be a boolean"
-                )));
-            }
-            Ok(())
-        }
-        "array" => {
-            if !value.is_array() {
-                return Err(crate::error::Error::Validation(format!(
-                    "Field {field_name} must be an array"
-                )));
-            }
-            Ok(())
-        }
-        "object" => {
-            if !value.is_object() {
-                return Err(crate::error::Error::Validation(format!(
-                    "Field {field_name} must be an object"
-                )));
-            }
-            Ok(())
-        }
-        _ => Ok(()),
-    }
-}
-
-/// Represents a field-specific validation error
-#[derive(Debug, Clone)]
-pub struct FieldViolation {
-    pub field: String,
-    pub message: String,
-}
-
-/// # Errors
-/// Returns an error if validation fails
-pub fn validate_entity(entity: &Value, entity_def: &EntityDefinition) -> Result<()> {
-    let violations = validate_entity_with_violations(entity, entity_def)?;
-    if !violations.is_empty() {
-        return Err(crate::error::Error::Validation(format!(
-            "Validation failed with the following errors: {}",
-            violations
-                .iter()
-                .map(|v| format!("Field '{}': {}", v.field, v.message))
-                .collect::<Vec<_>>()
-                .join("; ")
-        )));
-    }
-
-    Ok(())
-}
-
-/// Validate entity and return structured violations
-///
-/// # Errors
-/// Returns an error if validation fails
-pub fn validate_entity_with_violations(
-    entity: &Value,
-    entity_def: &EntityDefinition,
-) -> Result<Vec<FieldViolation>> {
-    let mut violations = Vec::new();
-    let entity_type = entity
-        .get("entity_type")
-        .and_then(|v| v.as_str())
-        .ok_or_else(|| {
-            crate::error::Error::Validation("Entity must have an entity_type field".to_string())
-        })?;
-
-    if entity_type != entity_def.entity_type {
-        return Err(crate::error::Error::Validation(format!(
-            "Entity type '{}' does not match entity definition type '{}'",
-            entity_type, entity_def.entity_type
-        )));
-    }
-
-    let field_data = entity
-        .get("field_data")
-        .and_then(|v| v.as_object())
-        .ok_or_else(|| {
-            crate::error::Error::Validation("Entity must have a field_data object".to_string())
-        })?;
-
-    // Check required fields
-    for field_def in &entity_def.fields {
-        if field_def.required && !field_data.contains_key(&field_def.name) {
-            violations.push(FieldViolation {
-                field: field_def.name.clone(),
-                message: "This field is required".to_string(),
-            });
-        }
-    }
-
-    // Validate fields that are present
-    for (field_name, value) in field_data {
-        if let Some(field_def) = entity_def.get_field(field_name) {
-            let _ = ValidationContext::with_field_name(field_def, value, field_name);
-            if let Err(e) = DynamicEntityValidator::validate_field(field_def, value) {
-                // Extract just the inner message from the Error::Validation variant
-                // and strip the "Field 'x' " prefix if present for cleaner violation messages
-                let message = match e {
-                    crate::error::Error::Validation(msg) => {
-                        // Strip "Field 'field_name' " prefix if present
-                        let prefix = format!("Field '{field_name}' ");
-                        msg.strip_prefix(&prefix).unwrap_or(&msg).to_string()
-                    }
-                    other => other.to_string(),
-                };
-                violations.push(FieldViolation {
-                    field: field_name.clone(),
-                    message,
-                });
-            }
-        } else {
-            // Skip system fields
-            let system_fields = [
-                "uuid",
-                "entity_key",
-                "path",
-                "created_at",
-                "updated_at",
-                "created_by",
-                "updated_by",
-                "published",
-                "version",
-                "parent_uuid", // Parent entity reference
-            ];
-            if !system_fields.contains(&field_name.as_str()) {
-                violations.push(FieldViolation {
-                    field: field_name.clone(),
-                    message: "This field is not defined in the entity definition".to_string(),
-                });
-            }
-        }
-    }
-
-    Ok(violations)
-}
-
-/// Validate that `parent_uuid` and path are consistent
-/// Returns Ok(()) if valid, or adds violations if invalid
-/// This function checks the relationship between `parent_uuid` and path
-///
-/// # Errors
-/// Returns an error if validation processing fails (should not happen in normal operation).
-pub fn validate_parent_path_consistency(
-    parent_uuid: Option<String>,
-    path: Option<&String>,
-    expected_path: Option<&String>,
-) -> Result<Vec<FieldViolation>> {
-    let mut violations = Vec::new();
-
-    // If parent_uuid is set, we need to validate the path
-    if let Some(parent_uuid_str) = parent_uuid {
-        if !parent_uuid_str.is_empty() {
-            // If we have an expected path (from parent entity), validate it
-            if let Some(expected) = &expected_path {
-                if let Some(actual_path) = &path {
-                    if actual_path != expected {
-                        violations.push(FieldViolation {
-                            field: "path".to_string(),
-                            message: format!(
-                                "Path must match parent's path + key. Expected: {expected}, got: {actual_path}"
-                            ),
-                        });
-                    }
-                } else {
-                    violations.push(FieldViolation {
-                        field: "path".to_string(),
-                        message: "Path is required when parent_uuid is set".to_string(),
-                    });
-                }
-            }
-        }
-    }
-
-    Ok(violations)
 }
