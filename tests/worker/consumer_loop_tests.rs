@@ -458,18 +458,18 @@ async fn consumer_loop_continues_after_error() {
         fetch_key: fetch_key.clone(),
     });
 
-    // Wait for processing
-    tokio::time::sleep(std::time::Duration::from_secs(2)).await;
-
-    // Verify the valid run was processed despite the error
+    // Poll until the valid run leaves the queued state. A fixed sleep is flaky
+    // on slow CI runners / slow upstream fetches; poll with a generous timeout
+    // (matches the other consumer-loop tests).
     let repo = WorkflowRepository::new(pool.pool.clone());
+    wait_until_runs_leave_queued_state(&repo, &[run_uuid2], Duration::from_secs(10)).await;
     let status2 = repo
         .get_run_status(run_uuid2)
         .await
         .expect("get run status");
     assert!(
         status2.as_deref() != Some("queued"),
-        "Valid run should be processed even after error"
+        "Valid run should be processed even after error (last status: {status2:?})"
     );
 
     consumer_handle.stop();
