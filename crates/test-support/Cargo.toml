@@ -5,6 +5,7 @@ edition = "2021"
 description = "Test Support crate of - A Master Data Managebent backend providing efficient data handling and distribution with custom entities and workflows"
 authors = ["Bent Brüggemann <mail@bent-brueggemann.de>"]
 license = "Business"
+publish = false  # proprietary — never published to a registry
 
 [dependencies]
 dotenvy = "0.15"

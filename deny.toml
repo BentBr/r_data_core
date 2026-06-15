@@ -1,0 +1,53 @@
+# cargo-deny configuration.
+#
+# Enforced in CI (`backend-deny` job). `cargo audit` already covers the RustSec
+# advisory DB for vulnerabilities; cargo-deny here adds licence policy, source
+# policy, and duplicate-version *visibility*.
+
+[advisories]
+version = 2
+# Vulnerabilities and unmaintained crates are surfaced; `cargo audit` is the
+# authoritative advisory gate, so keep this lenient to avoid double-failing on
+# advisory-DB churn.
+yanked = "deny"
+
+[bans]
+# The dependency tree pulls many unavoidable transitive duplicates (e.g. `http`
+# 0.2 via actix vs 1.x via reqwest, several `hashbrown` majors). Denying these
+# is not actionable, so surface them as warnings to keep duplicates visible
+# without blocking CI. Duplicates introduced by our own direct deps should be
+# unified manually when spotted in the logs.
+multiple-versions = "warn"
+wildcards = "deny"
+# A wildcard (`*`) version on a workspace-internal path/dev dependency is fine.
+allow-wildcard-paths = true
+
+[licenses]
+version = 2
+# Our own workspace crates use the proprietary "Business" licence (not an SPDX
+# identifier); skip licence evaluation for private/unpublished crates.
+private = { ignore = true }
+# Permissive licences accepted for third-party dependencies.
+allow = [
+    "MIT",
+    "Apache-2.0",
+    "Apache-2.0 WITH LLVM-exception",
+    "0BSD",
+    "BSD-2-Clause",
+    "BSD-3-Clause",
+    "ISC",
+    "Zlib",
+    "MPL-2.0",
+    "Unicode-DFS-2016",
+    "Unicode-3.0",
+    "CC0-1.0",
+    "BSL-1.0",
+    "OpenSSL",
+    # CA-certificate bundle data license used by `webpki-roots`.
+    "CDLA-Permissive-2.0",
+]
+
+[sources]
+unknown-registry = "deny"
+unknown-git = "deny"
+allow-registry = ["https://github.com/rust-lang/crates.io-index"]
