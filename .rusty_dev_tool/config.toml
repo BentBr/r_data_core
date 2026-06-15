@@ -13,15 +13,15 @@ no_docker_compose = true
         "description" = "Runs all unit tests"
     [commands.test-fe]
         "alias" = "test-fe"
-        "execution" = "docker compose exec node pnpm test"
-        "description" = "Runs vitest for FE testing"
+        "execution" = "docker compose exec -T node pnpm test:run"
+        "description" = "Runs vitest (single run) for FE testing"
     [commands.clippy]
         "alias" = "clippy"
         "execution" = " cargo +nightly clippy --workspace --all-targets --all-features -- -D clippy::all -D warnings -D clippy::pedantic -D clippy::nursery "
         "description" = "Runs clippy with all lints enabled"
     [commands.lint]
         "alias" = "lint"
-        "execution" = "docker compose exec node pnpm lint"
+        "execution" = "docker compose exec -T node pnpm lint"
         "description" = "Runs ESLint (with prettier) and fixes it's findings"
     [commands.test-e2e]
         "alias" = "test-e2e"

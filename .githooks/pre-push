@@ -111,6 +111,11 @@ release_lock() {
             rm -f "$GIT_HOOK_LOCK_FILE"
         fi
     fi
+    # Always succeed: this runs from the EXIT trap, and a non-zero return here
+    # would override the script's real exit status (bash propagates the EXIT
+    # trap's last command status), spuriously failing the push after all checks
+    # passed.
+    return 0
 }
 
 repo_root() {
