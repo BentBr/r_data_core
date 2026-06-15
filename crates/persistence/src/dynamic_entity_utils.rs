@@ -106,19 +106,32 @@ pub fn get_table_name(entity_type: &str) -> String {
     format!("entity_{}", entity_type.to_lowercase())
 }
 
-/// Build a dynamic WHERE clause from filters
-#[must_use]
+/// Build a dynamic WHERE clause from filters.
+///
+/// Every filter key must reference a field declared in the entity definition;
+/// an unknown key is rejected with [`r_data_core_core::error::Error::Validation`]
+/// rather than silently ignored. Silently dropping an unknown filter would turn
+/// a query the caller believes is narrowed into an unfiltered (broad) one.
+///
+/// # Errors
+/// Returns [`r_data_core_core::error::Error::Validation`] if a filter references
+/// a field that is not part of the entity definition.
 pub fn build_where_clause<H: std::hash::BuildHasher>(
     filters: &std::collections::HashMap<String, JsonValue, H>,
     entity_def: &EntityDefinition,
-) -> (String, Vec<String>) {
+) -> Result<(String, Vec<String>)> {
     let mut where_clauses = Vec::new();
     let mut params = Vec::new();
     let mut param_idx = 1;
 
     // Add filters based on field types
     for (field_name, value) in filters {
-        if let Some(field_def) = entity_def.get_field(field_name) {
+        let Some(field_def) = entity_def.get_field(field_name) else {
+            return Err(r_data_core_core::error::Error::Validation(format!(
+                "Unknown filter field: {field_name}"
+            )));
+        };
+        {
             // Validate + quote the identifier through the canonical allowlist
             // helper (the field is already known via get_field, so this only
             // double-quotes it; defends against reserved-word column names).
@@ -172,7 +185,7 @@ pub fn build_where_clause<H: std::hash::BuildHasher>(
         format!("1=1 AND {}", where_clauses.join(" AND "))
     };
 
-    (clause, params)
+    Ok((clause, params))
 }
 
 /// Extract UUID from a `JsonValue` field

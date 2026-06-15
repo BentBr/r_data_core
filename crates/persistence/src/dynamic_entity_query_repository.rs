@@ -49,7 +49,7 @@ impl DynamicEntityQueryRepository {
         if let Some(filters) = &query.filter {
             if !filters.is_empty() {
                 let (where_clause, filter_params) =
-                    dynamic_entity_utils::build_where_clause(filters, &entity_def);
+                    dynamic_entity_utils::build_where_clause(filters, &entity_def)?;
                 let _ = write!(sql, " WHERE {where_clause}");
                 params = filter_params;
             }

@@ -246,7 +246,7 @@ async fn test_query_valid_sort_field_orders_results() -> Result<()> {
 
 #[tokio::test]
 #[serial]
-async fn test_query_unknown_filter_field_is_ignored() -> Result<()> {
+async fn test_query_unknown_filter_field_is_rejected() -> Result<()> {
     let pool = setup_test_db().await;
     clear_test_db(&pool).await?;
 
@@ -256,8 +256,9 @@ async fn test_query_unknown_filter_field_is_ignored() -> Result<()> {
     entity_repo.create(&make_entity(&def, "Alice", 10)).await?;
     entity_repo.create(&make_entity(&def, "Bob", 20)).await?;
 
-    // Filtering on a column that isn't in the entity definition is ignored
-    // (no WHERE clause added, no error) rather than interpolated.
+    // Filtering on a column that isn't in the entity definition must be rejected
+    // (validation error → 400) rather than silently dropped: a silently ignored
+    // filter turns a query the caller believes is narrowed into a broad one.
     let mut filter = HashMap::new();
     filter.insert("not_a_real_field".to_string(), serde_json::json!("x"));
     let q = AdvancedEntityQuery {
@@ -267,8 +268,11 @@ async fn test_query_unknown_filter_field_is_ignored() -> Result<()> {
         sort_by: None,
         sort_direction: None,
     };
-    let results = query_repo.query_entities(&def.entity_type, &q).await?;
-    assert_eq!(results.len(), 2, "unknown filter field should be ignored");
+    let result = query_repo.query_entities(&def.entity_type, &q).await;
+    assert!(
+        matches!(result, Err(r_data_core_core::error::Error::Validation(_))),
+        "unknown filter field should be rejected with a validation error"
+    );
 
     Ok(())
 }
