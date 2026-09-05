@@ -106,6 +106,29 @@ impl CacheManager {
         self.in_memory.set::<T>(key, value, Some(ttl)).await
     }
 
+    /// Atomically increment a counter and return the new value.
+    ///
+    /// Redis is authoritative when configured so the counter is shared across
+    /// instances; otherwise the in-memory backend is used. Returns `0` when the
+    /// cache is disabled, which callers read as "no attempts recorded".
+    ///
+    /// # Errors
+    /// Returns an error if the counter cannot be updated.
+    pub async fn increment(&self, key: &str, ttl: u64) -> Result<u32> {
+        if !self.config.enabled {
+            return Ok(0);
+        }
+
+        if let Some(redis) = &self.redis {
+            match redis.increment(key, ttl).await {
+                Ok(count) => return Ok(count),
+                Err(e) => log::warn!("Redis cache error: {e}"),
+            }
+        }
+
+        self.in_memory.increment(key, ttl).await
+    }
+
     /// Delete a value from the cache
     ///
     /// # Errors
@@ -190,5 +213,82 @@ impl CacheManager {
         }
 
         Ok(deleted_count)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{CacheConfig, CacheManager};
+
+    fn manager(enabled: bool) -> CacheManager {
+        CacheManager::new(CacheConfig {
+            entity_definition_ttl: 0,
+            api_key_ttl: 600,
+            enabled,
+            ttl: 3600,
+            max_size: 100,
+        })
+    }
+
+    #[tokio::test]
+    async fn increment_counts_up_and_is_readable_via_get() {
+        let cache = manager(true);
+
+        assert_eq!(cache.increment("rl:1", 60).await.unwrap_or(0), 1);
+        assert_eq!(cache.increment("rl:1", 60).await.unwrap_or(0), 2);
+        assert_eq!(cache.increment("rl:1", 60).await.unwrap_or(0), 3);
+        assert_eq!(cache.get::<u32>("rl:1").await.unwrap_or(None), Some(3));
+    }
+
+    #[tokio::test]
+    async fn increment_keys_are_independent() {
+        let cache = manager(true);
+
+        cache.increment("rl:a", 60).await.unwrap_or(0);
+        cache.increment("rl:a", 60).await.unwrap_or(0);
+
+        assert_eq!(cache.increment("rl:b", 60).await.unwrap_or(0), 1);
+    }
+
+    #[tokio::test]
+    async fn delete_restarts_the_window() {
+        let cache = manager(true);
+
+        cache.increment("rl:c", 60).await.unwrap_or(0);
+        cache.increment("rl:c", 60).await.unwrap_or(0);
+        cache.delete("rl:c").await.unwrap_or(());
+
+        assert_eq!(cache.increment("rl:c", 60).await.unwrap_or(0), 1);
+    }
+
+    /// With the cache off there is nothing to count, and callers read `0` as
+    /// "no attempts recorded" rather than tripping the limit.
+    #[tokio::test]
+    async fn disabled_cache_never_reports_attempts() {
+        let cache = manager(false);
+
+        assert_eq!(cache.increment("rl:d", 60).await.unwrap_or(99), 0);
+        assert_eq!(cache.increment("rl:d", 60).await.unwrap_or(99), 0);
+        assert_eq!(cache.get::<u32>("rl:d").await.unwrap_or(None), None);
+    }
+
+    /// Concurrent increments must not lose updates — the read-then-write version
+    /// of this counter let parallel requests slip past the limit.
+    #[tokio::test]
+    async fn concurrent_increments_do_not_lose_updates() {
+        let cache = std::sync::Arc::new(manager(true));
+
+        let mut handles = Vec::new();
+        for _ in 0..50 {
+            let cache = cache.clone();
+            handles.push(tokio::spawn(async move {
+                cache.increment("rl:race", 60).await.unwrap_or(0)
+            }));
+        }
+        for handle in handles {
+            let _ = handle.await;
+        }
+
+        assert_eq!(cache.get::<u32>("rl:race").await.unwrap_or(None), Some(50));
     }
 }

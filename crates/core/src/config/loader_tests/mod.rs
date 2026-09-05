@@ -28,6 +28,7 @@ mod cache_config;
 mod license_config;
 mod maintenance_config;
 mod outbox_config;
+mod security_config;
 mod worker_config;
 
 // A process-wide mutex that all env-mutating tests must hold.

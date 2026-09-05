@@ -9,6 +9,7 @@ pub mod loader;
 pub mod log;
 pub mod mail;
 pub mod queue;
+pub mod security;
 pub mod workflow;
 
 pub use loader::{load_cache_config, load_license_config};
@@ -21,6 +22,7 @@ pub use license::LicenseConfig;
 pub use log::LogConfig;
 pub use mail::{parse_smtp_dsn, MailConfig, SmtpConfig};
 pub use queue::QueueConfig;
+pub use security::SecurityConfig;
 pub use workflow::WorkflowConfig;
 
 // Re-export loader functions
