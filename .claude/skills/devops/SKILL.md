@@ -31,14 +31,21 @@ running `pre-push` (that is how it fills in the remote SHAs it passes to the
 hook), so the connection sits idle for as long as the gate takes. When the gate
 outlasts the server's idle timeout, the push dies with exit 141 (SIGPIPE)
 *after* printing "All checks passed", having pushed nothing — and `git push`
-emits no output of its own, which makes it look like the hook failed. Fix it on
-the client with an SSH keepalive, not by weakening the gate:
+emits no output of its own, which makes it look like the hook failed.
 
+Fix it per clone, without touching `~/.ssh/config`:
+
+```bash
+git config core.sshCommand 'ssh -o ServerAliveInterval=30 -o ServerAliveCountMax=20'
 ```
-# ~/.ssh/config
-Host github.com
-    ServerAliveInterval 60
-```
+
+For a one-off push, `GIT_SSH_COMMAND='ssh -o ServerAliveInterval=30' git push`
+does the same thing. Never reach for `GIT_HOOK_SKIP=1` to get around it — that
+skips the gate, which is a different problem.
+
+The hook also drains its stdin in `parse_push_stdin` before any check runs. Git
+streams the ref list into the hook, and an unread pipe is a second way a slow
+hook can wedge a push.
 
 Toggles in `.env.local`:
 `GIT_HOOK_RUN_{FMT,CLIPPY,TEST,TEST_FE,LINT,COMMIT_LINT}=0`. Skip everything with

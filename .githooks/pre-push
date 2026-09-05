@@ -445,7 +445,16 @@ run_quality_checks() {
     fi
 }
 
+# Git streams "<local ref> <local oid> <remote ref> <remote oid>" lines into the
+# hook's stdin. We do not act on them, but they must be consumed: leaving the
+# pipe unread means git can block or fail writing to it. Drained first, before
+# any long-running check, the way the orkestra hook does it.
+parse_push_stdin() {
+    while read -r _local_ref _local_oid _remote_ref _remote_oid; do :; done
+}
+
 main() {
+    parse_push_stdin
     load_env_overrides_all
 
     check_git_hook_skip_env
