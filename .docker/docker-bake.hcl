@@ -29,20 +29,20 @@ variable "ARCH_SUFFIX" {
 }
 
 group "default" {
-  targets = ["r_data_core", "r_data_core_worker", "r_data_core_maintenance"]
+  targets = ["r-data-core", "r-data-core-worker", "r-data-core-maintenance"]
 }
 
 group "backend" {
-  targets = ["r_data_core", "r_data_core_worker", "r_data_core_maintenance"]
+  targets = ["r-data-core", "r-data-core-worker", "r-data-core-maintenance"]
 }
 
 # Architecture-specific groups for parallel CI builds
 group "backend-amd64" {
-  targets = ["r_data_core_amd64", "r_data_core_worker_amd64", "r_data_core_maintenance_amd64"]
+  targets = ["r-data-core-amd64", "r-data-core-worker-amd64", "r-data-core-maintenance-amd64"]
 }
 
 group "backend-arm64" {
-  targets = ["r_data_core_arm64", "r_data_core_worker_arm64", "r_data_core_maintenance_arm64"]
+  targets = ["r-data-core-arm64", "r-data-core-worker-arm64", "r-data-core-maintenance-arm64"]
 }
 
 # Shared target configuration
@@ -69,23 +69,23 @@ target "_common_arm64" {
 # =============================================================================
 # Multi-arch targets (for local builds or single-job CI)
 # =============================================================================
-target "r_data_core" {
+target "r-data-core" {
   inherits = ["_common"]
-  target   = "r_data_core"
+  target   = "r-data-core"
   tags     = ["${REGISTRY}/${REPO_OWNER}/r-data-core:${TAG}"]
   output   = ["type=image,push=true,annotation-index.org.opencontainers.image.description=r_data_core backend API service."]
 }
 
-target "r_data_core_worker" {
+target "r-data-core-worker" {
   inherits = ["_common"]
-  target   = "r_data_core_worker"
+  target   = "r-data-core-worker"
   tags     = ["${REGISTRY}/${REPO_OWNER}/r-data-core-worker:${TAG}"]
   output   = ["type=image,push=true,annotation-index.org.opencontainers.image.description=r_data_core background worker service."]
 }
 
-target "r_data_core_maintenance" {
+target "r-data-core-maintenance" {
   inherits = ["_common"]
-  target   = "r_data_core_maintenance"
+  target   = "r-data-core-maintenance"
   tags     = ["${REGISTRY}/${REPO_OWNER}/r-data-core-maintenance:${TAG}"]
   output   = ["type=image,push=true,annotation-index.org.opencontainers.image.description=r_data_core maintenance/ops image for administrative and one-off tasks."]
 }
@@ -93,23 +93,23 @@ target "r_data_core_maintenance" {
 # =============================================================================
 # AMD64 targets (for parallel CI on amd64 runners)
 # =============================================================================
-target "r_data_core_amd64" {
+target "r-data-core-amd64" {
   inherits = ["_common_amd64"]
-  target   = "r_data_core"
+  target   = "r-data-core"
   tags     = ["${REGISTRY}/${REPO_OWNER}/r-data-core:${TAG}-amd64"]
   output   = ["type=image,push=true"]
 }
 
-target "r_data_core_worker_amd64" {
+target "r-data-core-worker-amd64" {
   inherits = ["_common_amd64"]
-  target   = "r_data_core_worker"
+  target   = "r-data-core-worker"
   tags     = ["${REGISTRY}/${REPO_OWNER}/r-data-core-worker:${TAG}-amd64"]
   output   = ["type=image,push=true"]
 }
 
-target "r_data_core_maintenance_amd64" {
+target "r-data-core-maintenance-amd64" {
   inherits = ["_common_amd64"]
-  target   = "r_data_core_maintenance"
+  target   = "r-data-core-maintenance"
   tags     = ["${REGISTRY}/${REPO_OWNER}/r-data-core-maintenance:${TAG}-amd64"]
   output   = ["type=image,push=true"]
 }
@@ -117,23 +117,23 @@ target "r_data_core_maintenance_amd64" {
 # =============================================================================
 # ARM64 targets (for parallel CI on arm64 runners)
 # =============================================================================
-target "r_data_core_arm64" {
+target "r-data-core-arm64" {
   inherits = ["_common_arm64"]
-  target   = "r_data_core"
+  target   = "r-data-core"
   tags     = ["${REGISTRY}/${REPO_OWNER}/r-data-core:${TAG}-arm64"]
   output   = ["type=image,push=true"]
 }
 
-target "r_data_core_worker_arm64" {
+target "r-data-core-worker-arm64" {
   inherits = ["_common_arm64"]
-  target   = "r_data_core_worker"
+  target   = "r-data-core-worker"
   tags     = ["${REGISTRY}/${REPO_OWNER}/r-data-core-worker:${TAG}-arm64"]
   output   = ["type=image,push=true"]
 }
 
-target "r_data_core_maintenance_arm64" {
+target "r-data-core-maintenance-arm64" {
   inherits = ["_common_arm64"]
-  target   = "r_data_core_maintenance"
+  target   = "r-data-core-maintenance"
   tags     = ["${REGISTRY}/${REPO_OWNER}/r-data-core-maintenance:${TAG}-arm64"]
   output   = ["type=image,push=true"]
 }
