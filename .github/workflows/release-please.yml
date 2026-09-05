@@ -119,7 +119,7 @@ jobs:
                         // Self-heal guard: only (re)run CI when the current head
                         // lacks a successful ci-gate status, so routine main pushes
                         // do not redundantly re-run CI on an already-green head.
-                        const { data: combined } = await github.rest.repos.getCombinedStatus({
+                        const { data: combined } = await github.rest.repos.getCombinedStatusForRef({
                           owner, repo, ref: sha,
                         });
                         const gate = combined.statuses.find((s) => s.context === 'ci-gate');
