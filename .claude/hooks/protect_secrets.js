@@ -10,6 +10,19 @@ const sensitivePatterns = [
 // shell globs (e.g. `.env*`, `.en?`) the path patterns above wouldn't catch.
 const sensitiveBashPatterns = [...sensitivePatterns, /\.en[?*[]/, /\.e[?*[]/]
 
+// Committed templates that document which variables exist without carrying any
+// real value. They must stay editable, otherwise a new setting can never be
+// written down where developers look for it.
+const templatePattern = /\.env\.(example|dist|sample|template)\b/g
+
+// A template path is allowed outright.
+const isTemplatePath = (p) => new RegExp(templatePattern.source).test(p) && !/\.env\.(example|dist|sample|template)\.[^/]/.test(p)
+
+// For free-form strings (Bash commands, Glob/Grep patterns) the template name
+// is removed before matching, so `cat .env.example` passes while
+// `cat .env.example .env` still blocks on the second path.
+const withoutTemplates = (s) => s.replace(templatePattern, '')
+
 // Read hook input from stdin (Claude Code passes JSON via stdin)
 let input = ''
 process.stdin.on('data', (chunk) => {
@@ -25,15 +38,18 @@ process.stdin.on('end', () => {
         const pattern = hookInput.tool_input?.pattern || ''
 
         // Check file path for file operations
-        const isFilePathSensitive = sensitivePatterns.some((p) => p.test(filePath))
+        const isFilePathSensitive =
+            !isTemplatePath(filePath) && sensitivePatterns.some((p) => p.test(filePath))
 
         // Check bash commands for sensitive file access (e.g., docker compose exec ... cat .env)
-        const isCommandSensitive = toolName === 'Bash' && sensitiveBashPatterns.some((p) => p.test(command))
+        const isCommandSensitive =
+            toolName === 'Bash' &&
+            sensitiveBashPatterns.some((p) => p.test(withoutTemplates(command)))
 
         // Check Glob/Grep patterns that could enumerate or read secret files
         const isPatternSensitive =
             (toolName === 'Glob' || toolName === 'Grep') &&
-            sensitiveBashPatterns.some((p) => p.test(pattern))
+            sensitiveBashPatterns.some((p) => p.test(withoutTemplates(pattern)))
 
         if (isFilePathSensitive || isCommandSensitive || isPatternSensitive) {
             console.error(

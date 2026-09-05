@@ -26,6 +26,20 @@ rdt test | test-unit | test-fe | clippy | lint | test-e2e | test-e2e-report | cl
 Enable: `git config core.hooksPath .githooks`. Runs:
 fmt → clippy → `rdt test` → `rdt test-fe` → eslint → commit-lint.
 
+**Long gate vs. push timeout.** Git opens the connection to the remote *before*
+running `pre-push` (that is how it fills in the remote SHAs it passes to the
+hook), so the connection sits idle for as long as the gate takes. When the gate
+outlasts the server's idle timeout, the push dies with exit 141 (SIGPIPE)
+*after* printing "All checks passed", having pushed nothing — and `git push`
+emits no output of its own, which makes it look like the hook failed. Fix it on
+the client with an SSH keepalive, not by weakening the gate:
+
+```
+# ~/.ssh/config
+Host github.com
+    ServerAliveInterval 60
+```
+
 Toggles in `.env.local`:
 `GIT_HOOK_RUN_{FMT,CLIPPY,TEST,TEST_FE,LINT,COMMIT_LINT}=0`. Skip everything with
 `GIT_HOOK_SKIP=1` — never set unless the user explicitly asks.
