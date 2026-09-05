@@ -84,7 +84,7 @@ Set on the `app` service (see `compose.yaml` and `docs/DEVELOPMENT.md`):
 `APP_ENV` fails closed: only `development`/`dev`/`local`/`test` relax CORS and
 the SSRF guard — staging and an unset value are hardened.
 
-Unlock a locked admin: `cargo run --bin user_actions -- --username <n> --action unlock`,
+Unlock a locked admin: `cargo run --bin user-actions -- --username <n> --action unlock`,
 or `PUT /admin/api/v1/users/{uuid}` with `{"status": "active"}`.
 
 ## Operating rules for the devops agent

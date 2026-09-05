@@ -119,7 +119,7 @@ cargo sqlx migrate run
 
 5. Start the development server:
 ```bash
-RUST_BACKTRACE=1 RUST_LOG=info cargo run --bin r_data_core
+RUST_BACKTRACE=1 RUST_LOG=info cargo run --bin r-data-core
 ```
 
 ## Using RDT (Rusty Dev Tool)
@@ -141,19 +141,19 @@ rdt lint-static     # Run ESLint + Prettier for static website
 ### Binaries
 
 ```bash
-cargo run --bin r_data_core           # Main application server
-cargo run --bin r_data_core_worker    # Workflow worker
-cargo run --bin r_data_core_maintenance  # Maintenance worker
-cargo run --bin hash_password         # Hash passwords for admin users
-cargo run --bin clear_cache           # Clear cache (see --help)
-cargo run --bin run_migrations        # Run database migrations
-cargo run --bin apply_schema          # Apply schema changes
+cargo run --bin r-data-core           # Main application server
+cargo run --bin r-data-core-worker    # Workflow worker
+cargo run --bin r-data-core-maintenance  # Maintenance worker
+cargo run --bin hash-password         # Hash passwords for admin users
+cargo run --bin clear-cache           # Clear cache (see --help)
+cargo run --bin run-migrations        # Run database migrations
+cargo run --bin apply-schema          # Apply schema changes
 ```
 
 ### Run with Logging
 
 ```bash
-RUST_BACKTRACE=1 RUST_LOG=info cargo run --bin r_data_core
+RUST_BACKTRACE=1 RUST_LOG=info cargo run --bin r-data-core
 ```
 
 Use `RUST_LOG=debug` for extensive output.
@@ -289,10 +289,10 @@ Three ways back in:
 |------|-----|-------|
 | Admin UI / API | An operator with `Users:Update` | `PUT /admin/api/v1/users/{uuid}` with `{"status": "active"}`; the Users tab shows a lock icon on locked accounts |
 | Password reset | The user | The reset flow clears the lockout; needs mail configured |
-| `user_actions` CLI | An operator with DB access | Last resort when nobody can reach the UI |
+| `user-actions` CLI | An operator with DB access | Last resort when nobody can reach the UI |
 
 ```bash
-cargo run --bin user_actions -- --username <name> --action unlock
+cargo run --bin user-actions -- --username <name> --action unlock
 # also: lock | activate | deactivate | password-reset --password <new>
 ```
 
@@ -487,7 +487,7 @@ See the main repository issues for current development priorities.
 ## Cache Management
 
 ```bash
-cargo run --bin clear_cache -- --help
+cargo run --bin clear-cache -- --help
 ```
 
 Lists available cache clearing options.

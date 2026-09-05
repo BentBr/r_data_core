@@ -13,7 +13,7 @@ cargo sqlx migrate run
 ```bash
 ./target/release/run_migrations --status
 # or in Docker:
-docker compose exec core /usr/local/bin/run_migrations --status
+docker compose exec core /usr/local/bin/run-migrations --status
 ```
 
 ### Create new migration

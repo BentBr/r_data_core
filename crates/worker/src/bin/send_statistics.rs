@@ -153,7 +153,7 @@ fn print_help() {
     println!("    send_statistics --dry-run");
     println!();
     println!("    # In Docker Compose environment");
-    println!("    docker compose exec core /usr/local/bin/send_statistics");
+    println!("    docker compose exec core /usr/local/bin/send-statistics");
     println!();
     println!("NOTE:");
     println!("    This bypasses the scheduled hour check that normally runs");

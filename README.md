@@ -158,33 +158,33 @@ The main Docker image includes utility binaries for operations and maintenance:
 
 ```bash
 # Run database migrations
-docker compose exec core /usr/local/bin/run_migrations
+docker compose exec core /usr/local/bin/run-migrations
 
 # Check migration status
-docker compose exec core /usr/local/bin/run_migrations --status
+docker compose exec core /usr/local/bin/run-migrations --status
 
 # Clear entire Redis cache
-docker compose exec core /usr/local/bin/clear_cache --all
+docker compose exec core /usr/local/bin/clear-cache --all
 
 # Clear specific cache by prefix
-docker compose exec core /usr/local/bin/clear_cache --prefix "entity_definitions:"
+docker compose exec core /usr/local/bin/clear-cache --prefix "entity_definitions:"
 
 # Preview cache deletion (dry-run)
-docker compose exec core /usr/local/bin/clear_cache --prefix "api_keys:" --dry-run
+docker compose exec core /usr/local/bin/clear-cache --prefix "api_keys:" --dry-run
 
 # Hash a password for admin users
-docker compose exec core /usr/local/bin/hash_password 'YourSecurePassword'
+docker compose exec core /usr/local/bin/hash-password 'YourSecurePassword'
 
 # Check license key against verification API (uses LICENSE_KEY from environment)
-docker compose exec core /usr/local/bin/license_tool check
+docker compose exec core /usr/local/bin/license-tool check
 ```
 
 | Binary | Description |
 |--------|-------------|
-| `run_migrations` | Run SQLx database migrations (`--status` to check, `--help` for options) |
-| `clear_cache` | Clear Redis cache (`--all` or `--prefix <PREFIX>`, `--dry-run` to preview) |
-| `hash_password` | Generate Argon2 password hash with SQL update statement |
-| `license_tool` | Create, verify, and check JWT-based license keys (`create`, `verify`, or `check` subcommands) |
+| `run-migrations` | Run SQLx database migrations (`--status` to check, `--help` for options) |
+| `clear-cache` | Clear Redis cache (`--all` or `--prefix <PREFIX>`, `--dry-run` to preview) |
+| `hash-password` | Generate Argon2 password hash with SQL update statement |
+| `license-tool` | Create, verify, and check JWT-based license keys (`create`, `verify`, or `check` subcommands) |
 
 ### Database Schema
 

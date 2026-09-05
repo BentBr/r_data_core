@@ -180,5 +180,5 @@ fn print_help() {
     println!("    run_migrations --status");
     println!();
     println!("    # In Docker Compose environment");
-    println!("    docker compose exec core /usr/local/bin/run_migrations");
+    println!("    docker compose exec core /usr/local/bin/run-migrations");
 }

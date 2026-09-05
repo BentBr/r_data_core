@@ -22,9 +22,9 @@ cargo fmt --all     # Format Rust code
 ### Running Services
 
 ```bash
-cargo run --bin r_data_core              # Main server
-cargo run --bin r_data_core_worker       # Workflow worker
-cargo run --bin r_data_core_maintenance  # Maintenance worker
+cargo run --bin r-data-core              # Main server
+cargo run --bin r-data-core-worker       # Workflow worker
+cargo run --bin r-data-core-maintenance  # Maintenance worker
 ```
 
 ### Database
