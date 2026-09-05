@@ -32,14 +32,14 @@ jobs:
             frontend: ${{ steps.filter.outputs.frontend || steps.default.outputs.frontend }}
         steps:
             -   name: Checkout
-                uses: actions/checkout@v4
+                uses: actions/checkout@v7
                 with:
                     # Fetch enough history for paths-filter to work
                     fetch-depth: 0
 
             -   name: Detect changes (PR only)
                 if: ${{ github.event_name == 'pull_request' }}
-                uses: dorny/paths-filter@v3
+                uses: dorny/paths-filter@v4
                 id: filter
                 with:
                     filters: |
@@ -84,7 +84,7 @@ jobs:
         runs-on: ubuntu-latest
         steps:
             -   name: Checkout
-                uses: actions/checkout@v4
+                uses: actions/checkout@v7
 
             -   name: Install Rust (nightly)
                 uses: dtolnay/rust-toolchain@master
@@ -102,7 +102,7 @@ jobs:
 
             -   name: Cache cargo bin directory
                 id: cache-cargo-bin
-                uses: actions/cache@v4
+                uses: actions/cache@v6
                 with:
                     path: ~/.cargo/bin
                     key: ${{ runner.os }}-cargo-bin-${{ hashFiles('Cargo.lock') }}
@@ -127,7 +127,7 @@ jobs:
         runs-on: ubuntu-latest
         steps:
             -   name: Checkout
-                uses: actions/checkout@v4
+                uses: actions/checkout@v7
 
             -   name: Install Rust (nightly)
                 uses: dtolnay/rust-toolchain@master
@@ -141,7 +141,7 @@ jobs:
                     workspaces: .
 
             -   name: Cache cargo bin directory
-                uses: actions/cache@v4
+                uses: actions/cache@v6
                 with:
                     path: ~/.cargo/bin
                     key: ${{ runner.os }}-cargo-bin-${{ hashFiles('Cargo.lock') }}
@@ -161,7 +161,7 @@ jobs:
         runs-on: ubuntu-latest
         steps:
             -   name: Checkout
-                uses: actions/checkout@v4
+                uses: actions/checkout@v7
 
             -   name: Install Rust (nightly)
                 uses: dtolnay/rust-toolchain@master
@@ -185,7 +185,7 @@ jobs:
         runs-on: ubuntu-latest
         steps:
             -   name: Checkout
-                uses: actions/checkout@v4
+                uses: actions/checkout@v7
 
             -   name: Install Rust (nightly)
                 uses: dtolnay/rust-toolchain@master
@@ -199,7 +199,7 @@ jobs:
                     workspaces: .
 
             -   name: Cache cargo bin directory
-                uses: actions/cache@v4
+                uses: actions/cache@v6
                 with:
                     path: ~/.cargo/bin
                     key: ${{ runner.os }}-cargo-bin-${{ hashFiles('Cargo.lock') }}
@@ -222,7 +222,7 @@ jobs:
         # Note: Using docker run instead of services: block to support workflow_call (reusable workflows)
         steps:
             -   name: Checkout
-                uses: actions/checkout@v4
+                uses: actions/checkout@v7
 
             -   name: Start PostgreSQL
                 run: |
@@ -263,7 +263,7 @@ jobs:
                     workspaces: .
 
             -   name: Cache cargo bin directory
-                uses: actions/cache@v4
+                uses: actions/cache@v6
                 with:
                     path: ~/.cargo/bin
                     key: ${{ runner.os }}-cargo-bin-${{ hashFiles('Cargo.lock') }}
@@ -294,7 +294,7 @@ jobs:
         runs-on: ubuntu-latest
         steps:
             -   name: Checkout
-                uses: actions/checkout@v4
+                uses: actions/checkout@v7
 
             -   name: Install Rust (nightly)
                 uses: dtolnay/rust-toolchain@master
@@ -319,7 +319,7 @@ jobs:
         runs-on: ubuntu-latest
         steps:
             -   name: Checkout
-                uses: actions/checkout@v4
+                uses: actions/checkout@v7
 
             -   name: Install Rust (nightly)
                 uses: dtolnay/rust-toolchain@master
@@ -353,7 +353,7 @@ jobs:
         runs-on: ubuntu-latest
         steps:
             -   name: Checkout
-                uses: actions/checkout@v4
+                uses: actions/checkout@v7
 
             -   name: SQL boundary (queries stay in persistence)
                 run: ./scripts/check-sql-boundary.sh
@@ -369,7 +369,7 @@ jobs:
         runs-on: ubuntu-latest
         steps:
             -   name: Checkout
-                uses: actions/checkout@v4
+                uses: actions/checkout@v7
 
             -   name: Install Rust (nightly)
                 uses: dtolnay/rust-toolchain@master
@@ -377,7 +377,7 @@ jobs:
                     toolchain: nightly
 
             -   name: Cache cargo bin directory
-                uses: actions/cache@v4
+                uses: actions/cache@v6
                 with:
                     path: ~/.cargo/bin
                     key: ${{ runner.os }}-cargo-bin-${{ hashFiles('Cargo.lock') }}
@@ -400,7 +400,7 @@ jobs:
         runs-on: ubuntu-latest
         steps:
             -   name: Checkout
-                uses: actions/checkout@v4
+                uses: actions/checkout@v7
 
             -   name: Install Rust (nightly)
                 uses: dtolnay/rust-toolchain@master
@@ -408,7 +408,7 @@ jobs:
                     toolchain: nightly
 
             -   name: Cache cargo bin directory
-                uses: actions/cache@v4
+                uses: actions/cache@v6
                 with:
                     path: ~/.cargo/bin
                     key: ${{ runner.os }}-cargo-bin-${{ hashFiles('Cargo.lock') }}
@@ -431,7 +431,7 @@ jobs:
         runs-on: ubuntu-latest
         steps:
             -   name: Checkout
-                uses: actions/checkout@v4
+                uses: actions/checkout@v7
 
             -   name: Install Rust 1.96.0 (MSRV)
                 uses: dtolnay/rust-toolchain@master
@@ -457,7 +457,7 @@ jobs:
         runs-on: ubuntu-latest
         steps:
             -   name: Checkout
-                uses: actions/checkout@v4
+                uses: actions/checkout@v7
 
             -   name: Setup pnpm
                 uses: pnpm/action-setup@v6
@@ -465,12 +465,12 @@ jobs:
                     version: 10.33.4
 
             -   name: Setup Node.js
-                uses: actions/setup-node@v4
+                uses: actions/setup-node@v7
                 with:
                     node-version: '22'
 
             -   name: Cache pnpm store
-                uses: actions/cache@v4
+                uses: actions/cache@v6
                 with:
                     path: fe/.pnpm-store
                     key: ${{ runner.os }}-pnpm-store-${{ hashFiles('fe/pnpm-lock.yaml') }}
@@ -487,7 +487,7 @@ jobs:
         runs-on: ubuntu-latest
         steps:
             -   name: Checkout
-                uses: actions/checkout@v4
+                uses: actions/checkout@v7
 
             -   name: Setup pnpm
                 uses: pnpm/action-setup@v6
@@ -495,12 +495,12 @@ jobs:
                     version: 10.33.4
 
             -   name: Setup Node.js
-                uses: actions/setup-node@v4
+                uses: actions/setup-node@v7
                 with:
                     node-version: '22'
 
             -   name: Cache pnpm store
-                uses: actions/cache@v4
+                uses: actions/cache@v6
                 with:
                     path: fe/.pnpm-store
                     key: ${{ runner.os }}-pnpm-store-${{ hashFiles('fe/pnpm-lock.yaml') }}
@@ -521,7 +521,7 @@ jobs:
         runs-on: ubuntu-latest
         steps:
             -   name: Checkout
-                uses: actions/checkout@v4
+                uses: actions/checkout@v7
 
             -   name: Setup pnpm
                 uses: pnpm/action-setup@v6
@@ -529,12 +529,12 @@ jobs:
                     version: 10.33.4
 
             -   name: Setup Node.js
-                uses: actions/setup-node@v4
+                uses: actions/setup-node@v7
                 with:
                     node-version: '22'
 
             -   name: Cache pnpm store
-                uses: actions/cache@v4
+                uses: actions/cache@v6
                 with:
                     path: fe/.pnpm-store
                     key: ${{ runner.os }}-pnpm-store-${{ hashFiles('fe/pnpm-lock.yaml') }}
@@ -555,7 +555,7 @@ jobs:
         runs-on: ubuntu-latest
         steps:
             -   name: Checkout
-                uses: actions/checkout@v4
+                uses: actions/checkout@v7
 
             -   name: Setup pnpm
                 uses: pnpm/action-setup@v6
@@ -563,12 +563,12 @@ jobs:
                     version: 10.33.4
 
             -   name: Setup Node.js
-                uses: actions/setup-node@v4
+                uses: actions/setup-node@v7
                 with:
                     node-version: '22'
 
             -   name: Cache pnpm store
-                uses: actions/cache@v4
+                uses: actions/cache@v6
                 with:
                     path: fe/.pnpm-store
                     key: ${{ runner.os }}-pnpm-store-${{ hashFiles('fe/pnpm-lock.yaml') }}
@@ -589,7 +589,7 @@ jobs:
         runs-on: ubuntu-latest
         steps:
             -   name: Checkout
-                uses: actions/checkout@v4
+                uses: actions/checkout@v7
 
             -   name: Setup pnpm
                 uses: pnpm/action-setup@v6
@@ -597,12 +597,12 @@ jobs:
                     version: 10.33.4
 
             -   name: Setup Node.js
-                uses: actions/setup-node@v4
+                uses: actions/setup-node@v7
                 with:
                     node-version: '22'
 
             -   name: Cache pnpm store
-                uses: actions/cache@v4
+                uses: actions/cache@v6
                 with:
                     path: fe/.pnpm-store
                     key: ${{ runner.os }}-pnpm-store-sharp-${{ hashFiles('fe/pnpm-lock.yaml') }}
@@ -623,7 +623,7 @@ jobs:
                 run: pnpm build
 
             -   name: Upload build artifacts
-                uses: actions/upload-artifact@v4
+                uses: actions/upload-artifact@v7
                 with:
                     name: frontend-dist
                     path: fe/dist
@@ -638,7 +638,7 @@ jobs:
         runs-on: ubuntu-latest
         steps:
             -   name: Checkout
-                uses: actions/checkout@v4
+                uses: actions/checkout@v7
 
             -   name: Setup pnpm
                 uses: pnpm/action-setup@v6
@@ -646,12 +646,12 @@ jobs:
                     version: 10.33.4
 
             -   name: Setup Node.js
-                uses: actions/setup-node@v4
+                uses: actions/setup-node@v7
                 with:
                     node-version: '22'
 
             -   name: Cache pnpm store
-                uses: actions/cache@v4
+                uses: actions/cache@v6
                 with:
                     path: fe/.pnpm-store
                     key: ${{ runner.os }}-pnpm-store-${{ hashFiles('fe/pnpm-lock.yaml') }}
@@ -702,7 +702,7 @@ jobs:
                     workspaces: .
 
             -   name: Cache cargo bin directory
-                uses: actions/cache@v4
+                uses: actions/cache@v6
                 with:
                     path: ~/.cargo/bin
                     key: ${{ runner.os }}-cargo-bin-${{ hashFiles('Cargo.lock') }}
@@ -768,7 +768,7 @@ jobs:
                 run: pnpm exec playwright test --config=e2e/playwright.config.ts
 
             -   name: Upload Playwright report
-                uses: actions/upload-artifact@v4
+                uses: actions/upload-artifact@v7
                 if: ${{ !cancelled() }}
                 with:
                     name: playwright-report
@@ -776,7 +776,7 @@ jobs:
                     retention-days: 7
 
             -   name: Upload test results
-                uses: actions/upload-artifact@v4
+                uses: actions/upload-artifact@v7
                 if: ${{ !cancelled() }}
                 with:
                     name: playwright-test-results

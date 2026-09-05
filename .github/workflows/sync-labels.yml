@@ -39,7 +39,7 @@ jobs:
                 ]
         steps:
             -   name: Upsert managed labels
-                uses: actions/github-script@v7
+                uses: actions/github-script@v9
                 env:
                     LABELS_JSON: ${{ env.LABELS_JSON }}
                     HARD_RESET: ${{ env.HARD_RESET }}

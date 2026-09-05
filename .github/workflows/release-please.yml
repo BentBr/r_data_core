@@ -26,7 +26,7 @@ jobs:
         steps:
             -   name: Release Please
                 id: release
-                uses: googleapis/release-please-action@v4
+                uses: googleapis/release-please-action@v5
                 with:
                     token: ${{ secrets.GITHUB_TOKEN }}
                     config-file: release-please-config.json
@@ -55,7 +55,7 @@ jobs:
                 # PR was just created) so a PR left without a ci-gate status can
                 # self-heal on a later push. Skipped when a release is being cut.
                 if: ${{ steps.release.outputs.release_created != 'true' }}
-                uses: actions/github-script@v7
+                uses: actions/github-script@v9
                 env:
                     PRS_OUTPUT: ${{ steps.release.outputs.prs }}
                 with:
@@ -119,7 +119,7 @@ jobs:
                         // Self-heal guard: only (re)run CI when the current head
                         // lacks a successful ci-gate status, so routine main pushes
                         // do not redundantly re-run CI on an already-green head.
-                        const { data: combined } = await github.rest.repos.getCombinedStatus({
+                        const { data: combined } = await github.rest.repos.getCombinedStatusForRef({
                           owner, repo, ref: sha,
                         });
                         const gate = combined.statuses.find((s) => s.context === 'ci-gate');
@@ -144,7 +144,7 @@ jobs:
         runs-on: ubuntu-latest
         steps:
             -   name: Report CI status to PR
-                uses: actions/github-script@v7
+                uses: actions/github-script@v9
                 with:
                     script: |
                         const sha = '${{ needs.release-please.outputs.pr_head_sha }}';
