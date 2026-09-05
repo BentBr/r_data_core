@@ -52,6 +52,40 @@ const cases = [
         'a copy of the template carrying real values',
     ],
 
+    // --- the allowance must be anchored, not a substring ------------------
+    // Regression: an unanchored template match let a path merely *containing*
+    // the template name through, which reaches the real file by traversal.
+    [
+        'Read',
+        { file_path: `/repo/${TEMPLATE}/../${REAL}` },
+        BLOCK,
+        'traversal out of a template-named segment',
+    ],
+    [
+        'Read',
+        { file_path: `/repo/${TEMPLATE}/${REAL}` },
+        BLOCK,
+        'real file inside a template-named directory',
+    ],
+    ['Read', { file_path: `/repo/${TEMPLATE}x/${REAL}` }, BLOCK, 'lookalike directory'],
+    ['Read', { file_path: `/repo/${REAL}${DOT}exampled` }, BLOCK, 'template name with a suffix'],
+    [
+        'Bash',
+        { command: `cat /repo/${TEMPLATE}/../${REAL}` },
+        BLOCK,
+        'traversal in a bash command',
+    ],
+
+    // Regression: the allowance waived every rule, so a template name inside a
+    // secrets directory smuggled the whole directory past the guard.
+    ['Read', { file_path: `/repo/secrets/${TEMPLATE}` }, BLOCK, 'template under secrets/'],
+    [
+        'Read',
+        { file_path: `/repo/credentials/${TEMPLATE}` },
+        BLOCK,
+        'template under credentials/',
+    ],
+
     // --- unrelated secrets are untouched by the allowance -----------------
     ['Read', { file_path: '/repo/certs/jwt.pem' }, BLOCK, 'private certificate'],
     ['Read', { file_path: '/repo/certs/jwt.key' }, BLOCK, 'private key'],

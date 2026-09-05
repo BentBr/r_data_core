@@ -1,5 +1,9 @@
+// The variable-file rule is named so the template allowance below can waive
+// exactly this one rule and nothing else.
+const ENV_RULE = /\.env\b/                // .env, .env.dev, .env.test (word boundary)
+
 const sensitivePatterns = [
-    /\.env\b/,                            // .env, .env.dev, .env.test (word boundary)
+    ENV_RULE,
     /\.pem$/,                             // JWT keys and certificates
     /\.key$/,                             // Private keys
     /credentials/i,                       // Credential files
@@ -13,10 +17,12 @@ const sensitiveBashPatterns = [...sensitivePatterns, /\.en[?*[]/, /\.e[?*[]/]
 // Committed templates that document which variables exist without carrying any
 // real value. They must stay editable, otherwise a new setting can never be
 // written down where developers look for it.
-const templatePattern = /\.env\.(example|dist|sample|template)\b/g
+const templatePattern = /\.env\.(?:example|dist|sample|template)\b/g
 
-// A template path is allowed outright.
-const isTemplatePath = (p) => new RegExp(templatePattern.source).test(p) && !/\.env\.(example|dist|sample|template)\.[^/]/.test(p)
+// ANCHORED on purpose. An unanchored match would let a path merely *containing*
+// the template name through — `.env.example/../.env` reads the real file, and
+// `.env.example.local` is a copy that carries real values.
+const isTemplatePath = (p) => /\.env\.(?:example|dist|sample|template)$/.test(p)
 
 // For free-form strings (Bash commands, Glob/Grep patterns) the template name
 // is removed before matching, so `cat .env.example` passes while
@@ -37,9 +43,12 @@ process.stdin.on('end', () => {
         const command = hookInput.tool_input?.command || ''
         const pattern = hookInput.tool_input?.pattern || ''
 
-        // Check file path for file operations
-        const isFilePathSensitive =
-            !isTemplatePath(filePath) && sensitivePatterns.some((p) => p.test(filePath))
+        // Check file path for file operations. Being a template waives ONLY the
+        // variable-file rule, so a template sitting under secrets/ or
+        // credentials/ is still blocked by those rules.
+        const isFilePathSensitive = sensitivePatterns.some(
+            (p) => p.test(filePath) && !(p === ENV_RULE && isTemplatePath(filePath))
+        )
 
         // Check bash commands for sensitive file access (e.g., docker compose exec ... cat .env)
         const isCommandSensitive =
