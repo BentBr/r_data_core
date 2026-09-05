@@ -180,6 +180,147 @@ impl MailService {
 
 #[cfg(test)]
 mod tests {
+    #![allow(clippy::unwrap_used)]
+
+    use super::MailService;
+    use r_data_core_core::config::SmtpConfig;
+
+    /// A transport pointed at a port nothing listens on, so every send fails at
+    /// connect time rather than delivering anything.
+    fn unreachable_mailer(from_name: Option<&str>) -> MailService {
+        MailService::new(&SmtpConfig {
+            host: "127.0.0.1".to_string(),
+            port: 1,
+            username: None,
+            password: None,
+            tls: false,
+            from_address: "sender@example.com".to_string(),
+            from_name: from_name.map(str::to_string),
+        })
+        .expect("a transport is built without contacting the server")
+    }
+
+    #[test]
+    fn construction_rejects_an_unparseable_from_address() {
+        let result = MailService::new(&SmtpConfig {
+            host: "127.0.0.1".to_string(),
+            port: 1,
+            username: None,
+            password: None,
+            tls: false,
+            from_address: "not an address".to_string(),
+            from_name: None,
+        });
+        assert!(
+            result.is_err(),
+            "a malformed From: must fail at construction, not at send time"
+        );
+    }
+
+    #[test]
+    fn construction_accepts_an_authenticated_relay() {
+        let service = MailService::new(&SmtpConfig {
+            host: "127.0.0.1".to_string(),
+            port: 1,
+            username: Some("user".to_string()),
+            password: Some("secret".to_string()),
+            tls: false,
+            from_address: "sender@example.com".to_string(),
+            from_name: Some("Sender".to_string()),
+        });
+        assert!(service.is_ok());
+    }
+
+    /// Rendering happens before any connection, so a broken template must be
+    /// reported as such rather than surfacing as an SMTP failure.
+    #[tokio::test]
+    async fn a_malformed_template_fails_before_sending() {
+        let mailer = unreachable_mailer(None);
+
+        let result = mailer
+            .send_email(
+                &["to@example.com".to_string()],
+                &[],
+                "{{#if unclosed}}",
+                "body",
+                None,
+                &serde_json::json!({}),
+                None,
+            )
+            .await;
+
+        assert!(result.is_err());
+    }
+
+    #[tokio::test]
+    async fn sending_to_an_unreachable_server_errors_rather_than_panics() {
+        let mailer = unreachable_mailer(Some("Sender"));
+
+        let result = mailer
+            .send_email(
+                &["to@example.com".to_string()],
+                &["cc@example.com".to_string()],
+                "Subject {{name}}",
+                "Hello {{name}}",
+                Some("<p>Hello {{name}}</p>"),
+                &serde_json::json!({ "name": "Alice" }),
+                None,
+            )
+            .await;
+
+        assert!(result.is_err(), "an unreachable relay must be an Err");
+    }
+
+    #[tokio::test]
+    async fn a_from_name_override_is_applied() {
+        let mailer = unreachable_mailer(None);
+
+        // Still fails at connect, but exercises the override branch first.
+        let result = mailer
+            .send_email(
+                &["to@example.com".to_string()],
+                &[],
+                "Subject",
+                "Body",
+                None,
+                &serde_json::json!({}),
+                Some("Override Name"),
+            )
+            .await;
+
+        assert!(result.is_err());
+    }
+
+    #[tokio::test]
+    async fn an_invalid_recipient_is_rejected() {
+        let mailer = unreachable_mailer(None);
+
+        let result = mailer
+            .send_email(
+                &["not an address".to_string()],
+                &[],
+                "Subject",
+                "Body",
+                None,
+                &serde_json::json!({}),
+                None,
+            )
+            .await;
+
+        assert!(result.is_err(), "a malformed recipient must be rejected");
+    }
+
+    #[tokio::test]
+    async fn raw_send_to_an_unreachable_server_errors() {
+        let mailer = unreachable_mailer(None);
+
+        let result = mailer
+            .send_raw_email(&["to@example.com".to_string()], "Subject", "Body", None)
+            .await;
+
+        assert!(result.is_err());
+    }
+
     #[test]
     fn render_simple_template() {
         let hbs = handlebars::Handlebars::new();

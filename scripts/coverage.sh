@@ -36,10 +36,14 @@ cd "$(dirname "$0")/.."
 #   - worker cron/task registrars (crates/worker/src/registrars/): pure wiring
 #     that registers tasks against the scheduler; behaviour is covered via the
 #     task implementations (crates/worker/src/tasks/, which stay measured).
-IGNORE='(/src/bin/|/main\.rs$|(^|/)src/bootstrap\.rs$|crates/worker/src/(runtime|registrars)/)'
+#   - the test-support crate (crates/test-support/): dev-only helpers that exist
+#     to set up fixtures for the suite. Measuring coverage of the test harness
+#     itself says nothing about the product, and every line of it that matters
+#     runs whenever the tests it serves run.
+IGNORE='(/src/bin/|/main\.rs$|(^|/)src/bootstrap\.rs$|crates/worker/src/(runtime|registrars)/|crates/test-support/src/)'
 
 # Minimum line-coverage threshold (percent). CI fails the build below this.
-MIN_LINES=70
+MIN_LINES=80
 
 # Integration tests spawn the server binary, whose instrumented runtime drops
 # stray `default_*.profraw` files into the repo root (the spawned process's
