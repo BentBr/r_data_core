@@ -76,7 +76,7 @@ env_logger = "0.11"
 bytes = "1.11.1"
 
 # Caching
-redis = { version = "0.32", features = ["tokio-comp", "connection-manager"] }
+redis = { version = "1.7", features = ["tokio-comp", "connection-manager"] }
 
 [workspace]
 members = [

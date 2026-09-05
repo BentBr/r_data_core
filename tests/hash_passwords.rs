@@ -14,7 +14,7 @@ fn test_hash_password_binary() {
             "--package",
             "r_data_core_core",
             "--bin",
-            "hash_password",
+            "hash-password",
             "--",
             test_password,
         ])
@@ -79,7 +79,7 @@ fn test_hash_password_binary_no_args() {
             "--package",
             "r_data_core_core",
             "--bin",
-            "hash_password",
+            "hash-password",
         ])
         .output()
         .expect("Failed to execute hash_password binary");
@@ -112,7 +112,7 @@ fn test_hash_password_binary_empty_password() {
             "--package",
             "r_data_core_core",
             "--bin",
-            "hash_password",
+            "hash-password",
             "--",
             test_password,
         ])
@@ -164,7 +164,7 @@ fn test_hash_password_binary_special_characters() {
             "--package",
             "r_data_core_core",
             "--bin",
-            "hash_password",
+            "hash-password",
             "--",
             test_password,
         ])
@@ -216,7 +216,7 @@ fn test_hash_password_binary_sql_output() {
             "--package",
             "r_data_core_core",
             "--bin",
-            "hash_password",
+            "hash-password",
             "--",
             test_password,
         ])

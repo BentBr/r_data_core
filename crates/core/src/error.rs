@@ -224,7 +224,7 @@ mod tests {
     fn test_error_from_redis_error() {
         // Test that Redis errors are converted to Cache error
         use redis::RedisError;
-        let redis_err = RedisError::from((redis::ErrorKind::IoError, "Connection failed"));
+        let redis_err = RedisError::from((redis::ErrorKind::Io, "Connection failed"));
         let err: Error = redis_err.into();
         assert!(matches!(err, Error::Cache(_)));
         assert!(err.to_string().contains("Cache error"));

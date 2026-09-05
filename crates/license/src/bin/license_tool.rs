@@ -9,7 +9,7 @@ use std::path::Path;
 use std::sync::Arc;
 
 #[derive(Parser)]
-#[command(name = "license_tool")]
+#[command(name = "license-tool")]
 #[command(about = "Create and verify RDataCore license keys")]
 struct Cli {
     #[command(subcommand)]
