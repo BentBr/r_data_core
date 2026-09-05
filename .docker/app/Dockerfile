@@ -95,7 +95,7 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
 # ==============================================================================
 # Main app image - includes helper utilities
 # ==============================================================================
-FROM debian:${DEBIAN_VERSION}-slim AS r_data_core
+FROM debian:${DEBIAN_VERSION}-slim AS r-data-core
 
 ARG OCI_SOURCE
 ARG OCI_REVISION
@@ -138,7 +138,7 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
 # ==============================================================================
 # Worker image
 # ==============================================================================
-FROM debian:${DEBIAN_VERSION}-slim AS r_data_core_worker
+FROM debian:${DEBIAN_VERSION}-slim AS r-data-core-worker
 
 ARG OCI_SOURCE
 ARG OCI_REVISION
@@ -169,7 +169,7 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
 # ==============================================================================
 # Maintenance image
 # ==============================================================================
-FROM debian:${DEBIAN_VERSION}-slim AS r_data_core_maintenance
+FROM debian:${DEBIAN_VERSION}-slim AS r-data-core-maintenance
 
 ARG OCI_SOURCE
 ARG OCI_REVISION
