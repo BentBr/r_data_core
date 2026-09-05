@@ -461,8 +461,7 @@
                 // API returns nested constraints: { type: "string", constraints: { pattern: "..." } }
                 // Extract inner constraints for the flat form structure
                 const apiConstraints = newField.constraints as
-                    | { type?: string; constraints?: Record<string, unknown> }
-                    | undefined
+                    { type?: string; constraints?: Record<string, unknown> } | undefined
                 const innerConstraints = apiConstraints?.constraints ?? {}
 
                 // Editing existing field - populate form with field data

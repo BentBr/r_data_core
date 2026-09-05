@@ -304,8 +304,7 @@ describe('DslToEditor', () => {
         expect(modeSelect).toBeTruthy()
         if (modeSelect) {
             const items = modeSelect.props('items') as
-                | Array<{ value: string; title: string }>
-                | undefined
+                Array<{ value: string; title: string }> | undefined
             const hasCreateOrUpdate =
                 items?.some(item => item.value === 'create_or_update') ?? false
             expect(hasCreateOrUpdate).toBe(true)
@@ -724,8 +723,7 @@ describe('DslToEditor', () => {
             const selects = wrapper.findAllComponents({ name: 'VSelect' })
             const typeSelect = selects[0]
             const items = typeSelect.props('items') as
-                | Array<{ value: string; title: string }>
-                | undefined
+                Array<{ value: string; title: string }> | undefined
             const hasNextStep = items?.some(item => item.value === 'next_step') ?? false
 
             expect(hasNextStep).toBe(true)
