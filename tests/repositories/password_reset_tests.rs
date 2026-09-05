@@ -234,7 +234,7 @@ async fn test_reset_password_unlocks_locked_account() -> Result<()> {
     let user_repo = Arc::new(AdminUserRepository::new(Arc::new(pool.pool.clone())));
     // Lock the account.
     user_repo
-        .update_lockout_state(&user_uuid, &UserStatus::Locked, 5)
+        .update_lockout_state(&user_uuid, &UserStatus::Locked, 5, None)
         .await?;
 
     // Build the service. The reset path only touches the repos; mail/template/

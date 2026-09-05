@@ -197,7 +197,7 @@ async fn test_update_lockout_state_locked() -> Result<()> {
     let repo = make_repo(&pool);
 
     let uuid = seed_user(&repo, &pool).await?;
-    repo.update_lockout_state(&uuid, &UserStatus::Locked, 5)
+    repo.update_lockout_state(&uuid, &UserStatus::Locked, 5, None)
         .await?;
 
     let user = repo.find_by_uuid(&uuid).await?.expect("user must exist");
@@ -214,9 +214,9 @@ async fn test_update_lockout_state_active() -> Result<()> {
     let repo = make_repo(&pool);
 
     let uuid = seed_user(&repo, &pool).await?;
-    repo.update_lockout_state(&uuid, &UserStatus::Locked, 5)
+    repo.update_lockout_state(&uuid, &UserStatus::Locked, 5, None)
         .await?;
-    repo.update_lockout_state(&uuid, &UserStatus::Active, 0)
+    repo.update_lockout_state(&uuid, &UserStatus::Active, 0, None)
         .await?;
 
     let user = repo.find_by_uuid(&uuid).await?.expect("user must exist");
@@ -233,7 +233,7 @@ async fn test_update_lockout_state_pending_activation() -> Result<()> {
     let repo = make_repo(&pool);
 
     let uuid = seed_user(&repo, &pool).await?;
-    repo.update_lockout_state(&uuid, &UserStatus::PendingActivation, 0)
+    repo.update_lockout_state(&uuid, &UserStatus::PendingActivation, 0, None)
         .await?;
 
     let user = repo.find_by_uuid(&uuid).await?.expect("user must exist");

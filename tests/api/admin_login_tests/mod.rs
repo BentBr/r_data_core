@@ -2,14 +2,20 @@
 #![allow(clippy::future_not_send)] // actix-web test utilities use Rc internally
 
 //! Integration tests for admin login security hardening, split by concern:
-//!   - `lockout`     — account lockout after 5 failures + reset on success
-//!   - `rate_limit`  — per-IP request throttling (429) and its reset on success
+//!   - `lockout`        — account lockout after 5 failures + reset on success
+//!   - `lockout_expiry` — automatic locks lifting themselves once they expire
+//!   - `rate_limit`     — per-IP request throttling (429) and its reset on success
+//!   - `register_rate_limit` — the same limit on anonymous registration
+//!   - `timing`         — unknown vs. known user cost the same (no enumeration)
 //!
 //! Shared `setup_app` / login helpers live here so both submodules reuse one
 //! test-app factory.
 
 mod lockout;
+mod lockout_expiry;
 mod rate_limit;
+mod register_rate_limit;
+mod timing;
 
 use actix_web::dev::{Service, ServiceResponse};
 use actix_web::{http::StatusCode, test, web, App};
@@ -101,6 +107,27 @@ where
 {
     let req = test::TestRequest::post()
         .uri("/admin/api/v1/auth/login")
+        .set_json(serde_json::json!({ "username": username, "password": password }))
+        .to_request();
+    test::call_service(app, req).await.status()
+}
+
+/// Attempt a login from a specific peer with an `X-Forwarded-For` header, to
+/// prove the header is only believed when the peer is a trusted proxy.
+pub(super) async fn attempt_login_from_ip_with_header<S>(
+    app: &S,
+    ip: SocketAddr,
+    forwarded_for: &str,
+    username: &str,
+    password: &str,
+) -> StatusCode
+where
+    S: Service<actix_http::Request, Response = ServiceResponse, Error = actix_web::Error>,
+{
+    let req = test::TestRequest::post()
+        .uri("/admin/api/v1/auth/login")
+        .peer_addr(ip)
+        .insert_header(("X-Forwarded-For", forwarded_for))
         .set_json(serde_json::json!({ "username": username, "password": password }))
         .to_request();
     test::call_service(app, req).await.status()

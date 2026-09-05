@@ -43,7 +43,7 @@ async fn test_reset_password_sets_hash_and_clears_lockout() -> Result<()> {
     let repo = AdminUserRepository::new(Arc::new(pool.pool.clone()));
 
     // Lock the account first, then prove a password reset also clears the lock.
-    repo.update_lockout_state(&uuid, &UserStatus::Locked, 5)
+    repo.update_lockout_state(&uuid, &UserStatus::Locked, 5, None)
         .await?;
     assert_eq!(
         repo.find_by_uuid(&uuid).await?.unwrap().status,

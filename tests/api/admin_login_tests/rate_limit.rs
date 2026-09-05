@@ -5,7 +5,7 @@
 //! attempt counts — bad password, unknown user, or locked/inactive account — so
 //! username-enumeration from one IP is throttled too.
 
-use super::{attempt_login_from_ip, setup_app};
+use super::{attempt_login_from_ip, attempt_login_from_ip_with_header, setup_app};
 use actix_web::http::StatusCode;
 use r_data_core_persistence::{AdminUserRepository, AdminUserRepositoryTrait};
 use r_data_core_test_support::{clear_test_db, create_test_admin_user};
@@ -101,6 +101,57 @@ async fn test_successful_login_clears_rate_limit() -> r_data_core_core::error::R
         status,
         StatusCode::UNAUTHORIZED,
         "counter cleared on success → next failure is 401, not 429"
+    );
+
+    clear_test_db(&pool).await?;
+    Ok(())
+}
+
+/// An untrusted client cannot talk the server into a fresh bucket by forging
+/// `X-Forwarded-For`. `TRUSTED_PROXIES` is unset in the test process, so the
+/// peer address is the only thing believed.
+#[tokio::test]
+#[serial]
+async fn test_forged_forwarded_for_does_not_reset_the_counter(
+) -> r_data_core_core::error::Result<()> {
+    let (app, pool) = setup_app().await?;
+    let ip: SocketAddr = "203.0.113.40:5000".parse().unwrap();
+
+    for _ in 0..11 {
+        let _ = attempt_login_from_ip(&app, ip, "ghost_user", "wrong_password").await;
+    }
+    assert_eq!(
+        attempt_login_from_ip(&app, ip, "ghost_user", "wrong_password").await,
+        StatusCode::TOO_MANY_REQUESTS,
+        "the peer address is throttled"
+    );
+
+    // A different forged client on each request must not buy more attempts.
+    for forged in ["198.51.100.1", "198.51.100.2", "198.51.100.3"] {
+        assert_eq!(
+            attempt_login_from_ip_with_header(&app, ip, forged, "ghost_user", "wrong_password")
+                .await,
+            StatusCode::TOO_MANY_REQUESTS,
+            "forged X-Forwarded-For {forged} must not create a fresh bucket"
+        );
+    }
+
+    clear_test_db(&pool).await?;
+    Ok(())
+}
+
+/// A malformed header from an untrusted peer is simply ignored, not an error.
+#[tokio::test]
+#[serial]
+async fn test_malformed_forwarded_for_is_ignored() -> r_data_core_core::error::Result<()> {
+    let (app, pool) = setup_app().await?;
+    let ip: SocketAddr = "203.0.113.41:5000".parse().unwrap();
+
+    assert_eq!(
+        attempt_login_from_ip_with_header(&app, ip, "not-an-ip", "ghost_user", "wrong_password")
+            .await,
+        StatusCode::UNAUTHORIZED,
+        "garbage header still yields a normal 401"
     );
 
     clear_test_db(&pool).await?;
