@@ -79,17 +79,17 @@ jobs:
             packages: write
         steps:
             -   name: Checkout
-                uses: actions/checkout@v4
+                uses: actions/checkout@v7
             -   name: Set up Docker Buildx
-                uses: docker/setup-buildx-action@v3
+                uses: docker/setup-buildx-action@v4
             -   name: Log in to GitHub Container Registry
-                uses: docker/login-action@v3
+                uses: docker/login-action@v4
                 with:
                     registry: ${{ env.REGISTRY }}
                     username: ${{ github.actor }}
                     password: ${{ secrets.GITHUB_TOKEN }}
             -   name: Build and push AMD64 backend images
-                uses: docker/bake-action@v6
+                uses: docker/bake-action@v7
                 with:
                     files: .docker/docker-bake.hcl
                     targets: backend-amd64
@@ -111,17 +111,17 @@ jobs:
             packages: write
         steps:
             -   name: Checkout
-                uses: actions/checkout@v4
+                uses: actions/checkout@v7
             -   name: Set up Docker Buildx
-                uses: docker/setup-buildx-action@v3
+                uses: docker/setup-buildx-action@v4
             -   name: Log in to GitHub Container Registry
-                uses: docker/login-action@v3
+                uses: docker/login-action@v4
                 with:
                     registry: ${{ env.REGISTRY }}
                     username: ${{ github.actor }}
                     password: ${{ secrets.GITHUB_TOKEN }}
             -   name: Build and push ARM64 backend images
-                uses: docker/bake-action@v6
+                uses: docker/bake-action@v7
                 with:
                     files: .docker/docker-bake.hcl
                     targets: backend-arm64
@@ -145,7 +145,7 @@ jobs:
             attestations: write
         steps:
             -   name: Log in to GitHub Container Registry
-                uses: docker/login-action@v3
+                uses: docker/login-action@v4
                 with:
                     registry: ${{ env.REGISTRY }}
                     username: ${{ github.actor }}
@@ -219,7 +219,7 @@ jobs:
                     fi
                     echo "digest=${DIGEST}" >> "$GITHUB_OUTPUT"
             -   name: Generate artifact attestation for r-data-core
-                uses: actions/attest-build-provenance@v2
+                uses: actions/attest-build-provenance@v4
                 with:
                     subject-name: ${{ env.REGISTRY }}/${{ needs.prepare.outputs.owner_lc }}/r-data-core
                     subject-digest: ${{ steps.backend-digest.outputs.digest }}
@@ -237,25 +237,25 @@ jobs:
             attestations: write
         steps:
             -   name: Checkout
-                uses: actions/checkout@v4
+                uses: actions/checkout@v7
             -   name: Set lowercase repo owner
                 id: repo
                 run: echo "owner_lc=${GITHUB_REPOSITORY_OWNER,,}" >> $GITHUB_OUTPUT
             -   name: Set up QEMU
-                uses: docker/setup-qemu-action@v3
+                uses: docker/setup-qemu-action@v4
                 with:
                     platforms: linux/amd64,linux/arm64
             -   name: Set up Docker Buildx
-                uses: docker/setup-buildx-action@v3
+                uses: docker/setup-buildx-action@v4
             -   name: Log in to GitHub Container Registry
-                uses: docker/login-action@v3
+                uses: docker/login-action@v4
                 with:
                     registry: ${{ env.REGISTRY }}
                     username: ${{ github.actor }}
                     password: ${{ secrets.GITHUB_TOKEN }}
             -   name: Extract metadata (tags, labels)
                 id: meta
-                uses: docker/metadata-action@v5
+                uses: docker/metadata-action@v6
                 with:
                     images: ${{ env.REGISTRY }}/${{ steps.repo.outputs.owner_lc }}/r-data-core-admin-fe
                     tags: |
@@ -273,7 +273,7 @@ jobs:
                         type=raw,value=${{ inputs.tag }},enable=${{ github.event_name == 'workflow_dispatch' && inputs.version == '' }}
             -   name: Build and push
                 id: build-push
-                uses: docker/build-push-action@v6
+                uses: docker/build-push-action@v7
                 with:
                     context: .
                     file: ./.docker/fe/Dockerfile
@@ -301,7 +301,7 @@ jobs:
                       exit 1
                     fi
             -   name: Generate artifact attestation
-                uses: actions/attest-build-provenance@v2
+                uses: actions/attest-build-provenance@v4
                 with:
                     subject-name: ${{ env.REGISTRY }}/${{ steps.repo.outputs.owner_lc }}/r-data-core-admin-fe
                     subject-digest: ${{ steps.build-push.outputs.digest }}
@@ -361,17 +361,17 @@ jobs:
             contents: write
         steps:
             -   name: Checkout
-                uses: actions/checkout@v4
+                uses: actions/checkout@v7
             -   name: Setup pnpm
                 uses: pnpm/action-setup@v6
                 with:
                     version: 10.33.4
             -   name: Setup Node.js
-                uses: actions/setup-node@v4
+                uses: actions/setup-node@v7
                 with:
                     node-version: '22'
             -   name: Cache pnpm store
-                uses: actions/cache@v4
+                uses: actions/cache@v6
                 with:
                     path: fe/.pnpm-store
                     key: ${{ runner.os }}-pnpm-store-${{ hashFiles('fe/pnpm-lock.yaml') }}
@@ -398,7 +398,7 @@ jobs:
                     cd fe/dist
                     zip -r ../../r-data-core-admin-fe-${{ steps.version.outputs.version }}.zip .
             -   name: Upload to release
-                uses: softprops/action-gh-release@v2
+                uses: softprops/action-gh-release@v3
                 with:
                     tag_name: ${{ steps.version.outputs.tag_name }}
                     files: r-data-core-admin-fe-${{ steps.version.outputs.version }}.zip

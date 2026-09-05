@@ -26,7 +26,7 @@ jobs:
             contents: write
         steps:
             -   name: Checkout
-                uses: actions/checkout@v4
+                uses: actions/checkout@v7
 
             -   name: Start PostgreSQL
                 run: |
@@ -61,7 +61,7 @@ jobs:
                     workspaces: .
 
             -   name: Cache cargo bin directory
-                uses: actions/cache@v4
+                uses: actions/cache@v6
                 with:
                     path: ~/.cargo/bin
                     key: ${{ runner.os }}-cargo-bin-${{ hashFiles('Cargo.lock') }}
@@ -110,7 +110,7 @@ jobs:
             -   name: Enforce coverage threshold
                 run: ./scripts/coverage.sh check
 
-            -   uses: actions/upload-artifact@v4
+            -   uses: actions/upload-artifact@v7
                 with:
                     name: rust-coverage
                     path: |
@@ -152,7 +152,7 @@ jobs:
             FE_THRESHOLD: "70"
         steps:
             -   name: Checkout
-                uses: actions/checkout@v4
+                uses: actions/checkout@v7
 
             -   name: Setup pnpm
                 uses: pnpm/action-setup@v6
@@ -160,12 +160,12 @@ jobs:
                     version: 10.33.4
 
             -   name: Setup Node.js
-                uses: actions/setup-node@v4
+                uses: actions/setup-node@v7
                 with:
                     node-version: '22'
 
             -   name: Cache pnpm store
-                uses: actions/cache@v4
+                uses: actions/cache@v6
                 with:
                     path: fe/.pnpm-store
                     key: ${{ runner.os }}-pnpm-store-${{ hashFiles('fe/pnpm-lock.yaml') }}
@@ -190,7 +190,7 @@ jobs:
                       echo '```'
                     } >> "$GITHUB_STEP_SUMMARY"
 
-            -   uses: actions/upload-artifact@v4
+            -   uses: actions/upload-artifact@v7
                 with:
                     name: fe-coverage
                     path: |
