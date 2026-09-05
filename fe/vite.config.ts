@@ -42,6 +42,14 @@ export default defineConfig({
         port: 80,
         host: '0.0.0.0',
     },
+    // esbuild >= 0.28 refuses to down-level destructuring to Vite's legacy
+    // default dev target, which broke `pnpm dev` after the GHSA-gv7w-rqvm-qjhr
+    // bump. Match the production target so both paths agree.
+    optimizeDeps: {
+        esbuildOptions: {
+            target: 'esnext',
+        },
+    },
     build: {
         target: 'esnext',
         sourcemap: true,
