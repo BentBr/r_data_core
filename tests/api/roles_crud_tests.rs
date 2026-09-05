@@ -25,12 +25,12 @@ fn permission(resource: &str, permission_type: &str) -> serde_json::Value {
     })
 }
 
-fn role_body(name: &str, permissions: Vec<serde_json::Value>) -> serde_json::Value {
+fn role_body(name: &str, permissions: &[serde_json::Value]) -> serde_json::Value {
     serde_json::json!({
         "name": name,
         "description": format!("{name} role"),
         "super_admin": false,
-        "permissions": permissions,
+        "permissions": permissions.to_vec(),
     })
 }
 
@@ -45,7 +45,7 @@ where
     let req = test::TestRequest::post()
         .uri(BASE)
         .insert_header(("Authorization", format!("Bearer {token}")))
-        .set_json(role_body(name, vec![permission("Entities", "Read")]))
+        .set_json(role_body(name, &[permission("Entities", "Read")]))
         .to_request();
     let resp = test::call_service(app, req).await;
     let status = resp.status();
@@ -143,7 +143,7 @@ async fn test_update_replaces_the_permission_set() {
         .insert_header(("Authorization", format!("Bearer {token}")))
         .set_json(role_body(
             "mutable",
-            vec![
+            &[
                 permission("Entities", "Read"),
                 permission("Workflows", "Execute"),
             ],
@@ -224,7 +224,7 @@ async fn test_role_routes_require_authentication() {
             .to_request(),
         test::TestRequest::post()
             .uri(BASE)
-            .set_json(role_body("anon", vec![]))
+            .set_json(role_body("anon", &[]))
             .to_request(),
         test::TestRequest::delete()
             .uri(&format!("{BASE}/{missing}"))

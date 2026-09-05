@@ -195,3 +195,47 @@ async fn test_count_by_user_zero_for_unknown_user() -> Result<()> {
 
     Ok(())
 }
+
+// ---------------------------------------------------------------------------
+// list_by_user — sort by last_used_at DESC (still NULLS LAST, not NULLS FIRST)
+// ---------------------------------------------------------------------------
+
+#[tokio::test]
+#[serial]
+async fn test_list_by_user_sort_last_used_at_desc_nulls_last() -> Result<()> {
+    let pool = setup_test_db().await;
+    clear_test_db(&pool).await?;
+
+    let repo = ApiKeyRepository::new(Arc::new(pool.pool.clone()));
+    let user_uuid = create_test_admin_user(&pool).await?;
+
+    let (key_used, _) = repo
+        .create_new_api_key(&random_string("desc_used_key"), "d", user_uuid, 30)
+        .await?;
+    let (_key_unused, _) = repo
+        .create_new_api_key(&random_string("desc_unused_key"), "d", user_uuid, 30)
+        .await?;
+
+    repo.update_last_used(key_used).await?;
+
+    let keys = repo
+        .list_by_user(
+            user_uuid,
+            10,
+            0,
+            Some("last_used_at".to_string()),
+            Some("DESC".to_string()),
+        )
+        .await?;
+
+    assert_eq!(keys.len(), 2);
+    // The NULLS LAST override applies regardless of direction, so the key
+    // with a timestamp still sorts before the NULL one even in DESC order.
+    assert_eq!(
+        keys[0].uuid, key_used,
+        "Key with last_used_at should sort before NULL even in DESC order"
+    );
+    assert!(keys[1].last_used_at.is_none());
+
+    Ok(())
+}

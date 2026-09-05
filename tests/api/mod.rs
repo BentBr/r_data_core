@@ -11,6 +11,7 @@ pub mod dsl_options_tests;
 pub mod dynamic_entity_api_tests;
 pub mod dynamic_entity_routes_tests;
 pub mod email_templates_tests;
+pub mod entity_definition_crud_tests;
 pub mod entity_definition_integration_tests;
 pub mod entity_definitions;
 pub mod error_handling_tests;

@@ -157,7 +157,7 @@ async fn test_validate_rejects_an_unknown_step_type() {
     let req = test::TestRequest::post()
         .uri(VALIDATE)
         .insert_header(("Authorization", format!("Bearer {token}")))
-        .set_json(&serde_json::json!({
+        .set_json(serde_json::json!({
             "steps": [{ "from": { "type": "not_a_real_source" } }]
         }))
         .to_request();
@@ -185,7 +185,7 @@ async fn test_validate_reports_which_step_failed_and_why() {
     let req = test::TestRequest::post()
         .uri(VALIDATE)
         .insert_header(("Authorization", format!("Bearer {token}")))
-        .set_json(&serde_json::json!({
+        .set_json(serde_json::json!({
             "steps": [
                 {
                     "from": { "type": "trigger", "mapping": {} },
@@ -231,7 +231,7 @@ async fn test_validate_requires_authentication() {
 
     let req = test::TestRequest::post()
         .uri(VALIDATE)
-        .set_json(&serde_json::json!({ "steps": [] }))
+        .set_json(serde_json::json!({ "steps": [] }))
         .to_request();
 
     let resp = test::call_service(&app, req).await;

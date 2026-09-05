@@ -3,3 +3,4 @@
 pub mod auth_get;
 pub mod list_sort;
 pub mod roles_crud;
+pub mod trait_object;
