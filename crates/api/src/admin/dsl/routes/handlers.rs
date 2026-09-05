@@ -46,15 +46,27 @@ pub async fn validate_dsl(
         return ApiResponse::<()>::forbidden("Insufficient permissions to validate DSL");
     }
 
-    // Convert Vec<Value> to Vec<DslStep> for validation
-    let steps: Result<Vec<DslStep>, _> = payload
-        .steps
-        .iter()
-        .map(|v| serde_json::from_value(v.clone()))
-        .collect();
-    let Ok(steps) = steps else {
-        return ApiResponse::<()>::unprocessable_entity("Invalid DSL steps format");
-    };
+    // Convert Vec<Value> to Vec<DslStep> for validation.
+    //
+    // Report every step that fails to parse, and carry serde's own message
+    // through: it names the offending field and, for an unknown variant,
+    // lists the legal ones. Collapsing all of that into a single opaque
+    // "Invalid DSL steps format" left callers with no way to find the problem.
+    let mut steps = Vec::with_capacity(payload.steps.len());
+    let mut violations = Vec::new();
+    for (idx, raw) in payload.steps.iter().enumerate() {
+        match serde_json::from_value::<DslStep>(raw.clone()) {
+            Ok(step) => steps.push(step),
+            Err(e) => violations.push(ValidationViolation {
+                field: format!("steps[{idx}]"),
+                message: e.to_string(),
+                code: Some("DSL_STEP_MALFORMED".to_string()),
+            }),
+        }
+    }
+    if !violations.is_empty() {
+        return ApiResponse::<()>::unprocessable_entity_with_violations("Invalid DSL", violations);
+    }
     let program = DslProgram {
         steps,
         on_complete: None,
