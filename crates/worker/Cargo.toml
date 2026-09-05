@@ -8,15 +8,15 @@ license = "Business"
 publish = false  # proprietary — never published to a registry
 
 [[bin]]
-name = "r_data_core_worker"
+name = "r-data-core-worker"
 path = "src/main.rs"
 
 [[bin]]
-name = "r_data_core_maintenance"
+name = "r-data-core-maintenance"
 path = "src/bin/maintenance.rs"
 
 [[bin]]
-name = "send_statistics"
+name = "send-statistics"
 path = "src/bin/send_statistics.rs"
 
 [dependencies]

@@ -21,5 +21,5 @@ reqwest = { version = "0.12", default-features = false, features = ["json", "rus
 r_data_core_core = { path = "../core" }
 
 [[bin]]
-name = "license_tool"
+name = "license-tool"
 path = "src/bin/license_tool.rs"

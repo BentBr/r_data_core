@@ -16,7 +16,7 @@ fn test_clear_cache_help() {
             "--package",
             "r_data_core_core",
             "--bin",
-            "clear_cache",
+            "clear-cache",
             "--",
             "--help",
         ])
@@ -110,7 +110,7 @@ fn test_clear_cache_missing_redis_url() {
             "--package",
             "r_data_core_core",
             "--bin",
-            "clear_cache",
+            "clear-cache",
             "--",
             "--all",
         ])
@@ -146,7 +146,7 @@ fn test_clear_cache_invalid_arguments() {
             "--package",
             "r_data_core_core",
             "--bin",
-            "clear_cache",
+            "clear-cache",
         ])
         .env("REDIS_URL", "redis://localhost:6379")
         .output()
@@ -177,7 +177,7 @@ fn test_clear_cache_conflicting_arguments() {
             "--package",
             "r_data_core_core",
             "--bin",
-            "clear_cache",
+            "clear-cache",
             "--",
             "--all",
             "--prefix",
@@ -218,7 +218,7 @@ async fn test_clear_cache_all_if_redis_available() {
             "--package",
             "r_data_core_core",
             "--bin",
-            "clear_cache",
+            "clear-cache",
             "--",
             "--all",
             "--dry-run",
@@ -252,7 +252,7 @@ async fn test_clear_cache_prefix_dry_run_if_redis_available() {
             "--package",
             "r_data_core_core",
             "--bin",
-            "clear_cache",
+            "clear-cache",
             "--",
             "--prefix",
             "entity_def:",
@@ -300,7 +300,7 @@ async fn test_clear_cache_prefix_validation_if_redis_available() {
                 "--package",
                 "r_data_core_core",
                 "--bin",
-                "clear_cache",
+                "clear-cache",
                 "--",
                 "--prefix",
                 prefix,

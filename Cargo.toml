@@ -15,7 +15,7 @@ path = "src/lib.rs"
 doctest = false  # Disable doc tests as they can run in parallel
 
 [[bin]]
-name = "r_data_core"
+name = "r-data-core"
 path = "src/main.rs"
 
 # Use serial_test crate effectively
@@ -27,6 +27,7 @@ serial_test = { version = "2.0", features = ["async"] }
 tokio = { version = "1.35", features = ["full", "macros", "rt-multi-thread"] }
 r_data_core_worker = { path = "crates/worker" }
 r_data_core_license = { path = "crates/license" }
+r_data_core_test_support = { path = "crates/test-support" }
 anyhow = "1.0"
 tempfile = "3.10"
 serde = { version = "1.0", features = ["derive"] }
@@ -45,7 +46,6 @@ r_data_core_core = { path = "crates/core" }
 r_data_core_persistence = { path = "crates/persistence" }
 r_data_core_services = { path = "crates/services" }
 r_data_core_workflow = { path = "crates/workflow" }
-r_data_core_test_support = { path = "crates/test-support"}
 
 # Database
 sqlx = { version = "0.8.6", features = ["runtime-tokio-rustls", "postgres", "uuid", "json", "time"] }
@@ -76,7 +76,7 @@ env_logger = "0.11"
 bytes = "1.11.1"
 
 # Caching
-redis = { version = "0.32", features = ["tokio-comp", "connection-manager"] }
+redis = { version = "1.7", features = ["tokio-comp", "connection-manager"] }
 
 [workspace]
 members = [

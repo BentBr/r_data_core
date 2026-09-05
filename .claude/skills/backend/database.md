@@ -27,10 +27,10 @@ cargo sqlx prepare --workspace -- --all-targets
 cargo sqlx migrate run
 
 # Check migration status
-cargo run --bin run_migrations -- --status
+cargo run --bin run-migrations -- --status
 
 # In Docker
-docker compose exec core /usr/local/bin/run_migrations --status
+docker compose exec core /usr/local/bin/run-migrations --status
 ```
 
 ## Test Database
@@ -56,7 +56,7 @@ Each entity type gets auto-created database objects:
 
 Schema changes are applied via:
 ```bash
-cargo run --bin apply_schema
+cargo run --bin apply-schema
 ```
 
 Or via the admin API: `POST /admin/api/v1/entity-definitions/apply-schema`

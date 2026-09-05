@@ -6,17 +6,17 @@ Start the application services locally.
 
 ### API Server
 ```bash
-RUST_BACKTRACE=1 RUST_LOG=info cargo run --bin r_data_core
+RUST_BACKTRACE=1 RUST_LOG=info cargo run --bin r-data-core
 ```
 
 ### Workflow Worker
 ```bash
-RUST_BACKTRACE=1 RUST_LOG=info cargo run --bin r_data_core_worker
+RUST_BACKTRACE=1 RUST_LOG=info cargo run --bin r-data-core-worker
 ```
 
 ### Maintenance Worker
 ```bash
-RUST_BACKTRACE=1 RUST_LOG=info cargo run --bin r_data_core_maintenance
+RUST_BACKTRACE=1 RUST_LOG=info cargo run --bin r-data-core-maintenance
 ```
 
 ## Using Docker Compose

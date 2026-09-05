@@ -337,7 +337,7 @@ jobs:
                     SQLX_OFFLINE: true
                 run: |
                     TS_RS_EXPORT_DIR=${{ github.workspace }}/fe/src/types/generated cargo test --workspace export_bindings 2>&1
-                    cargo run -p r_data_core_core --bin export_validation_constants > ./fe/src/types/generated/validation.ts
+                    cargo run -p r_data_core_core --bin export-validation-constants > ./fe/src/types/generated/validation.ts
 
             -   name: Check for stale bindings
                 run: |
@@ -732,8 +732,8 @@ jobs:
                     API_ENABLE_DOCS: true
                     RUST_LOG: info
                 run: |
-                    cargo build --bin r_data_core
-                    cargo run --bin r_data_core &
+                    cargo build --bin r-data-core
+                    cargo run --bin r-data-core &
                     # Wait for app to be ready
                     for i in {1..60}; do
                       curl -sf http://localhost:8080/admin/api/v1/health && break

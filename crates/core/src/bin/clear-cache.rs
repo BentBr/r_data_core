@@ -222,7 +222,7 @@ fn print_help() {
     println!("    clear_cache --prefix \"api_key:\" --dry-run");
     println!();
     println!("    # In Docker Compose environment");
-    println!("    docker compose exec core /usr/local/bin/clear_cache --all");
+    println!("    docker compose exec core /usr/local/bin/clear-cache --all");
     println!();
     println!("COMMON CACHE PREFIXES:");
     println!("    entity_def:            Entity definition cache (by type and UUID)");

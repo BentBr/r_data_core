@@ -28,7 +28,7 @@ cargo sqlx migrate run
 ```bash
 ./target/release/clear_cache --all
 # or in Docker:
-docker compose exec core /usr/local/bin/clear_cache --all
+docker compose exec core /usr/local/bin/clear-cache --all
 ```
 
 ## Instructions

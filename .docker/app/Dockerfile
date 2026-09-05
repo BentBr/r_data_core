@@ -5,10 +5,10 @@
 # Supports multi-architecture builds (amd64, arm64)
 #
 # Build args:
-#   BINARY - Which binary to build (r_data_core, r_data_core_worker, r_data_core_maintenance)
+#   BINARY - Which binary to build (r-data-core, r-data-core-worker, r-data-core-maintenance)
 #
 # Example:
-#   docker build --build-arg BINARY=r_data_core -t r-data-core:latest .
+#   docker build --build-arg BINARY=r-data-core -t r-data-core:latest .
 # ==============================================================================
 
 ARG RUST_VERSION=1.96.0
@@ -58,7 +58,7 @@ RUN cargo build --release --workspace
 # ==============================================================================
 FROM debian:${DEBIAN_VERSION}-slim AS runtime
 
-ARG BINARY=r_data_core
+ARG BINARY=r-data-core
 ARG OCI_SOURCE
 ARG OCI_REVISION
 ARG OCI_CREATED
@@ -119,16 +119,16 @@ USER appuser
 WORKDIR /usr/local/bin
 
 # Copy main binary
-COPY --from=builder --chown=appuser:appuser /app/target/release/r_data_core /usr/local/bin/r_data_core
+COPY --from=builder --chown=appuser:appuser /app/target/release/r-data-core /usr/local/bin/r-data-core
 
 # Copy utility binaries for operations/maintenance tasks
 # These can be run via: docker compose exec core /usr/local/bin/<binary>
-COPY --from=builder --chown=appuser:appuser /app/target/release/run_migrations /usr/local/bin/run_migrations
-COPY --from=builder --chown=appuser:appuser /app/target/release/clear_cache /usr/local/bin/clear_cache
-COPY --from=builder --chown=appuser:appuser /app/target/release/hash_password /usr/local/bin/hash_password
-COPY --from=builder --chown=appuser:appuser /app/target/release/license_tool /usr/local/bin/license_tool
+COPY --from=builder --chown=appuser:appuser /app/target/release/run-migrations /usr/local/bin/run-migrations
+COPY --from=builder --chown=appuser:appuser /app/target/release/clear-cache /usr/local/bin/clear-cache
+COPY --from=builder --chown=appuser:appuser /app/target/release/hash-password /usr/local/bin/hash-password
+COPY --from=builder --chown=appuser:appuser /app/target/release/license-tool /usr/local/bin/license-tool
 
-ENTRYPOINT ["/usr/local/bin/r_data_core"]
+ENTRYPOINT ["/usr/local/bin/r-data-core"]
 
 EXPOSE 8080
 
@@ -159,9 +159,9 @@ RUN useradd --create-home --user-group appuser
 USER appuser
 WORKDIR /usr/local/bin
 
-COPY --from=builder --chown=appuser:appuser /app/target/release/r_data_core_worker /usr/local/bin/r_data_core_worker
+COPY --from=builder --chown=appuser:appuser /app/target/release/r-data-core-worker /usr/local/bin/r-data-core-worker
 
-ENTRYPOINT ["/usr/local/bin/r_data_core_worker"]
+ENTRYPOINT ["/usr/local/bin/r-data-core-worker"]
 
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
     CMD ["true"]
@@ -190,9 +190,9 @@ RUN useradd --create-home --user-group appuser
 USER appuser
 WORKDIR /usr/local/bin
 
-COPY --from=builder --chown=appuser:appuser /app/target/release/r_data_core_maintenance /usr/local/bin/r_data_core_maintenance
+COPY --from=builder --chown=appuser:appuser /app/target/release/r-data-core-maintenance /usr/local/bin/r-data-core-maintenance
 
-ENTRYPOINT ["/usr/local/bin/r_data_core_maintenance"]
+ENTRYPOINT ["/usr/local/bin/r-data-core-maintenance"]
 
 
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \

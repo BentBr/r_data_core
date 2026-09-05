@@ -53,13 +53,13 @@ docker compose logs -f worker
 ### Execute commands in containers
 ```bash
 # Run migrations
-docker compose exec core /usr/local/bin/run_migrations --status
+docker compose exec core /usr/local/bin/run-migrations --status
 
 # Clear cache
-docker compose exec core /usr/local/bin/clear_cache --all
+docker compose exec core /usr/local/bin/clear-cache --all
 
 # Hash password
-docker compose exec core /usr/local/bin/hash_password 'newpassword'
+docker compose exec core /usr/local/bin/hash-password 'newpassword'
 
 # Frontend pnpm commands
 docker compose exec node pnpm lint

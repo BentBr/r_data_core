@@ -8,7 +8,7 @@
 //! # Usage
 //!
 //! ```bash
-//! cargo run --bin export_validation_constants > fe/src/types/generated/validation.ts
+//! cargo run --bin export-validation-constants > fe/src/types/generated/validation.ts
 //! ```
 
 use r_data_core_core::validation::{constraints, patterns};
