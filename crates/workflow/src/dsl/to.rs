@@ -142,12 +142,12 @@ pub(crate) fn validate_to(
                     if destination.destination_type.trim().is_empty() {
                         return Err(r_data_core_core::error::Error::Validation(format!("DSL step {idx}: to.format.output.push.destination.destination_type must not be empty")));
                     }
-                    if destination.destination_type.as_str() == "uriformat!(" {
+                    if destination.destination_type.as_str() == "uri" {
                         if let Some(uri) = destination.config.get("uri").and_then(|v| v.as_str()) {
                             if uri.trim().is_empty() {
                                 return Err(r_data_core_core::error::Error::Validation(format!("DSL step {idx}: to.format.output.push.destination.config.uri must not be empty")));
                             }
-                            if !uri.starts_with("http://") && !uri.starts_with("https://format!(") {
+                            if !uri.starts_with("http://") && !uri.starts_with("https://") {
                                 return Err(r_data_core_core::error::Error::Validation(format!("DSL step {idx}: to.format.output.push.destination.config.uri must start with http:// or https://")));
                             }
                         } else {
@@ -175,7 +175,7 @@ pub(crate) fn validate_to(
                     }
                     // Validate auth config if present
                     if let Some(auth) = &destination.auth {
-                        validate_auth_config(idx, auth, "toformat!(")?;
+                        validate_auth_config(idx, auth, "to")?;
                     }
                 }
             }
@@ -340,51 +340,5 @@ pub(crate) fn mapping_of(to: &ToDef) -> &std::collections::HashMap<String, Strin
 }
 
 #[cfg(test)]
-mod tests {
-    use super::*;
-    use regex::Regex;
-
-    fn safe_field() -> Regex {
-        Regex::new(r"^[A-Za-z_][A-Za-z0-9_.]*$").unwrap()
-    }
-
-    #[test]
-    fn valid_email_to() {
-        let to_def = ToDef::Email {
-            template_uuid: "uuid-123".to_string(),
-            to: vec![super::super::transform::StringOperand::Field {
-                field: "email".to_string(),
-            }],
-            cc: None,
-            mapping: std::collections::HashMap::from([(
-                "name".to_string(),
-                "user_name".to_string(),
-            )]),
-        };
-        assert!(validate_to(0, &to_def, &safe_field()).is_ok());
-    }
-
-    #[test]
-    fn email_to_empty_recipients_fails() {
-        let to_def = ToDef::Email {
-            template_uuid: "uuid-123".to_string(),
-            to: vec![],
-            cc: None,
-            mapping: std::collections::HashMap::new(),
-        };
-        assert!(validate_to(0, &to_def, &safe_field()).is_err());
-    }
-
-    #[test]
-    fn email_to_empty_template_uuid_fails() {
-        let to_def = ToDef::Email {
-            template_uuid: String::new(),
-            to: vec![super::super::transform::StringOperand::ConstString {
-                value: "a@b.com".to_string(),
-            }],
-            cc: None,
-            mapping: std::collections::HashMap::new(),
-        };
-        assert!(validate_to(0, &to_def, &safe_field()).is_err());
-    }
-}
+#[path = "to_tests/mod.rs"]
+mod tests;
