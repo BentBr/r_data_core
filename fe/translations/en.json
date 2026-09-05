@@ -978,7 +978,9 @@
                 "no_roles": "No roles assigned",
                 "status": {
                     "active": "Active",
-                    "inactive": "Inactive"
+                    "inactive": "Inactive",
+                    "locked": "Locked",
+                    "pending_activation": "Pending activation"
                 },
                 "table": {
                     "username": "Username",
@@ -993,6 +995,9 @@
                     "message": "Are you sure you want to delete the user \"{username}\"?",
                     "confirm": "Delete",
                     "cancel": "Cancel"
+                },
+                "unlock": {
+                    "tooltip": "Unlock this account"
                 }
             }
         }

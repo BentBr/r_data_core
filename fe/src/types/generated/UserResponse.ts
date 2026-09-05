@@ -58,6 +58,10 @@ last_login: string | null,
  */
 failed_login_attempts: number, 
 /**
+ * When an automatic lockout expires, if one is active
+ */
+locked_until: string | null, 
+/**
  * When the user was created
  */
 created_at: string, 

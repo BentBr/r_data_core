@@ -371,6 +371,12 @@ pub async fn update_user(
         user.super_admin = super_admin;
     }
 
+    // Setting the status back to Active is how an operator unlocks an account;
+    // set_status clears the failed-attempt counter and the lockout expiry.
+    if let Some(status) = &req.status {
+        user.set_status(status.clone());
+    }
+
     // Update password if provided
     if let Some(password) = &req.password {
         use argon2::password_hash::{rand_core::OsRng, PasswordHasher, SaltString};

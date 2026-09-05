@@ -1,11 +1,20 @@
 import { z } from 'zod'
 import { UuidSchema } from './base'
+import type { UserStatus } from '../generated/UserStatus'
 import {
     EMAIL_PATTERN,
     USERNAME_MIN_LENGTH,
     USERNAME_MAX_LENGTH,
     PASSWORD_MIN_LENGTH,
 } from '../generated/validation'
+
+// Mirrors the generated UserStatus union; `satisfies` keeps the two in step.
+export const UserStatusSchema = z.enum([
+    'active',
+    'inactive',
+    'locked',
+    'pending_activation',
+]) satisfies z.ZodType<UserStatus>
 
 // Email validation helper (uses constant from generated/validation)
 const emailValidation = z
@@ -29,6 +38,8 @@ export const CreateUserRequestSchema = z.object({
 })
 
 // Update user request schema (form validation)
+// `status` is how an operator unlocks an account: sending `active` clears the
+// lockout and the failed-attempt counter on the backend.
 export const UpdateUserRequestSchema = z.object({
     email: emailValidation.optional(),
     password: z.string().min(PASSWORD_MIN_LENGTH).optional(),
@@ -37,10 +48,12 @@ export const UpdateUserRequestSchema = z.object({
     role_uuids: z.array(UuidSchema).optional(),
     is_active: z.boolean().optional(),
     super_admin: z.boolean().optional(),
+    status: UserStatusSchema.optional(),
 })
 
 // Type exports — re-exported from generated for consumers that only need types
 export type { UserResponse } from '../generated/UserResponse'
+export type { UserStatus } from '../generated/UserStatus'
 export type CreateUserRequest = z.infer<typeof CreateUserRequestSchema>
 export type UpdateUserRequest = z.infer<typeof UpdateUserRequestSchema>
 
