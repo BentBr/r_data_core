@@ -51,21 +51,28 @@ pub struct AppConfig {
     pub password_reset_throttle_seconds: u64,
 }
 
+/// Environments that run on a developer machine or in CI and therefore keep the
+/// relaxed behaviour the local Docker-compose setup needs.
+const RELAXED_ENVIRONMENTS: &[&str] = &["development", "dev", "local", "test"];
+
 impl AppConfig {
-    /// Returns `true` when running in a production environment.
+    /// Returns `true` when environment-sensitive security policy must be
+    /// enforced (strict CORS, SSRF blocking).
     ///
-    /// Used to gate environment-sensitive security policy (strict CORS, SSRF
-    /// blocking). Non-production environments (development, staging, test) keep
-    /// the relaxed behavior required by the local Docker-compose setup.
+    /// Fails closed: everything that is not an explicitly recognised developer
+    /// or CI environment is hardened, so staging is protected like production.
     #[must_use]
-    pub fn is_production(&self) -> bool {
-        Self::env_is_production(&self.environment)
+    pub fn is_hardened(&self) -> bool {
+        Self::env_is_hardened(&self.environment)
     }
 
-    /// Pure check used by [`AppConfig::is_production`]; kept separate for testing.
+    /// Pure check used by [`AppConfig::is_hardened`]; kept separate for testing.
     #[must_use]
-    pub const fn env_is_production(environment: &str) -> bool {
-        environment.eq_ignore_ascii_case("production")
+    pub fn env_is_hardened(environment: &str) -> bool {
+        let env = environment.trim();
+        !RELAXED_ENVIRONMENTS
+            .iter()
+            .any(|relaxed| env.eq_ignore_ascii_case(relaxed))
     }
 }
 
@@ -154,12 +161,22 @@ mod tests {
     use super::AppConfig;
 
     #[test]
-    fn is_production_only_true_for_production() {
-        assert!(AppConfig::env_is_production("production"));
-        assert!(AppConfig::env_is_production("Production"));
-        assert!(AppConfig::env_is_production("PRODUCTION"));
-        assert!(!AppConfig::env_is_production("development"));
-        assert!(!AppConfig::env_is_production("staging"));
-        assert!(!AppConfig::env_is_production(""));
+    fn developer_environments_are_relaxed() {
+        assert!(!AppConfig::env_is_hardened("development"));
+        assert!(!AppConfig::env_is_hardened("Development"));
+        assert!(!AppConfig::env_is_hardened("dev"));
+        assert!(!AppConfig::env_is_hardened("local"));
+        assert!(!AppConfig::env_is_hardened("test"));
+    }
+
+    #[test]
+    fn everything_else_is_hardened() {
+        assert!(AppConfig::env_is_hardened("production"));
+        assert!(AppConfig::env_is_hardened("PRODUCTION"));
+        assert!(AppConfig::env_is_hardened("staging"));
+        assert!(AppConfig::env_is_hardened("preprod"));
+        // An unset or unrecognised value fails closed.
+        assert!(AppConfig::env_is_hardened(""));
+        assert!(AppConfig::env_is_hardened("  "));
     }
 }

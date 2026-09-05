@@ -27,13 +27,15 @@ async fn default_404_handler() -> impl actix_web::Responder {
 
 /// Build the CORS layer from configured origins.
 ///
-/// In production an empty or wildcard origin list is a hard error (fail closed).
-/// In non-production we allow any origin so the local http compose setup works.
+/// In a hardened environment (anything that is not an explicit developer or CI
+/// environment — staging included) an empty or wildcard origin list is a hard
+/// error. Only developer environments allow any origin, so the local http
+/// compose setup keeps working.
 ///
 /// # Errors
-/// Returns `Err` with a human-readable message when production is configured
-/// with an empty or wildcard (`*`) origin list.
-fn build_cors(origins: &[String], is_production: bool) -> Result<Cors, String> {
+/// Returns `Err` with a human-readable message when a hardened environment is
+/// configured with an empty or wildcard (`*`) origin list.
+fn build_cors(origins: &[String], is_hardened: bool) -> Result<Cors, String> {
     let base = Cors::default()
         .allow_any_method()
         .allow_any_header()
@@ -42,10 +44,10 @@ fn build_cors(origins: &[String], is_production: bool) -> Result<Cors, String> {
 
     let wildcard = origins.iter().any(|o| o == "*");
 
-    if is_production {
+    if is_hardened {
         if origins.is_empty() || wildcard {
             return Err(
-                "CORS misconfiguration: production requires explicit non-wildcard \
+                "CORS misconfiguration: this environment requires explicit non-wildcard \
                  CORS_ORIGINS, got empty or '*'"
                     .to_string(),
             );
@@ -115,11 +117,11 @@ async fn main() -> r_data_core_core::error::Result<()> {
     let bind_address_clone = bind_address.clone();
     info!("Starting HTTP server at http://{bind_address}");
 
-    // Validate CORS policy once, before spawning workers (fail closed in prod).
+    // Validate CORS policy once, before spawning workers (fail closed).
     let cors_origins = config.api.cors_origins.clone();
-    let is_production = config.is_production();
+    let is_hardened = config.is_hardened();
     // Validate only; the per-worker closure rebuilds the layer.
-    drop(build_cors(&cors_origins, is_production).map_err(r_data_core_core::error::Error::Config)?);
+    drop(build_cors(&cors_origins, is_hardened).map_err(r_data_core_core::error::Error::Config)?);
 
     // Start HTTP server
     HttpServer::new(move || {
@@ -127,7 +129,7 @@ async fn main() -> r_data_core_core::error::Result<()> {
         // actix's `Cors` factory is not `Clone`, so it must be rebuilt per worker.
         #[allow(clippy::expect_used)]
         let cors =
-            build_cors(&cors_origins, is_production).expect("CORS config validated at startup");
+            build_cors(&cors_origins, is_hardened).expect("CORS config validated at startup");
 
         let api_config = r_data_core_api::ApiConfiguration {
             enable_auth: false,
@@ -158,22 +160,67 @@ async fn main() -> r_data_core_core::error::Result<()> {
 #[cfg(test)]
 mod cors_tests {
     use super::build_cors;
+    use r_data_core_core::config::AppConfig;
+
+    fn origins(list: &[&str]) -> Vec<String> {
+        list.iter().map(|s| (*s).to_string()).collect()
+    }
 
     #[test]
-    fn production_rejects_wildcard_or_empty() {
-        assert!(build_cors(&["*".to_string()], true).is_err());
+    fn hardened_rejects_wildcard_or_empty() {
+        assert!(build_cors(&origins(&["*"]), true).is_err());
         assert!(build_cors(&[], true).is_err());
     }
 
     #[test]
-    fn production_accepts_explicit_origin() {
-        assert!(build_cors(&["https://admin.example.com".to_string()], true).is_ok());
+    fn hardened_rejects_a_wildcard_hidden_among_real_origins() {
+        // One permissive entry defeats the whole list, so the mix must fail too.
+        let result = build_cors(&origins(&["https://admin.example.com", "*"]), true);
+        assert!(result.is_err());
     }
 
     #[test]
-    fn development_allows_wildcard_and_empty() {
-        assert!(build_cors(&["*".to_string()], false).is_ok());
+    fn hardened_error_explains_what_to_fix() {
+        let message = build_cors(&[], true).err().unwrap_or_default();
+        assert!(
+            message.contains("CORS_ORIGINS"),
+            "operator needs to know which var to set, got: {message}"
+        );
+    }
+
+    #[test]
+    fn hardened_accepts_explicit_origins() {
+        assert!(build_cors(&origins(&["https://admin.example.com"]), true).is_ok());
+        assert!(build_cors(
+            &origins(&["https://admin.example.com", "https://ops.example.com"]),
+            true
+        )
+        .is_ok());
+    }
+
+    #[test]
+    fn relaxed_allows_wildcard_and_empty() {
+        assert!(build_cors(&origins(&["*"]), false).is_ok());
         assert!(build_cors(&[], false).is_ok());
-        assert!(build_cors(&["http://localhost:3000".to_string()], false).is_ok());
+        assert!(build_cors(&origins(&["http://localhost:3000"]), false).is_ok());
+    }
+
+    /// The gate is driven by `is_hardened`, so staging and an unset `APP_ENV`
+    /// get the production policy — this is the regression the fix is about.
+    #[test]
+    fn only_developer_environments_reach_the_relaxed_branch() {
+        for env in ["production", "staging", "preprod", ""] {
+            assert!(
+                build_cors(&origins(&["*"]), AppConfig::env_is_hardened(env)).is_err(),
+                "{env} must reject a wildcard origin list"
+            );
+        }
+
+        for env in ["development", "dev", "local", "test"] {
+            assert!(
+                build_cors(&origins(&["*"]), AppConfig::env_is_hardened(env)).is_ok(),
+                "{env} is a developer environment and stays permissive"
+            );
+        }
     }
 }

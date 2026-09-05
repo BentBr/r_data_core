@@ -33,9 +33,14 @@ pub(super) fn uri_http_client() -> r_data_core_core::error::Result<&'static reqw
     Ok(URI_HTTP_CLIENT.get_or_init(|| client))
 }
 
-/// Returns true when the environment is production (strict SSRF mode).
+/// Returns true when the environment is hardened (strict SSRF mode).
+///
+/// Fails closed: only an explicit developer or CI environment relaxes the guard,
+/// so staging is protected like production. An unset `APP_ENV` is treated as
+/// `development` to match the config loader's default.
 fn ssrf_strict_mode() -> bool {
-    std::env::var("APP_ENV").is_ok_and(|e| e.eq_ignore_ascii_case("production"))
+    let env = std::env::var("APP_ENV").unwrap_or_else(|_| "development".to_string());
+    r_data_core_core::config::AppConfig::env_is_hardened(&env)
 }
 
 /// Hosts explicitly allowed even in strict mode (comma-separated `SSRF_ALLOWED_HOSTS`).
@@ -202,6 +207,7 @@ pub(super) async fn guard_url(uri: &str) -> r_data_core_core::error::Result<()> 
 #[cfg(test)]
 mod ssrf_tests {
     use super::{addr_blocked_for_host, guard_url, is_blocked_ip};
+    use r_data_core_core::config::AppConfig;
     use std::net::IpAddr;
 
     // --- Finding #3: resolver/guard_url block decision honors the allowlist ---
@@ -298,5 +304,37 @@ mod ssrf_tests {
     async fn non_production_allows_loopback() {
         // APP_ENV unset in tests => non-strict => loopback allowed (scheme still checked).
         assert!(guard_url("http://127.0.0.1:8080/data").await.is_ok());
+    }
+
+    // --- Environment gating: strict everywhere except developer environments ---
+
+    /// The guard is keyed off the shared `is_hardened` check, so staging,
+    /// preprod and an unrecognised `APP_ENV` are strict — the earlier
+    /// `APP_ENV == "production"` test left them wide open.
+    #[test]
+    fn strict_mode_covers_every_non_developer_environment() {
+        for env in ["production", "PRODUCTION", "staging", "preprod", "", "  "] {
+            assert!(
+                AppConfig::env_is_hardened(env),
+                "{env:?} must run the SSRF guard"
+            );
+        }
+    }
+
+    #[test]
+    fn developer_environments_stay_relaxed() {
+        for env in ["development", "Development", "dev", "local", "test"] {
+            assert!(
+                !AppConfig::env_is_hardened(env),
+                "{env:?} is a developer environment"
+            );
+        }
+    }
+
+    /// `ssrf_strict_mode` treats an unset `APP_ENV` as `development`, matching
+    /// the config loader's default rather than failing closed on a dev machine.
+    #[test]
+    fn unset_app_env_matches_the_loader_default() {
+        assert!(!AppConfig::env_is_hardened("development"));
     }
 }

@@ -31,11 +31,11 @@ mod app_config_tests {
 
         let cfg = load_app_config().unwrap();
         assert_eq!(cfg.environment, "production");
-        assert!(cfg.is_production());
+        assert!(cfg.is_hardened());
     }
 
     #[test]
-    fn app_env_staging_is_not_production() {
+    fn app_env_staging_is_hardened() {
         let _mutex = ENV_MUTEX.lock().unwrap_or_else(|e| e.into_inner());
         let mut overrides = minimal_app_overrides();
         overrides.push(("APP_ENV", Some("staging")));
@@ -43,7 +43,8 @@ mod app_config_tests {
 
         let cfg = load_app_config().unwrap();
         assert_eq!(cfg.environment, "staging");
-        assert!(!cfg.is_production());
+        // Staging is not a developer environment, so it is hardened too.
+        assert!(cfg.is_hardened());
     }
 
     #[test]
