@@ -12,7 +12,9 @@
 use r_data_core_persistence::{
     ApiKeyRepository, ApiKeyRepositoryTrait, ComponentVersionRepository, DashboardStatsRepository,
     DashboardStatsRepositoryTrait, EmailTemplateRepository, EmailTemplateRepositoryTrait,
-    PasswordResetRepository, PasswordResetRepositoryTrait,
+    EntityDefinitionVersioningRepository, PasswordResetRepository, PasswordResetRepositoryTrait,
+    RefreshTokenRepository, RefreshTokenRepositoryTrait, SystemLogFilter, SystemLogRepository,
+    SystemLogRepositoryTrait, WorkflowRepository, WorkflowRepositoryTrait,
 };
 use sqlx::postgres::PgPoolOptions;
 use sqlx::{Pool, Postgres};
@@ -87,4 +89,57 @@ async fn test_password_reset_repository_errors_rather_than_panics() {
         .insert_token(uuid, "hash", OffsetDateTime::now_utc())
         .await
         .is_err());
+}
+
+#[tokio::test]
+async fn test_workflow_repository_errors_rather_than_panics() {
+    let repo = WorkflowRepository::new(dead_pool());
+    let uuid = Uuid::now_v7();
+
+    assert!(WorkflowRepositoryTrait::list_all(&repo).await.is_err());
+    assert!(WorkflowRepositoryTrait::count_all(&repo).await.is_err());
+    assert!(
+        WorkflowRepositoryTrait::list_paginated(&repo, 10, 0, None, None)
+            .await
+            .is_err()
+    );
+    assert!(WorkflowRepositoryTrait::get_by_uuid(&repo, uuid)
+        .await
+        .is_err());
+}
+
+#[tokio::test]
+async fn test_refresh_token_repository_errors_rather_than_panics() {
+    let repo = RefreshTokenRepository::new(dead_pool());
+    let uuid = Uuid::now_v7();
+
+    assert!(repo.find_by_token_hash("hash").await.is_err());
+    assert!(repo.update_last_used(uuid).await.is_err());
+    assert!(repo.revoke_by_id(uuid).await.is_err());
+    assert!(repo.revoke_by_token_hash("hash").await.is_err());
+    assert!(repo.revoke_all_for_user(uuid).await.is_err());
+}
+
+#[tokio::test]
+async fn test_system_log_repository_errors_rather_than_panics() {
+    let repo = SystemLogRepository::new(dead_pool());
+    let uuid = Uuid::now_v7();
+
+    assert!(repo.get_by_uuid(uuid).await.is_err());
+    assert!(repo
+        .list_paginated(10, 0, &SystemLogFilter::default())
+        .await
+        .is_err());
+    assert!(repo.delete_older_than_days(30).await.is_err());
+}
+
+#[tokio::test]
+async fn test_entity_definition_versioning_errors_rather_than_panics() {
+    let repo = EntityDefinitionVersioningRepository::new(dead_pool());
+    let uuid = Uuid::now_v7();
+
+    assert!(repo.list_definition_versions(uuid).await.is_err());
+    assert!(repo.get_definition_version(uuid, 1).await.is_err());
+    assert!(repo.get_current_definition_metadata(uuid).await.is_err());
+    assert!(repo.prune_older_than_days(30).await.is_err());
 }
