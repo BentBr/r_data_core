@@ -5,8 +5,8 @@ use uuid::Uuid;
 fn test_default_produces_zero_uuid_and_empty_strings() {
     let def = EntityDefinition::default();
     assert_eq!(def.uuid, Uuid::nil());
-    assert!(def.entity_type.is_empty());
-    assert!(def.display_name.is_empty());
+    assert_eq!(def.entity_type, "");
+    assert_eq!(def.display_name, "");
     assert!(def.fields.is_empty());
     assert!(!def.allow_children);
     assert!(!def.published);

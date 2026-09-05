@@ -127,7 +127,7 @@ pub(super) fn execute_workflow_and_collect_outputs(
         if let ToDef::Format { format, output, .. } = to_def {
             if matches!(output, OutputMode::Api) {
                 if format_config.is_none() {
-                    format_config = Some(format.clone());
+                    format_config = Some(format);
                 }
                 format_outputs.push(data);
             }

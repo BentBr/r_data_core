@@ -272,8 +272,8 @@ async fn test_token_generation_and_hashing() -> Result<()> {
 
     // Verify tokens are different
     assert_ne!(token1, token2);
-    assert!(!token1.is_empty());
-    assert!(!token2.is_empty());
+    assert_ne!(token1, "");
+    assert_ne!(token2, "");
 
     // Test hashing
     let hash1 = RefreshToken::hash_token(&token1)?;

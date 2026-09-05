@@ -653,7 +653,7 @@ fn test_decode_license_claims_valid() {
 
     assert_eq!(claims.company, "Decode Test Company");
     assert_eq!(claims.license_type, LicenseType::CompanyI);
-    assert!(!claims.license_id.is_empty());
+    assert_ne!(claims.license_id, "");
     assert_eq!(claims.version, "v1");
 }
 

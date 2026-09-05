@@ -63,7 +63,7 @@ fn test_from_data_does_not_add_system_fields() {
 #[test]
 fn test_default_entity_type_is_empty() {
     let entity = DynamicEntity::default();
-    assert!(entity.entity_type.is_empty());
+    assert_eq!(entity.entity_type, "");
     assert!(entity.field_data.is_empty());
 }
 

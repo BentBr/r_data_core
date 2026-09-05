@@ -30,7 +30,7 @@ fn test_from_value_string_from_bool() {
 #[test]
 fn test_from_value_string_from_null_gives_empty() {
     let v = serde_json::Value::Null;
-    assert!(String::from_value(&v).unwrap().is_empty());
+    assert_eq!(String::from_value(&v).unwrap(), "");
 }
 
 #[test]

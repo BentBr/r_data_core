@@ -110,7 +110,7 @@ fn get_fields_empty_string_returns_empty_vec() {
         fields: Some(String::new()),
     };
     let fields = q.get_fields().unwrap();
-    assert!(fields.is_empty());
+    assert_eq!(fields.len(), 0);
 }
 
 #[test]
@@ -182,7 +182,7 @@ fn get_includes_empty_string_returns_empty_vec() {
         include_children_count: None,
     };
     let includes = q.get_includes().unwrap();
-    assert!(includes.is_empty());
+    assert_eq!(includes.len(), 0);
 }
 
 // ── StandardQuery::to_limit_offset ───────────────────────────────────────────

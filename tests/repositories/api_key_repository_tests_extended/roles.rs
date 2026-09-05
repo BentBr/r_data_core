@@ -36,7 +36,7 @@ async fn test_roles_assign_get_unassign() -> Result<()> {
         .await?;
 
     let roles_before = repo.get_api_key_roles(key_uuid).await?;
-    assert!(roles_before.is_empty());
+    assert_eq!(roles_before.len(), 0);
 
     let role1 = create_test_role(&pool.pool, user_uuid).await;
     let role2 = create_test_role(&pool.pool, user_uuid).await;
@@ -138,7 +138,7 @@ async fn test_get_api_keys_by_role() -> Result<()> {
     // Unknown role UUID not in roles table → no assignments → empty vec
     let unknown_role = Uuid::now_v7();
     let empty = repo.get_api_keys_by_role(unknown_role).await?;
-    assert!(empty.is_empty());
+    assert_eq!(empty.len(), 0);
 
     Ok(())
 }

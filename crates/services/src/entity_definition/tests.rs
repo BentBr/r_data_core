@@ -332,7 +332,7 @@ async fn test_apply_schema_specific_uuid() -> Result<()> {
     let result = service.apply_schema(Some(&uuid)).await?;
 
     assert_eq!(result.0, 1); // 1 success
-    assert!(result.1.is_empty()); // 0 failures
+    assert_eq!(result.1.len(), 0, "no failures expected");
 
     Ok(())
 }
@@ -360,7 +360,7 @@ async fn test_apply_schema_all() -> Result<()> {
     let result = service.apply_schema(None).await?;
 
     assert_eq!(result.0, 3); // 3 successes
-    assert!(result.1.is_empty()); // 0 failures
+    assert_eq!(result.1.len(), 0, "no failures expected");
 
     Ok(())
 }

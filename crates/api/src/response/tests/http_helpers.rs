@@ -204,7 +204,7 @@ async fn unprocessable_entity_with_violations_empty_list() {
     let resp = ApiResponse::<()>::unprocessable_entity_with_violations("no detail", vec![]);
     assert_eq!(resp.status(), StatusCode::UNPROCESSABLE_ENTITY);
     let body = body_json(resp).await;
-    assert!(body["violations"].as_array().unwrap().is_empty());
+    assert_eq!(body["violations"].as_array().unwrap().len(), 0);
 }
 
 // ── error helpers include request_id and timestamp ───────────────────────────

@@ -89,7 +89,7 @@ async fn test_unassign_role_nonexistent_is_noop() -> Result<()> {
     assert!(result.is_ok(), "Unassigning non-existent role must succeed");
 
     let roles = repo.get_api_key_roles(key_uuid).await?;
-    assert!(roles.is_empty());
+    assert_eq!(roles.len(), 0);
 
     Ok(())
 }

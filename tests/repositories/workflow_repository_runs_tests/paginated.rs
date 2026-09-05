@@ -46,7 +46,7 @@ async fn test_list_runs_paginated_empty_for_unknown_workflow() -> Result<()> {
 
     let repo = WorkflowRepository::new(pool.pool.clone());
     let (rows, total) = repo.list_runs_paginated(Uuid::now_v7(), 10, 0).await?;
-    assert!(rows.is_empty());
+    assert_eq!(rows.len(), 0);
     assert_eq!(total, 0);
     Ok(())
 }
@@ -92,7 +92,7 @@ async fn test_list_run_logs_paginated_empty() -> Result<()> {
     let run = seed_run(&repo, wf).await?;
 
     let (logs, total) = repo.list_run_logs_paginated(run, 10, 0).await?;
-    assert!(logs.is_empty());
+    assert_eq!(logs.len(), 0);
     assert_eq!(total, 0);
     Ok(())
 }
@@ -128,7 +128,7 @@ async fn test_list_all_runs_paginated_empty_db() -> Result<()> {
 
     let repo = WorkflowRepository::new(pool.pool.clone());
     let (rows, total) = repo.list_all_runs_paginated(10, 0).await?;
-    assert!(rows.is_empty());
+    assert_eq!(rows.len(), 0);
     assert_eq!(total, 0);
     Ok(())
 }
