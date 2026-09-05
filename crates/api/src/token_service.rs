@@ -96,6 +96,7 @@ mod tests {
             status: UserStatus::Active,
             last_login: None,
             failed_login_attempts: 0,
+            locked_until: None,
             super_admin: true,
             first_name: Some("Token".to_string()),
             last_name: Some("Test".to_string()),

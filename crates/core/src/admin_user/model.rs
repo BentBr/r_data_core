@@ -7,7 +7,7 @@ use base64::engine::Engine as _;
 use serde::{Deserialize, Serialize};
 use sha2::Digest;
 use sqlx::{postgres::PgRow, FromRow, Row};
-use time::OffsetDateTime;
+use time::{Duration, OffsetDateTime};
 use ts_rs::TS;
 use utoipa::ToSchema;
 use uuid::Uuid;
@@ -54,6 +54,10 @@ pub struct AdminUser {
     /// Failed login attempts
     pub failed_login_attempts: i32,
 
+    /// When an automatic lockout expires. `None` means the account was not
+    /// locked automatically (or was locked by an operator, which never expires).
+    pub locked_until: Option<OffsetDateTime>,
+
     /// Super admin flag - overrides all permissions
     pub super_admin: bool,
 
@@ -94,6 +98,7 @@ impl<'r> FromRow<'r, PgRow> for AdminUser {
         // Fall back to defaults for any caller selecting a narrower column set.
         let status: UserStatus = row.try_get("status").unwrap_or(UserStatus::Active);
         let failed_login_attempts: i32 = row.try_get("failed_login_attempts").unwrap_or(0);
+        let locked_until: Option<OffsetDateTime> = row.try_get("locked_until").ok().flatten();
         let super_admin = row.try_get("super_admin").unwrap_or(false); // Default to false
         let is_admin = false; // Default value
 
@@ -106,6 +111,7 @@ impl<'r> FromRow<'r, PgRow> for AdminUser {
             status,
             last_login,
             failed_login_attempts,
+            locked_until,
             super_admin,
             first_name,
             last_name,
@@ -191,6 +197,7 @@ impl AdminUserBuilder {
             status: self.status,
             last_login: None,
             failed_login_attempts: 0,
+            locked_until: None,
             super_admin: self.super_admin,
             uuid: Uuid::now_v7(),
             first_name: Some(self.first_name),
@@ -303,18 +310,54 @@ impl AdminUser {
     /// Record a successful login
     pub fn record_login_success(&mut self) {
         self.last_login = Some(OffsetDateTime::now_utc());
-        self.failed_login_attempts = 0;
+        self.clear_lockout();
     }
 
-    /// Record a failed login attempt
+    /// Reset the lockout counters and return the account to `Active`.
+    pub fn clear_lockout(&mut self) {
+        self.failed_login_attempts = 0;
+        self.locked_until = None;
+        if self.status == UserStatus::Locked {
+            self.status = UserStatus::Active;
+        }
+    }
+
+    /// Record a failed login attempt, locking the account once
+    /// `max_failed_attempts` is reached.
     ///
-    /// # Note
-    /// This function cannot be `const` because it mutates `self`.
-    #[allow(clippy::missing_const_for_fn)] // Cannot be const: mutates self
-    pub fn record_login_failure(&mut self) {
-        self.failed_login_attempts += 1;
-        if self.failed_login_attempts >= 5 {
+    /// `lockout_duration_secs` of `0` locks the account until an operator
+    /// intervenes; any positive value sets an expiry so the lock lifts itself.
+    pub fn record_login_failure(&mut self, max_failed_attempts: i32, lockout_duration_secs: i64) {
+        self.failed_login_attempts = self.failed_login_attempts.saturating_add(1);
+        if self.failed_login_attempts >= max_failed_attempts {
             self.status = UserStatus::Locked;
+            self.locked_until = (lockout_duration_secs > 0)
+                .then(|| OffsetDateTime::now_utc() + Duration::seconds(lockout_duration_secs));
+        }
+    }
+
+    /// Lift an automatic lockout whose expiry has passed.
+    ///
+    /// Returns `true` when the account changed and the caller must persist it.
+    pub fn release_expired_lockout(&mut self) -> bool {
+        let expired = self.status == UserStatus::Locked
+            && self
+                .locked_until
+                .is_some_and(|until| OffsetDateTime::now_utc() >= until);
+
+        if expired {
+            self.clear_lockout();
+        }
+        expired
+    }
+
+    /// Set the account status, clearing lockout state when reactivating.
+    pub fn set_status(&mut self, status: UserStatus) {
+        if status == UserStatus::Active {
+            self.clear_lockout();
+        } else {
+            self.status = status;
+            self.locked_until = None;
         }
     }
 

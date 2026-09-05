@@ -27,6 +27,7 @@ use std::sync::Arc;
 
 use dotenvy::dotenv;
 use r_data_core_core::admin_user::UserStatus;
+use r_data_core_core::config::SecurityConfig;
 use r_data_core_persistence::admin_user_repository_trait::AdminUserRepositoryTrait as _;
 use r_data_core_persistence::AdminUserRepository;
 use sqlx::postgres::PgPoolOptions;
@@ -208,12 +209,14 @@ async fn main() -> ExitCode {
     let action = args.action;
 
     let result = match action {
+        // An operator lock has no expiry: only another operator lifts it.
         Action::Lock => {
-            repo.update_lockout_state(&user.uuid, &UserStatus::Locked, 5)
+            let attempts = SecurityConfig::global().max_failed_attempts;
+            repo.update_lockout_state(&user.uuid, &UserStatus::Locked, attempts, None)
                 .await
         }
         Action::Unlock => {
-            repo.update_lockout_state(&user.uuid, &UserStatus::Active, 0)
+            repo.update_lockout_state(&user.uuid, &UserStatus::Active, 0, None)
                 .await
         }
         Action::Activate => repo.set_active(&user.uuid, true).await,

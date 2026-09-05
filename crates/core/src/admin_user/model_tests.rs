@@ -115,3 +115,93 @@ fn test_admin_user_has_permission_with_super_admin_role() {
         Some("/any/path")
     ));
 }
+
+fn active_user() -> AdminUser {
+    AdminUserBuilder::new(
+        "lockme".to_string(),
+        "lockme@test.com".to_string(),
+        "hash".to_string(),
+        "Lock Me".to_string(),
+        UserStatus::Active,
+        false,
+        "Lock".to_string(),
+        "Me".to_string(),
+        true,
+        false,
+    )
+    .build()
+}
+
+#[test]
+fn lockout_triggers_at_the_configured_threshold() {
+    let mut user = active_user();
+
+    for _ in 0..2 {
+        user.record_login_failure(3, 900);
+        assert!(user.can_login());
+    }
+
+    user.record_login_failure(3, 900);
+    assert_eq!(user.status, UserStatus::Locked);
+    assert!(!user.can_login());
+    assert!(user.locked_until.is_some());
+}
+
+#[test]
+fn zero_duration_locks_until_an_operator_intervenes() {
+    let mut user = active_user();
+    user.record_login_failure(1, 0);
+
+    assert_eq!(user.status, UserStatus::Locked);
+    assert!(user.locked_until.is_none());
+    assert!(!user.release_expired_lockout());
+}
+
+#[test]
+fn expired_lockout_releases_itself() {
+    let mut user = active_user();
+    user.record_login_failure(1, 900);
+    assert!(!user.can_login());
+
+    // Still inside the window.
+    assert!(!user.release_expired_lockout());
+
+    user.locked_until = Some(time::OffsetDateTime::now_utc() - time::Duration::seconds(1));
+    assert!(user.release_expired_lockout());
+    assert!(user.can_login());
+    assert_eq!(user.failed_login_attempts, 0);
+    // A second call has nothing left to do.
+    assert!(!user.release_expired_lockout());
+}
+
+#[test]
+fn successful_login_clears_lockout_state() {
+    let mut user = active_user();
+    user.record_login_failure(5, 900);
+    user.record_login_success();
+
+    assert_eq!(user.failed_login_attempts, 0);
+    assert!(user.locked_until.is_none());
+    assert!(user.last_login.is_some());
+}
+
+#[test]
+fn setting_status_active_unlocks_the_account() {
+    let mut user = active_user();
+    user.record_login_failure(1, 900);
+    assert_eq!(user.status, UserStatus::Locked);
+
+    user.set_status(UserStatus::Active);
+    assert!(user.can_login());
+    assert_eq!(user.failed_login_attempts, 0);
+    assert!(user.locked_until.is_none());
+}
+
+#[test]
+fn setting_status_inactive_keeps_the_account_out() {
+    let mut user = active_user();
+    user.set_status(UserStatus::Inactive);
+
+    assert!(!user.can_login());
+    assert!(user.locked_until.is_none());
+}

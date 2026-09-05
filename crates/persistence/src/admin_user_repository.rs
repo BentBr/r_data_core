@@ -241,13 +241,15 @@ impl AdminUserRepositoryTrait for AdminUserRepository {
         uuid: &Uuid,
         status: &r_data_core_core::admin_user::UserStatus,
         failed_login_attempts: i32,
+        locked_until: Option<OffsetDateTime>,
     ) -> Result<()> {
         sqlx::query(
-            "UPDATE admin_users SET status = $1, failed_login_attempts = $2, updated_at = NOW() \
-             WHERE uuid = $3",
+            "UPDATE admin_users SET status = $1, failed_login_attempts = $2, \
+             locked_until = $3, updated_at = NOW() WHERE uuid = $4",
         )
         .bind(status)
         .bind(failed_login_attempts)
+        .bind(locked_until)
         .bind(uuid)
         .execute(&*self.pool)
         .await
@@ -343,9 +345,12 @@ impl AdminUserRepositoryTrait for AdminUserRepository {
                 is_active = $5, 
                 super_admin = $6,
                 password_hash = $7,
-                updated_at = $8,
+                status = $8,
+                failed_login_attempts = $9,
+                locked_until = $10,
+                updated_at = $11,
                 version = version + 1
-            WHERE uuid = $9",
+            WHERE uuid = $12",
         )
         .bind(&user.username)
         .bind(&user.email)
@@ -354,6 +359,9 @@ impl AdminUserRepositoryTrait for AdminUserRepository {
         .bind(user.is_active)
         .bind(user.super_admin)
         .bind(&user.password_hash)
+        .bind(&user.status)
+        .bind(user.failed_login_attempts)
+        .bind(user.locked_until)
         .bind(OffsetDateTime::now_utc())
         .bind(user.uuid)
         .execute(&*self.pool)

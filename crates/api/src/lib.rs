@@ -12,6 +12,7 @@ pub mod admin;
 pub mod api_state;
 pub mod api_state_impl;
 pub mod auth;
+pub mod client_ip;
 pub mod docs;
 pub mod health;
 pub mod middleware;

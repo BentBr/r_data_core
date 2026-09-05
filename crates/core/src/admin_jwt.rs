@@ -266,6 +266,7 @@ mod tests {
             status: UserStatus::Active,
             last_login: None,
             failed_login_attempts: 0,
+            locked_until: None,
             super_admin: true,
             uuid: Uuid::now_v7(),
             first_name: Some("Test".to_string()),

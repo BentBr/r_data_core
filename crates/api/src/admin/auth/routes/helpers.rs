@@ -9,6 +9,7 @@ use crate::api_state::{ApiStateTrait, ApiStateWrapper};
 use crate::response::ApiResponse;
 use crate::token_service::TokenService;
 use r_data_core_core::admin_user::AdminUser;
+use r_data_core_core::config::SecurityConfig;
 use r_data_core_core::system_log::SystemLogStatus;
 use r_data_core_persistence::{AdminUserRepository, AdminUserRepositoryTrait};
 use r_data_core_persistence::{RefreshTokenRepository, RefreshTokenRepositoryTrait};
@@ -97,17 +98,22 @@ pub async fn handle_password_failure(
     repo: &AdminUserRepository,
     data: &ApiStateWrapper,
     rl_key: &str,
-    attempts: u32,
     username: &str,
 ) -> actix_web::HttpResponse {
-    user.record_login_failure();
+    let security = SecurityConfig::global();
+    user.record_login_failure(security.max_failed_attempts, security.lockout_duration_secs);
     if let Err(e) = repo
-        .update_lockout_state(&user.uuid, &user.status, user.failed_login_attempts)
+        .update_lockout_state(
+            &user.uuid,
+            &user.status,
+            user.failed_login_attempts,
+            user.locked_until,
+        )
         .await
     {
         log::error!("Failed to persist lockout state: {e:?}");
     }
-    rate_limit::record_failure(data.cache_manager(), rl_key, attempts).await;
+    rate_limit::record_failure(data.cache_manager(), rl_key).await;
     log::debug!("Password verification failed for user: {username}");
     if let Some(log_svc) = data.system_log_service() {
         log_svc
@@ -131,7 +137,7 @@ pub async fn complete_login(
 ) -> actix_web::HttpResponse {
     user.record_login_success();
     if let Err(e) = repo
-        .update_lockout_state(&user.uuid, &user.status, user.failed_login_attempts)
+        .update_lockout_state(&user.uuid, &user.status, user.failed_login_attempts, None)
         .await
     {
         log::error!("Failed to reset lockout state: {e:?}");

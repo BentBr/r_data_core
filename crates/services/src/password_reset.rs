@@ -199,7 +199,7 @@ impl PasswordResetService {
             user.status.clone()
         };
         self.user_repo
-            .update_lockout_state(&user.uuid, &recovered_status, 0)
+            .update_lockout_state(&user.uuid, &recovered_status, 0, None)
             .await?;
 
         // Mark token as used.

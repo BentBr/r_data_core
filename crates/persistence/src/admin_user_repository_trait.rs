@@ -125,6 +125,7 @@ pub trait AdminUserRepositoryTrait: Send + Sync {
         uuid: &Uuid,
         status: &r_data_core_core::admin_user::UserStatus,
         failed_login_attempts: i32,
+        locked_until: Option<OffsetDateTime>,
     ) -> Result<()>;
 
     /// List admin users with pagination and sorting

@@ -52,27 +52,23 @@ pub async fn admin_login(
 
     let repo = AdminUserRepository::new(Arc::new(data.db_pool().clone()));
 
-    // Per-IP rate limit pre-check
-    let rl_key = rate_limit::rate_limit_key(&req);
-    let attempts: u32 = data
-        .cache_manager()
-        .get::<u32>(&rl_key)
-        .await
-        .ok()
-        .flatten()
-        .unwrap_or(0);
-    if rate_limit::is_rate_limited(attempts) {
+    // Per-client-IP rate limit pre-check
+    let rl_key = rate_limit::rate_limit_key(&req, rate_limit::Bucket::Login);
+    if rate_limit::is_over_limit(data.cache_manager(), &rl_key).await {
         log::warn!("Login rate limit hit for key {rl_key}");
         return ApiResponse::too_many_requests("Too many login attempts, try again later");
     }
 
     log::debug!("Login attempt for username: {}", login_req.username);
 
-    let user = match repo.find_by_username_or_email(&login_req.username).await {
+    let mut user = match repo.find_by_username_or_email(&login_req.username).await {
         Ok(Some(user)) => user,
         Ok(None) => {
+            // Spend the same Argon2 time as a real account so the response delay
+            // does not answer "does this username exist?".
+            r_data_core_core::crypto::verify_dummy_password(&login_req.password);
             // Count username-enumeration probes against the IP, too.
-            rate_limit::record_failure(data.cache_manager(), &rl_key, attempts).await;
+            rate_limit::record_failure(data.cache_manager(), &rl_key).await;
             return ApiResponse::unauthorized("Invalid credentials");
         }
         Err(e) => {
@@ -81,13 +77,23 @@ pub async fn admin_login(
         }
     };
 
+    // An automatic lockout that has run its course lifts itself, so a locked-out
+    // admin recovers without operator help.
+    if user.release_expired_lockout() {
+        if let Err(e) = repo
+            .update_lockout_state(&user.uuid, &user.status, user.failed_login_attempts, None)
+            .await
+        {
+            log::error!("Failed to release expired lockout: {e:?}");
+        }
+    }
+
     // Verify the password FIRST. A wrong password returns the generic 401 —
     // identical to an unknown user — so the locked/inactive state below can only
     // be observed by someone who already holds valid credentials. This avoids
     // leaking account existence/state (username enumeration).
     if !user.verify_password(&login_req.password) {
-        return handle_password_failure(user, &repo, &data, &rl_key, attempts, &login_req.username)
-            .await;
+        return handle_password_failure(user, &repo, &data, &rl_key, &login_req.username).await;
     }
 
     // Credentials are valid: only now is it safe to reveal a locked/inactive
@@ -114,6 +120,7 @@ pub async fn admin_login(
         (status = 400, description = "Invalid request format or missing JSON body"),
         (status = 403, description = "Insufficient permissions"),
         (status = 422, description = "Missing or invalid required fields"),
+        (status = 429, description = "Too many registration attempts"),
         (status = 500, description = "Internal server error")
     ),
     security(
@@ -122,10 +129,20 @@ pub async fn admin_login(
 )]
 #[post("/auth/register")]
 pub async fn admin_register(
+    req: actix_web::HttpRequest,
     data: web::Data<ApiStateWrapper>,
     register_req: Option<web::Json<AdminRegisterRequest>>,
     auth: OptionalAuth,
 ) -> impl Responder {
+    // Anonymous registration is open by design, but every request costs two
+    // lookups and an Argon2 hash — throttle it per client IP like login.
+    let anonymous = auth.0.is_none();
+    let rl_key = rate_limit::rate_limit_key(&req, rate_limit::Bucket::Register);
+    if anonymous && rate_limit::is_over_limit(data.cache_manager(), &rl_key).await {
+        log::warn!("Registration rate limit hit for key {rl_key}");
+        return ApiResponse::too_many_requests("Too many registration attempts, try again later");
+    }
+
     // Check if JSON body is provided
     let Some(register_req) = register_req else {
         return ApiResponse::bad_request("Missing or invalid JSON body");
@@ -137,6 +154,10 @@ pub async fn admin_register(
         // Format validation errors into a readable message
         let error_message = format!("Validation error: {errors}");
         return ApiResponse::unprocessable_entity(&error_message);
+    }
+
+    if anonymous {
+        rate_limit::record_failure(data.cache_manager(), &rl_key).await;
     }
 
     // Get authentication info from the OptionalAuth extractor

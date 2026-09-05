@@ -308,6 +308,7 @@ mod tests {
                 uuid: &Uuid,
                 status: &UserStatus,
                 failed_login_attempts: i32,
+                locked_until: Option<OffsetDateTime>,
             ) -> Result<()>;
             async fn create_admin_user<'a>(
                 &self,
@@ -335,6 +336,7 @@ mod tests {
             status: UserStatus::Active,
             last_login: None,
             failed_login_attempts: 0,
+            locked_until: None,
             super_admin: false,
             first_name: Some("Test".to_string()),
             last_name: Some("User".to_string()),
@@ -433,6 +435,7 @@ mod tests {
             status: UserStatus::Active,
             last_login: None,
             failed_login_attempts: 0,
+            locked_until: None,
             super_admin: false,
             first_name: Some("Existing".to_string()),
             last_name: Some("User".to_string()),
