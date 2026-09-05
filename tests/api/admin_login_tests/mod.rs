@@ -6,6 +6,7 @@
 //!   - `lockout_expiry` — automatic locks lifting themselves once they expire
 //!   - `rate_limit`     — per-IP request throttling (429) and its reset on success
 //!   - `register_rate_limit` — the same limit on anonymous registration
+//!   - `session`        — refresh rotation, logout and revoke-all
 //!   - `timing`         — unknown vs. known user cost the same (no enumeration)
 //!
 //! Shared `setup_app` / login helpers live here so both submodules reuse one
@@ -15,6 +16,7 @@ mod lockout;
 mod lockout_expiry;
 mod rate_limit;
 mod register_rate_limit;
+mod session;
 mod timing;
 
 use actix_web::dev::{Service, ServiceResponse};

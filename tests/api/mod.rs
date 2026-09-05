@@ -19,6 +19,7 @@ pub mod provider_workflow_endpoints_tests;
 pub mod query_validation_integration_tests;
 pub mod refresh_token_integration_tests;
 pub mod roles;
+pub mod roles_crud_tests;
 pub mod system_info_tests;
 pub mod system_settings_tests;
 pub mod users;
