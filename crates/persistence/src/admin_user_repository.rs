@@ -103,6 +103,51 @@ impl AdminUserRepository {
         Ok(())
     }
 
+    /// Set the `is_active` flag for a user.
+    ///
+    /// Used by the `user_actions` console binary to activate or deactivate an
+    /// admin user without touching their login-lockout state.
+    ///
+    /// # Errors
+    /// Returns `Error::Database` if the update fails.
+    pub async fn set_active(&self, uuid: &Uuid, is_active: bool) -> Result<()> {
+        sqlx::query("UPDATE admin_users SET is_active = $1, updated_at = NOW() WHERE uuid = $2")
+            .bind(is_active)
+            .bind(uuid)
+            .execute(&*self.pool)
+            .await
+            .map_err(|e| {
+                error!("Error setting is_active for user {uuid}: {e:?}");
+                r_data_core_core::error::Error::Database(e)
+            })?;
+        Ok(())
+    }
+
+    /// Replace the stored password hash and clear any lockout state.
+    ///
+    /// A password reset is treated as an implicit unlock: status is set to
+    /// `Active` and `failed_login_attempts` is zeroed.
+    ///
+    /// # Errors
+    /// Returns `Error::Database` if the update fails.
+    pub async fn reset_password(&self, uuid: &Uuid, password_hash: &str) -> Result<()> {
+        sqlx::query(
+            "UPDATE admin_users \
+             SET password_hash = $1, status = 'active', failed_login_attempts = 0, \
+                 updated_at = NOW() \
+             WHERE uuid = $2",
+        )
+        .bind(password_hash)
+        .bind(uuid)
+        .execute(&*self.pool)
+        .await
+        .map_err(|e| {
+            error!("Error resetting password for user {uuid}: {e:?}");
+            r_data_core_core::error::Error::Database(e)
+        })?;
+        Ok(())
+    }
+
     /// Update all roles for a user (replace existing assignments)
     ///
     /// # Errors
@@ -191,6 +236,30 @@ impl AdminUserRepositoryTrait for AdminUserRepository {
         Ok(())
     }
 
+    async fn update_lockout_state(
+        &self,
+        uuid: &Uuid,
+        status: &r_data_core_core::admin_user::UserStatus,
+        failed_login_attempts: i32,
+        locked_until: Option<OffsetDateTime>,
+    ) -> Result<()> {
+        sqlx::query(
+            "UPDATE admin_users SET status = $1, failed_login_attempts = $2, \
+             locked_until = $3, updated_at = NOW() WHERE uuid = $4",
+        )
+        .bind(status)
+        .bind(failed_login_attempts)
+        .bind(locked_until)
+        .bind(uuid)
+        .execute(&*self.pool)
+        .await
+        .map_err(|e| {
+            error!("Error updating lockout state: {e:?}");
+            r_data_core_core::error::Error::Database(e)
+        })?;
+        Ok(())
+    }
+
     async fn create_admin_user<'a>(
         &self,
         params: &crate::admin_user_repository_trait::CreateAdminUserParams<'a>,
@@ -276,9 +345,12 @@ impl AdminUserRepositoryTrait for AdminUserRepository {
                 is_active = $5, 
                 super_admin = $6,
                 password_hash = $7,
-                updated_at = $8,
+                status = $8,
+                failed_login_attempts = $9,
+                locked_until = $10,
+                updated_at = $11,
                 version = version + 1
-            WHERE uuid = $9",
+            WHERE uuid = $12",
         )
         .bind(&user.username)
         .bind(&user.email)
@@ -287,6 +359,9 @@ impl AdminUserRepositoryTrait for AdminUserRepository {
         .bind(user.is_active)
         .bind(user.super_admin)
         .bind(&user.password_hash)
+        .bind(&user.status)
+        .bind(user.failed_login_attempts)
+        .bind(user.locked_until)
         .bind(OffsetDateTime::now_utc())
         .bind(user.uuid)
         .execute(&*self.pool)

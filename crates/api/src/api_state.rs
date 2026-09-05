@@ -24,6 +24,8 @@ pub trait ApiStateTrait: Send + Sync + 'static {
 
     /// Get `API` config - helper method that downcasts from `api_config_ref`
     fn api_config(&self) -> &r_data_core_core::config::ApiConfig {
+        // downcast invariant: ApiState implementors must register this service
+        #[allow(clippy::expect_used)]
         self.api_config_ref()
             .downcast_ref::<r_data_core_core::config::ApiConfig>()
             .expect("ApiState must provide ApiConfig")
@@ -31,6 +33,8 @@ pub trait ApiStateTrait: Send + Sync + 'static {
 
     /// Get role service - helper method that downcasts from `role_service_ref`
     fn role_service(&self) -> &r_data_core_services::RoleService {
+        // downcast invariant: ApiState implementors must register this service
+        #[allow(clippy::expect_used)]
         self.role_service_ref()
             .downcast_ref::<r_data_core_services::RoleService>()
             .expect("ApiState must provide RoleService")
@@ -38,6 +42,8 @@ pub trait ApiStateTrait: Send + Sync + 'static {
 
     /// Get entity definition service - helper method that downcasts from `entity_definition_service_ref`
     fn entity_definition_service(&self) -> &r_data_core_services::EntityDefinitionService {
+        // downcast invariant: ApiState implementors must register this service
+        #[allow(clippy::expect_used)]
         self.entity_definition_service_ref()
             .downcast_ref::<r_data_core_services::EntityDefinitionService>()
             .expect("ApiState must provide EntityDefinitionService")
@@ -45,6 +51,8 @@ pub trait ApiStateTrait: Send + Sync + 'static {
 
     /// Get cache manager - helper method that downcasts from `cache_manager_ref`
     fn cache_manager(&self) -> &std::sync::Arc<r_data_core_core::cache::CacheManager> {
+        // downcast invariant: ApiState implementors must register this service
+        #[allow(clippy::expect_used)]
         self.cache_manager_ref()
             .downcast_ref::<std::sync::Arc<r_data_core_core::cache::CacheManager>>()
             .expect("ApiState must provide CacheManager")
@@ -52,6 +60,8 @@ pub trait ApiStateTrait: Send + Sync + 'static {
 
     /// Get workflow service - helper method that downcasts from `workflow_service_ref`
     fn workflow_service(&self) -> &r_data_core_services::WorkflowService {
+        // downcast invariant: ApiState implementors must register this service
+        #[allow(clippy::expect_used)]
         self.workflow_service_ref()
             .downcast_ref::<r_data_core_services::WorkflowService>()
             .expect("ApiState must provide WorkflowService")
@@ -62,6 +72,8 @@ pub trait ApiStateTrait: Send + Sync + 'static {
         &self,
     ) -> &std::sync::Arc<r_data_core_workflow::data::job_queue::apalis_redis::ApalisRedisQueue>
     {
+        // downcast invariant: ApiState implementors must register this service
+        #[allow(clippy::expect_used)]
         self.queue_ref()
             .downcast_ref::<std::sync::Arc<r_data_core_workflow::data::job_queue::apalis_redis::ApalisRedisQueue>>()
             .expect("ApiState must provide ApalisRedisQueue")
@@ -69,6 +81,8 @@ pub trait ApiStateTrait: Send + Sync + 'static {
 
     /// Get API key service - helper method that downcasts from `api_key_service_ref`
     fn api_key_service(&self) -> &r_data_core_services::ApiKeyService {
+        // downcast invariant: ApiState implementors must register this service
+        #[allow(clippy::expect_used)]
         self.api_key_service_ref()
             .downcast_ref::<r_data_core_services::ApiKeyService>()
             .expect("ApiState must provide ApiKeyService")
@@ -76,6 +90,8 @@ pub trait ApiStateTrait: Send + Sync + 'static {
 
     /// Get admin user service - helper method that downcasts from `admin_user_service_ref`
     fn admin_user_service(&self) -> &r_data_core_services::AdminUserService {
+        // downcast invariant: ApiState implementors must register this service
+        #[allow(clippy::expect_used)]
         self.admin_user_service_ref()
             .downcast_ref::<r_data_core_services::AdminUserService>()
             .expect("ApiState must provide AdminUserService")
@@ -92,6 +108,8 @@ pub trait ApiStateTrait: Send + Sync + 'static {
 
     /// Get dashboard stats service - helper method that downcasts from `dashboard_stats_service_ref`
     fn dashboard_stats_service(&self) -> &r_data_core_services::DashboardStatsService {
+        // downcast invariant: ApiState implementors must register this service
+        #[allow(clippy::expect_used)]
         self.dashboard_stats_service_ref()
             .downcast_ref::<r_data_core_services::DashboardStatsService>()
             .expect("ApiState must provide DashboardStatsService")
@@ -99,6 +117,8 @@ pub trait ApiStateTrait: Send + Sync + 'static {
 
     /// Get license service - helper method that downcasts from `license_service_ref`
     fn license_service(&self) -> &std::sync::Arc<r_data_core_services::LicenseService> {
+        // downcast invariant: ApiState implementors must register this service
+        #[allow(clippy::expect_used)]
         self.license_service_ref()
             .downcast_ref::<std::sync::Arc<r_data_core_services::LicenseService>>()
             .expect("ApiState must provide LicenseService")

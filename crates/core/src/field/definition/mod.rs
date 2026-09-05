@@ -12,9 +12,11 @@ mod constraints;
 #[cfg(test)]
 mod constraints_tests;
 mod serialization;
-mod validation;
+mod validation_def;
+mod validation_select;
 #[cfg(test)]
 mod validation_tests;
+mod validation_value;
 
 /// Definition of a field in a class
 #[derive(Debug, Clone, Serialize)]

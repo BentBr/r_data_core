@@ -8,7 +8,7 @@ use utoipa::ToSchema;
 use uuid::Uuid;
 use validator::Validate;
 
-use r_data_core_core::admin_user::AdminUser;
+use r_data_core_core::admin_user::{AdminUser, UserStatus};
 
 /// User response DTO (for API serialization)
 #[derive(Debug, Clone, Serialize, Deserialize, ToSchema, TS)]
@@ -31,7 +31,7 @@ pub struct UserResponse {
     #[ts(type = "string[]")]
     pub role_uuids: Vec<Uuid>,
     /// User account status
-    pub status: String,
+    pub status: UserStatus,
     /// Whether user is active
     pub is_active: bool,
     /// Whether user is admin
@@ -44,6 +44,10 @@ pub struct UserResponse {
     pub last_login: Option<OffsetDateTime>,
     /// Failed login attempts
     pub failed_login_attempts: i32,
+    /// When an automatic lockout expires, if one is active
+    #[serde(with = "time::serde::rfc3339::option")]
+    #[ts(type = "string | null")]
+    pub locked_until: Option<OffsetDateTime>,
     /// When the user was created
     #[serde(with = "time::serde::rfc3339")]
     #[ts(type = "string")]
@@ -69,12 +73,13 @@ impl UserResponse {
             first_name: user.first_name.clone(),
             last_name: user.last_name.clone(),
             role_uuids: role_uuids.to_vec(),
-            status: format!("{:?}", user.status),
+            status: user.status.clone(),
             is_active: user.is_active,
             is_admin: user.is_admin,
             super_admin: user.super_admin,
             last_login: user.last_login,
             failed_login_attempts: user.failed_login_attempts,
+            locked_until: user.locked_until,
             created_at: user.created_at,
             updated_at: user.updated_at,
             created_by: user.base.created_by,
@@ -129,16 +134,106 @@ pub struct UpdateUserRequest {
     pub is_active: Option<bool>,
     /// Super admin flag (optional)
     pub super_admin: Option<bool>,
+    /// Account status (optional). Setting it to `active` unlocks an account and
+    /// clears its failed-attempt counter.
+    pub status: Option<UserStatus>,
 }
 
 #[cfg(test)]
 mod tests {
+    #![allow(clippy::unwrap_used)]
+
+    use super::{UpdateUserRequest, UserResponse};
+    use r_data_core_core::admin_user::model::AdminUserBuilder;
+    use r_data_core_core::admin_user::{AdminUser, UserStatus};
     use r_data_core_core::validation::constraints;
+    use time::{Duration, OffsetDateTime};
 
     #[test]
     fn validation_constants_match_attributes() {
         assert_eq!(3, constraints::USERNAME_MIN_LENGTH);
         assert_eq!(50, constraints::USERNAME_MAX_LENGTH);
         assert_eq!(8, constraints::PASSWORD_MIN_LENGTH);
+    }
+
+    fn user() -> AdminUser {
+        AdminUserBuilder::new(
+            "someone".to_string(),
+            "someone@example.com".to_string(),
+            "hash".to_string(),
+            "Some One".to_string(),
+            UserStatus::Active,
+            false,
+            "Some".to_string(),
+            "One".to_string(),
+            true,
+            false,
+        )
+        .build()
+    }
+
+    #[test]
+    fn response_exposes_status_and_lockout_state() {
+        let mut locked = user();
+        locked.record_login_failure(1, 900);
+
+        let response = UserResponse::from_with_roles(&locked, &[]);
+        assert_eq!(response.status, UserStatus::Locked);
+        assert_eq!(response.failed_login_attempts, 1);
+        assert!(
+            response.locked_until.is_some(),
+            "the UI needs the expiry to explain why an account is locked"
+        );
+    }
+
+    #[test]
+    fn response_reports_no_expiry_for_a_healthy_account() {
+        let response = UserResponse::from_with_roles(&user(), &[]);
+        assert_eq!(response.status, UserStatus::Active);
+        assert_eq!(response.failed_login_attempts, 0);
+        assert!(response.locked_until.is_none());
+    }
+
+    #[test]
+    fn response_serialises_the_lockout_fields() {
+        let mut locked = user();
+        locked.locked_until = Some(OffsetDateTime::now_utc() + Duration::minutes(15));
+        locked.status = UserStatus::Locked;
+
+        let json = serde_json::to_value(UserResponse::from_with_roles(&locked, &[])).unwrap();
+        assert_eq!(json["status"], "locked");
+        assert!(json["locked_until"].is_string());
+    }
+
+    #[test]
+    fn update_request_status_is_optional() {
+        let without: UpdateUserRequest =
+            serde_json::from_value(serde_json::json!({ "first_name": "Nobody" })).unwrap();
+        assert!(without.status.is_none());
+
+        let with: UpdateUserRequest =
+            serde_json::from_value(serde_json::json!({ "status": "active" })).unwrap();
+        assert_eq!(with.status, Some(UserStatus::Active));
+    }
+
+    #[test]
+    fn update_request_rejects_an_unknown_status() {
+        let parsed: Result<UpdateUserRequest, _> =
+            serde_json::from_value(serde_json::json!({ "status": "unlocked" }));
+        assert!(parsed.is_err(), "only the enum variants are accepted");
+    }
+
+    #[test]
+    fn update_request_accepts_every_status_variant() {
+        for (raw, expected) in [
+            ("active", UserStatus::Active),
+            ("inactive", UserStatus::Inactive),
+            ("locked", UserStatus::Locked),
+            ("pending_activation", UserStatus::PendingActivation),
+        ] {
+            let parsed: UpdateUserRequest =
+                serde_json::from_value(serde_json::json!({ "status": raw })).unwrap();
+            assert_eq!(parsed.status, Some(expected), "{raw} must round-trip");
+        }
     }
 }

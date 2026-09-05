@@ -13,15 +13,15 @@ no_docker_compose = true
         "description" = "Runs all unit tests"
     [commands.test-fe]
         "alias" = "test-fe"
-        "execution" = "docker compose exec node pnpm test"
-        "description" = "Runs vitest for FE testing"
+        "execution" = "docker compose exec -T node pnpm test:run"
+        "description" = "Runs vitest (single run) for FE testing"
     [commands.clippy]
         "alias" = "clippy"
         "execution" = " cargo +nightly clippy --workspace --all-targets --all-features -- -D clippy::all -D warnings -D clippy::pedantic -D clippy::nursery "
         "description" = "Runs clippy with all lints enabled"
     [commands.lint]
         "alias" = "lint"
-        "execution" = "docker compose exec node pnpm lint"
+        "execution" = "docker compose exec -T node pnpm lint"
         "description" = "Runs ESLint (with prettier) and fixes it's findings"
     [commands.test-e2e]
         "alias" = "test-e2e"
@@ -33,7 +33,7 @@ no_docker_compose = true
         "description" = "Serves Playwright report at http://playwright.rdatacore.docker"
     [commands.clean-e2e]
         "alias" = "clean-e2e"
-        "execution" = "docker compose exec -T postgres psql -U postgres -d rdata -f /dev/stdin < .scripts/clean-e2e.sql"
+        "execution" = "docker compose exec -T postgres psql -U postgres -d rdata -f /dev/stdin < scripts/clean-e2e.sql"
         "description" = "Removes all E2E test data (e2e_* users, keys, roles, workflows, entity definitions, and dynamic tables) from the local database"
     [commands.generate-ts]
         "alias" = "generate-ts"

@@ -53,21 +53,17 @@ impl FieldValidator {
     /// # Errors
     /// Returns an error if the database query fails
     async fn query_table_fields(&self, table_name: &str) -> QueryValidationResult<HashSet<String>> {
-        let rows = sqlx::query!(
-            r#"
-            SELECT column_name
-            FROM information_schema.columns
-            WHERE table_schema = current_schema() AND table_name = $1
-            "#,
-            table_name
+        // SQL lives in the persistence layer; reuse the shared column lookup
+        // rather than issuing a query here (keeps the data layer the single
+        // owner of SQL — see scripts/check-sql-boundary.sh).
+        let columns = r_data_core_persistence::dynamic_entity_utils::fetch_valid_columns(
+            &*self.pool,
+            table_name,
         )
-        .fetch_all(&*self.pool)
         .await
         .map_err(|e| format!("Failed to query table schema: {e}"))?;
 
-        let fields: HashSet<String> = rows.into_iter().filter_map(|row| row.column_name).collect();
-
-        Ok(fields)
+        Ok(columns.into_iter().collect())
     }
 
     /// Validate that a field exists in the table

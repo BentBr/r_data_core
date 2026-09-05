@@ -180,7 +180,7 @@ pub async fn run_workflow_now_upload(
 /// List logs for a workflow run
 #[utoipa::path(
     get,
-    path = "/admin/api/v1/workflow-runs/{run_uuid}/logs",
+    path = "/admin/api/v1/workflows/runs/{run_uuid}/logs",
     tag = "workflows",
     params(
         ("run_uuid" = Uuid, Path, description = "Workflow run UUID"),

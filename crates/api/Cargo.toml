@@ -5,6 +5,7 @@ edition = "2021"
 description = "API crate of - A Master Data Managebent backend providing efficient data handling and distribution with custom entities and workflows"
 authors = ["Bent Brüggemann <mail@bent-brueggemann.de>"]
 license = "Business"
+publish = false  # proprietary — never published to a registry
 
 [dependencies]
 # Web framework
@@ -22,7 +23,6 @@ r_data_core_license = { path = "../license" }
 sqlx = { version = "0.8.6", features = ["runtime-tokio-rustls", "postgres", "uuid", "json", "time"] }
 
 # Authentication
-jsonwebtoken = "9.2"
 argon2 = "0.5"
 
 # Serialization
@@ -48,7 +48,7 @@ utoipa = { version = "5.4.0", features = ["actix_extras", "time", "uuid"] }
 utoipa-swagger-ui = { version = "9.0.2", features = ["actix-web", "debug-embed"] }
 
 # Validation
-validator = { version = "0.20.0", features = ["derive"] }
+validator = { version = "0.21.0", features = ["derive"] }
 
 # TypeScript bindings
 ts-rs = { version = "10", features = ["serde-compat"] }

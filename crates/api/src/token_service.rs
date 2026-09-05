@@ -96,6 +96,7 @@ mod tests {
             status: UserStatus::Active,
             last_login: None,
             failed_login_attempts: 0,
+            locked_until: None,
             super_admin: true,
             first_name: Some("Token".to_string()),
             last_name: Some("Test".to_string()),
@@ -113,9 +114,9 @@ mod tests {
         let svc = TokenService::new(&config);
         let pair = svc.generate_token_pair(&test_user(), &[]).unwrap();
 
-        assert!(!pair.access_token.is_empty());
-        assert!(!pair.refresh_token.is_empty());
-        assert!(!pair.refresh_token_hash.is_empty());
+        assert_ne!(pair.access_token, "");
+        assert_ne!(pair.refresh_token, "");
+        assert_ne!(pair.refresh_token_hash, "");
         assert!(pair.access_expires_at > OffsetDateTime::now_utc());
         assert!(pair.refresh_expires_at > pair.access_expires_at);
     }

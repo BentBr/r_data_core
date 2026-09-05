@@ -5,6 +5,7 @@ edition = "2021"
 description = "Workflow processing + DSL handling crate of - A Master Data Managebent backend providing efficient data handling and distribution with custom entities and workflows"
 authors = ["Bent Brüggemann <mail@bent-brueggemann.de>"]
 license = "Business"
+publish = false  # proprietary — never published to a registry
 
 [dependencies]
 r_data_core_core = { path = "../core" }
@@ -17,6 +18,7 @@ regex = "1.10"
 utoipa = { version = "5.4.0", features = ["time", "uuid"] }
 ts-rs = { version = "10", features = ["serde-compat"] }
 reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls"] }
+tokio = { version = "1", features = ["net", "macros", "rt-multi-thread"] }
 log = "0.4"
 bytes = "1.11.1"
 futures = "0.3"

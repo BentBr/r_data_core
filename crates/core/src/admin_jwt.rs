@@ -266,6 +266,7 @@ mod tests {
             status: UserStatus::Active,
             last_login: None,
             failed_login_attempts: 0,
+            locked_until: None,
             super_admin: true,
             uuid: Uuid::now_v7(),
             first_name: Some("Test".to_string()),
@@ -299,7 +300,7 @@ mod tests {
         assert!(result.is_ok());
 
         let token = result.unwrap();
-        assert!(!token.is_empty());
+        assert_eq!(token.split('.').count(), 3, "a JWT has three segments");
     }
 
     #[test]
@@ -311,7 +312,7 @@ mod tests {
         assert!(result.is_ok());
 
         let token = result.unwrap();
-        assert!(!token.is_empty());
+        assert_eq!(token.split('.').count(), 3, "a JWT has three segments");
     }
 
     #[test]
@@ -328,7 +329,11 @@ mod tests {
         assert_eq!(claims.name, user.username);
         assert_eq!(claims.email, user.email);
         assert!(claims.is_super_admin);
-        assert!(!claims.permissions.is_empty());
+        assert_ne!(
+            claims.permissions.len(),
+            0,
+            "a super admin carries permissions"
+        );
     }
 
     #[test]
@@ -451,6 +456,6 @@ mod tests {
         assert!(result.is_ok());
 
         let token = result.unwrap();
-        assert!(!token.is_empty());
+        assert_eq!(token.split('.').count(), 3, "a JWT has three segments");
     }
 }

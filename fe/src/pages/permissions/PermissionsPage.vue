@@ -112,22 +112,34 @@
                         </template>
 
                         <!-- Status Column -->
-                        <template #item.is_active="{ item }">
+                        <template #item.status="{ item }">
                             <Badge
                                 size="small"
-                                :status="item.is_active ? 'success' : 'error'"
+                                :status="userStatusBadge(item)"
+                                data-testid="user-status-badge"
                             >
-                                {{
-                                    item.is_active
-                                        ? t('permissions.page.users.status.active')
-                                        : t('permissions.page.users.status.inactive')
-                                }}
+                                {{ userStatusLabel(item) }}
                             </Badge>
                         </template>
 
                         <!-- Actions Column -->
                         <template #item.actions="{ item }">
                             <div class="d-flex gap-2">
+                                <v-btn
+                                    v-if="item.status === 'locked' && canUpdateUser"
+                                    variant="text"
+                                    size="small"
+                                    color="warning"
+                                    :loading="unlockingUuid === item.uuid"
+                                    :title="t('permissions.page.users.unlock.tooltip')"
+                                    data-testid="user-unlock-btn"
+                                    @click="unlockUser(item)"
+                                >
+                                    <SmartIcon
+                                        icon="lock-open"
+                                        size="sm"
+                                    />
+                                </v-btn>
                                 <v-btn
                                     variant="text"
                                     size="small"
@@ -392,6 +404,12 @@
         )
     })
 
+    const canUpdateUser = computed(() => {
+        return (
+            authStore.hasPermission('Users', 'Update') || authStore.hasPermission('Users', 'Admin')
+        )
+    })
+
     const canCreateRole = computed(() => {
         return (
             authStore.hasPermission('Roles', 'Create') || authStore.hasPermission('Roles', 'Admin')
@@ -414,6 +432,7 @@
     const deletingUser = ref(false)
     const editingUser = ref<UserResponse | null>(null)
     const userToDelete = ref<UserResponse | null>(null)
+    const unlockingUuid = ref<string | null>(null)
 
     // Users pagination
     const {
@@ -513,7 +532,7 @@
         { title: t('permissions.page.users.table.roles') || 'Roles', key: 'roles', sortable: true },
         {
             title: t('permissions.page.users.table.status') || 'Status',
-            key: 'is_active',
+            key: 'status',
             sortable: true,
         },
         {
@@ -738,6 +757,46 @@
             // Dialog stays open, editingUser remains set
         } finally {
             savingUser.value = false
+        }
+    }
+
+    // An account is only "active" when both flags allow a login; a deactivated
+    // user keeps status `active`, so both have to be taken into account.
+    const userStatusBadge = (user: UserResponse) => {
+        if (!user.is_active) {
+            return 'error'
+        }
+
+        switch (user.status) {
+            case 'active':
+                return 'success'
+            case 'locked':
+                return 'warning'
+            default:
+                return 'error'
+        }
+    }
+
+    const userStatusLabel = (user: UserResponse) => {
+        if (!user.is_active) {
+            return t('permissions.page.users.status.inactive')
+        }
+
+        return t(`permissions.page.users.status.${user.status}`)
+    }
+
+    const unlockUser = async (user: UserResponse) => {
+        unlockingUuid.value = user.uuid
+
+        try {
+            // The backend clears the failed-attempt counter and lockout expiry
+            // when the status goes back to active.
+            await updateUser(user.uuid, { status: 'active' })
+            await loadUsers(usersCurrentPage.value, usersItemsPerPage.value)
+        } catch {
+            // Error already handled in composable via global error handler
+        } finally {
+            unlockingUuid.value = null
         }
     }
 

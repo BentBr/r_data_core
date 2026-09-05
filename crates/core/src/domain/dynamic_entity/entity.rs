@@ -142,14 +142,10 @@ impl DynamicEntity {
             "path".to_string(),
             JsonValue::String(format!("/{}", entity_type.to_lowercase())),
         );
-        field_data.insert(
-            "created_at".to_string(),
-            JsonValue::String(OffsetDateTime::now_utc().format(&Rfc3339).unwrap()),
-        );
-        field_data.insert(
-            "updated_at".to_string(),
-            JsonValue::String(OffsetDateTime::now_utc().format(&Rfc3339).unwrap()),
-        );
+        #[allow(clippy::unwrap_used)] // Rfc3339 formatting of now_utc() is infallible
+        let now_str = OffsetDateTime::now_utc().format(&Rfc3339).unwrap();
+        field_data.insert("created_at".to_string(), JsonValue::String(now_str.clone()));
+        field_data.insert("updated_at".to_string(), JsonValue::String(now_str));
         field_data.insert("published".to_string(), JsonValue::Bool(false));
         field_data.insert("version".to_string(), JsonValue::Number(1.into()));
 
@@ -214,10 +210,11 @@ impl DynamicEntity {
             }
             "updated_at" => {
                 // Auto-update timestamp
-                self.field_data.insert(
-                    field.to_string(),
-                    JsonValue::String(OffsetDateTime::now_utc().format(&Rfc3339).unwrap()),
-                );
+                let ts = OffsetDateTime::now_utc()
+                    .format(&Rfc3339)
+                    .map_err(|e| crate::error::Error::Conversion(e.to_string()))?;
+                self.field_data
+                    .insert(field.to_string(), JsonValue::String(ts));
                 return Ok(());
             }
             _ => {}
@@ -264,10 +261,11 @@ impl DynamicEntity {
         let new_version = current_version + 1;
         self.field_data
             .insert("version".to_string(), JsonValue::Number(new_version.into()));
-        self.field_data.insert(
-            "updated_at".to_string(),
-            JsonValue::String(OffsetDateTime::now_utc().format(&Rfc3339).unwrap()),
-        );
+        let ts = OffsetDateTime::now_utc()
+            .format(&Rfc3339)
+            .map_err(|e| crate::error::Error::Conversion(e.to_string()))?;
+        self.field_data
+            .insert("updated_at".to_string(), JsonValue::String(ts));
         Ok(())
     }
 

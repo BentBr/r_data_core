@@ -620,7 +620,7 @@ describe('PermissionsPage', () => {
                 first_name: 'Test',
                 last_name: 'User',
                 role_uuids: [],
-                status: 'Active',
+                status: 'active',
                 is_active: true,
                 is_admin: false,
                 super_admin: false,
@@ -676,7 +676,7 @@ describe('PermissionsPage', () => {
                 first_name: 'Test',
                 last_name: 'User',
                 role_uuids: [],
-                status: 'Active',
+                status: 'active',
                 is_active: true,
                 is_admin: false,
                 super_admin: false,
@@ -867,5 +867,151 @@ describe('PermissionsPage', () => {
 
         // Second user (inactive) — delete button should be disabled
         expect(deleteButtons[1].attributes('disabled')).toBeDefined()
+    })
+
+    describe('locked accounts', () => {
+        const lockedUsers = [
+            {
+                uuid: 'user-active',
+                username: 'active_user',
+                email: 'active@test.com',
+                first_name: 'Active',
+                last_name: 'User',
+                status: 'active',
+                is_active: true,
+                is_admin: false,
+                role_uuids: [],
+                failed_login_attempts: 0,
+                locked_until: null,
+                created_at: '2024-01-01T00:00:00Z',
+                updated_at: '2024-01-01T00:00:00Z',
+            },
+            {
+                uuid: 'user-locked',
+                username: 'locked_user',
+                email: 'locked@test.com',
+                first_name: 'Locked',
+                last_name: 'User',
+                status: 'locked',
+                is_active: true,
+                is_admin: false,
+                role_uuids: [],
+                failed_login_attempts: 5,
+                locked_until: '2024-01-01T00:15:00Z',
+                created_at: '2024-01-01T00:00:00Z',
+                updated_at: '2024-01-01T00:00:00Z',
+            },
+        ]
+
+        const mountWithLockedUsers = async () => {
+            mockUsers.value = lockedUsers as any
+            mockLoadUsers.mockResolvedValue({
+                data: lockedUsers,
+                meta: {
+                    pagination: {
+                        total: 2,
+                        page: 1,
+                        per_page: 20,
+                        total_pages: 1,
+                        has_previous: false,
+                        has_next: false,
+                    },
+                },
+            })
+
+            const wrapper = mount(PermissionsPage, {
+                global: {
+                    plugins: [router],
+                    stubs: { UserDialog: true, RoleDialog: true },
+                },
+            })
+
+            ;(wrapper.vm as any).activeTab = 'users'
+            await wrapper.vm.$nextTick()
+            await wrapper.vm.$nextTick()
+
+            return wrapper
+        }
+
+        beforeEach(() => {
+            mockUpdateUser.mockClear()
+            mockUpdateUser.mockResolvedValue(undefined)
+        })
+
+        it('shows the account status for every user', async () => {
+            const wrapper = await mountWithLockedUsers()
+
+            const badges = wrapper.findAll('[data-testid="user-status-badge"]')
+            expect(badges).toHaveLength(2)
+            expect(badges[0].text()).toBe('active')
+            expect(badges[1].text()).toBe('locked')
+        })
+
+        it('offers an unlock action only for locked accounts', async () => {
+            const wrapper = await mountWithLockedUsers()
+
+            expect(wrapper.findAll('[data-testid="user-unlock-btn"]')).toHaveLength(1)
+        })
+
+        it('unlocks an account by setting its status back to active', async () => {
+            const wrapper = await mountWithLockedUsers()
+
+            await wrapper.find('[data-testid="user-unlock-btn"]').trigger('click')
+            await wrapper.vm.$nextTick()
+
+            expect(mockUpdateUser).toHaveBeenCalledWith('user-locked', { status: 'active' })
+        })
+
+        it('reloads the list after unlocking so the new status is shown', async () => {
+            const wrapper = await mountWithLockedUsers()
+            mockLoadUsers.mockClear()
+
+            await wrapper.find('[data-testid="user-unlock-btn"]').trigger('click')
+            await wrapper.vm.$nextTick()
+            await wrapper.vm.$nextTick()
+
+            expect(mockLoadUsers).toHaveBeenCalled()
+        })
+
+        it('keeps the page usable when unlocking fails', async () => {
+            mockUpdateUser.mockRejectedValue(new Error('nope'))
+            const wrapper = await mountWithLockedUsers()
+
+            await wrapper.find('[data-testid="user-unlock-btn"]').trigger('click')
+            await wrapper.vm.$nextTick()
+            await wrapper.vm.$nextTick()
+
+            expect((wrapper.vm as any).unlockingUuid).toBeNull()
+        })
+
+        it('shows a deactivated user as inactive whatever its status says', async () => {
+            const deactivated = [{ ...lockedUsers[0], uuid: 'user-off', is_active: false }]
+            mockUsers.value = deactivated as any
+            mockLoadUsers.mockResolvedValue({
+                data: deactivated,
+                meta: {
+                    pagination: {
+                        total: 1,
+                        page: 1,
+                        per_page: 20,
+                        total_pages: 1,
+                        has_previous: false,
+                        has_next: false,
+                    },
+                },
+            })
+
+            const wrapper = mount(PermissionsPage, {
+                global: {
+                    plugins: [router],
+                    stubs: { UserDialog: true, RoleDialog: true },
+                },
+            })
+            ;(wrapper.vm as any).activeTab = 'users'
+            await wrapper.vm.$nextTick()
+            await wrapper.vm.$nextTick()
+
+            expect(wrapper.find('[data-testid="user-status-badge"]').text()).toBe('inactive')
+        })
     })
 })

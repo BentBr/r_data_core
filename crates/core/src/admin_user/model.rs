@@ -6,42 +6,23 @@ use crate::error::{Error, Result};
 use base64::engine::Engine as _;
 use serde::{Deserialize, Serialize};
 use sha2::Digest;
-use sqlx::{
-    decode::Decode,
-    postgres::{PgRow, PgTypeInfo, PgValueRef},
-    FromRow, Row, Type,
-};
-use time::OffsetDateTime;
+use sqlx::{postgres::PgRow, FromRow, Row};
+use time::{Duration, OffsetDateTime};
+use ts_rs::TS;
 use utoipa::ToSchema;
 use uuid::Uuid;
 
-/// Admin user status
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, ToSchema)]
+/// Admin user account status. Backed by the Postgres `admin_user_status` enum;
+/// serialised `snake_case` to match the other status enums across the codebase.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, ToSchema, TS, sqlx::Type)]
+#[sqlx(type_name = "admin_user_status", rename_all = "snake_case")]
+#[serde(rename_all = "snake_case")]
+#[ts(export)]
 pub enum UserStatus {
     Active,
     Inactive,
     Locked,
     PendingActivation,
-}
-
-impl Type<sqlx::Postgres> for UserStatus {
-    fn type_info() -> PgTypeInfo {
-        PgTypeInfo::with_name("VARCHAR")
-    }
-}
-
-impl<'r> Decode<'r, sqlx::Postgres> for UserStatus {
-    fn decode(value: PgValueRef<'r>) -> std::result::Result<Self, sqlx::error::BoxDynError> {
-        let value = <String as Decode<sqlx::Postgres>>::decode(value)?;
-
-        match value.as_str() {
-            "Active" => Ok(Self::Active),
-            "Inactive" => Ok(Self::Inactive),
-            "Locked" => Ok(Self::Locked),
-            "PendingActivation" => Ok(Self::PendingActivation),
-            _ => Err("Invalid user status".into()),
-        }
-    }
 }
 
 /// Admin user representation
@@ -72,6 +53,10 @@ pub struct AdminUser {
 
     /// Failed login attempts
     pub failed_login_attempts: i32,
+
+    /// When an automatic lockout expires. `None` means the account was not
+    /// locked automatically (or was locked by an operator, which never expires).
+    pub locked_until: Option<OffsetDateTime>,
 
     /// Super admin flag - overrides all permissions
     pub super_admin: bool,
@@ -109,9 +94,11 @@ impl<'r> FromRow<'r, PgRow> for AdminUser {
         // Get optional fields or use defaults for missing columns
         let last_login: Option<OffsetDateTime> = row.try_get("last_login").ok().flatten();
 
-        // Use default values for fields that might not exist in the DB
-        let status = UserStatus::Active; // Default status
-        let failed_login_attempts = 0; // Default value
+        // Lockout fields (columns added in migration 20260611000000_admin_user_lockout).
+        // Fall back to defaults for any caller selecting a narrower column set.
+        let status: UserStatus = row.try_get("status").unwrap_or(UserStatus::Active);
+        let failed_login_attempts: i32 = row.try_get("failed_login_attempts").unwrap_or(0);
+        let locked_until: Option<OffsetDateTime> = row.try_get("locked_until").ok().flatten();
         let super_admin = row.try_get("super_admin").unwrap_or(false); // Default to false
         let is_admin = false; // Default value
 
@@ -124,6 +111,7 @@ impl<'r> FromRow<'r, PgRow> for AdminUser {
             status,
             last_login,
             failed_login_attempts,
+            locked_until,
             super_admin,
             first_name,
             last_name,
@@ -209,6 +197,7 @@ impl AdminUserBuilder {
             status: self.status,
             last_login: None,
             failed_login_attempts: 0,
+            locked_until: None,
             super_admin: self.super_admin,
             uuid: Uuid::now_v7(),
             first_name: Some(self.first_name),
@@ -321,18 +310,54 @@ impl AdminUser {
     /// Record a successful login
     pub fn record_login_success(&mut self) {
         self.last_login = Some(OffsetDateTime::now_utc());
-        self.failed_login_attempts = 0;
+        self.clear_lockout();
     }
 
-    /// Record a failed login attempt
+    /// Reset the lockout counters and return the account to `Active`.
+    pub fn clear_lockout(&mut self) {
+        self.failed_login_attempts = 0;
+        self.locked_until = None;
+        if self.status == UserStatus::Locked {
+            self.status = UserStatus::Active;
+        }
+    }
+
+    /// Record a failed login attempt, locking the account once
+    /// `max_failed_attempts` is reached.
     ///
-    /// # Note
-    /// This function cannot be `const` because it mutates `self`.
-    #[allow(clippy::missing_const_for_fn)] // Cannot be const: mutates self
-    pub fn record_login_failure(&mut self) {
-        self.failed_login_attempts += 1;
-        if self.failed_login_attempts >= 5 {
+    /// `lockout_duration_secs` of `0` locks the account until an operator
+    /// intervenes; any positive value sets an expiry so the lock lifts itself.
+    pub fn record_login_failure(&mut self, max_failed_attempts: i32, lockout_duration_secs: i64) {
+        self.failed_login_attempts = self.failed_login_attempts.saturating_add(1);
+        if self.failed_login_attempts >= max_failed_attempts {
             self.status = UserStatus::Locked;
+            self.locked_until = (lockout_duration_secs > 0)
+                .then(|| OffsetDateTime::now_utc() + Duration::seconds(lockout_duration_secs));
+        }
+    }
+
+    /// Lift an automatic lockout whose expiry has passed.
+    ///
+    /// Returns `true` when the account changed and the caller must persist it.
+    pub fn release_expired_lockout(&mut self) -> bool {
+        let expired = self.status == UserStatus::Locked
+            && self
+                .locked_until
+                .is_some_and(|until| OffsetDateTime::now_utc() >= until);
+
+        if expired {
+            self.clear_lockout();
+        }
+        expired
+    }
+
+    /// Set the account status, clearing lockout state when reactivating.
+    pub fn set_status(&mut self, status: UserStatus) {
+        if status == UserStatus::Active {
+            self.clear_lockout();
+        } else {
+            self.status = status;
+            self.locked_until = None;
         }
     }
 

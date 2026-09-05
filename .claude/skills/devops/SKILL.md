@@ -26,6 +26,27 @@ rdt test | test-unit | test-fe | clippy | lint | test-e2e | test-e2e-report | cl
 Enable: `git config core.hooksPath .githooks`. Runs:
 fmt → clippy → `rdt test` → `rdt test-fe` → eslint → commit-lint.
 
+**Long gate vs. push timeout.** Git opens the connection to the remote *before*
+running `pre-push` (that is how it fills in the remote SHAs it passes to the
+hook), so the connection sits idle for as long as the gate takes. When the gate
+outlasts the server's idle timeout, the push dies with exit 141 (SIGPIPE)
+*after* printing "All checks passed", having pushed nothing — and `git push`
+emits no output of its own, which makes it look like the hook failed.
+
+Fix it per clone, without touching `~/.ssh/config`:
+
+```bash
+git config core.sshCommand 'ssh -o ServerAliveInterval=30 -o ServerAliveCountMax=20'
+```
+
+For a one-off push, `GIT_SSH_COMMAND='ssh -o ServerAliveInterval=30' git push`
+does the same thing. Never reach for `GIT_HOOK_SKIP=1` to get around it — that
+skips the gate, which is a different problem.
+
+The hook also drains its stdin in `parse_push_stdin` before any check runs. Git
+streams the ref list into the hook, and an unread pipe is a second way a slow
+hook can wedge a push.
+
 Toggles in `.env.local`:
 `GIT_HOOK_RUN_{FMT,CLIPPY,TEST,TEST_FE,LINT,COMMIT_LINT}=0`. Skip everything with
 `GIT_HOOK_SKIP=1` — never set unless the user explicitly asks.
@@ -44,7 +65,27 @@ blockers with the exact lines to add — never attempt a bypass.
 
 ## CI
 
-`.github/workflows/` mirrors the pre-push gate plus `generate-ts-check`.
+`.github/workflows/` mirrors the pre-push gate plus `generate-ts-check` and the
+structural guards: `check-sql-boundary.sh`, `check-file-length.sh`, the
+`architecture` layering test, `cargo-deny`, `cargo-machete`, and MSRV.
+
+## Security env vars
+
+Set on the `app` service (see `compose.yaml` and `docs/DEVELOPMENT.md`):
+
+| Var | Purpose |
+|-----|---------|
+| `TRUSTED_PROXIES` | IPs/CIDRs whose `X-Forwarded-For` is believed. **Required behind a proxy** or the per-IP login limit becomes global. |
+| `LOGIN_MAX_FAILED_ATTEMPTS` / `LOGIN_LOCKOUT_DURATION_SECS` | Account lockout threshold and expiry (`0` = permanent) |
+| `LOGIN_RATE_LIMIT_MAX_ATTEMPTS` / `LOGIN_RATE_LIMIT_WINDOW_SECS` | Per-IP throttle on `/auth/login` and `/auth/register` |
+| `SSRF_ALLOWED_HOSTS` | Hosts the workflow HTTP adapters may reach past the SSRF guard |
+| `CORS_ORIGINS` | Must be explicit and non-wildcard in a hardened environment or the server refuses to start |
+
+`APP_ENV` fails closed: only `development`/`dev`/`local`/`test` relax CORS and
+the SSRF guard — staging and an unset value are hardened.
+
+Unlock a locked admin: `cargo run --bin user_actions -- --username <n> --action unlock`,
+or `PUT /admin/api/v1/users/{uuid}` with `{"status": "active"}`.
 
 ## Operating rules for the devops agent
 

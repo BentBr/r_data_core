@@ -1,3 +1,4 @@
+#![deny(unsafe_code)]
 #![deny(clippy::all, clippy::pedantic, clippy::nursery, warnings)]
 
 pub mod consumer_loop;

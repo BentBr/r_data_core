@@ -41,24 +41,19 @@ where
 
             let jwt_secret = state.jwt_secret();
 
+            // Only the side effect differs per outcome; the request always goes
+            // through, because auth enforcement happens at the handler level.
             match extract_and_validate_jwt(&request, jwt_secret).await {
                 Ok(Some(claims)) => {
-                    // Add claims to request extensions
                     req.extensions_mut().insert(claims);
-
-                    // Always proceed to the handler - auth enforcement happens at handler level now
-                    service_clone.call(req).await
                 }
-                Ok(None) => {
-                    // No JWT token found or invalid token
-                    // Let the handler decide whether this is acceptable
-                    service_clone.call(req).await
-                }
-                Err(e) => {
-                    log::error!("JWT validation error: {e:?}");
-                    service_clone.call(req).await
-                }
+                // No JWT token found, or one we could not validate. The handler
+                // decides whether that is acceptable.
+                Ok(None) => {}
+                Err(e) => log::error!("JWT validation error: {e:?}"),
             }
+
+            service_clone.call(req).await
         })
     }
 }

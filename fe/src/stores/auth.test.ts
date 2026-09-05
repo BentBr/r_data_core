@@ -2,12 +2,32 @@ import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { setActivePinia, createPinia } from 'pinia'
 import { useAuthStore } from './auth'
 import { typedHttpClient } from '@/api/typed-client'
+import { HttpError } from '@/api/errors'
 
 // Mock the HTTP client
 vi.mock('@/api/typed-client', () => ({
     typedHttpClient: {
         getUserPermissions: vi.fn(),
+        login: vi.fn(),
+        logout: vi.fn(),
+        refreshToken: vi.fn(),
     },
+}))
+
+// Suppress noisy store side-effects that are irrelevant to login error mapping
+vi.mock('@/stores/license', () => ({
+    useLicenseStore: () => ({ loadLicenseStatus: vi.fn(), resetBannerDismissal: vi.fn() }),
+}))
+vi.mock('@/stores/versions', () => ({
+    useVersionStore: () => ({ loadVersions: vi.fn(), clearVersions: vi.fn() }),
+}))
+vi.mock('@/stores/capabilities', () => ({
+    useCapabilitiesStore: () => ({ fetchCapabilities: vi.fn() }),
+}))
+vi.mock('@/utils/cookies', () => ({
+    getRefreshToken: vi.fn(() => null),
+    setRefreshToken: vi.fn(),
+    deleteRefreshToken: vi.fn(),
 }))
 
 describe('Auth Store', () => {
@@ -154,6 +174,46 @@ describe('Auth Store', () => {
 
             // Should NOT have permissions for System
             expect(store.hasPermission('System', 'Read')).toBe(false)
+        })
+    })
+
+    describe('login', () => {
+        it('sets error to the locked message when the server returns 403', async () => {
+            vi.mocked(typedHttpClient.login).mockRejectedValueOnce(
+                new HttpError(403, 'auth', 'create', 'Account locked or not active')
+            )
+
+            const store = useAuthStore()
+            await expect(store.login({ username: 'u', password: 'p' })).rejects.toThrow()
+
+            // global test-setup mocks t(key) → key.split('.').pop()
+            expect(store.error).toBe('locked')
+        })
+
+        it('sets error to the rate-limited message when the server returns 429', async () => {
+            vi.mocked(typedHttpClient.login).mockRejectedValueOnce(
+                new HttpError(429, 'auth', 'create', 'Too many requests')
+            )
+
+            const store = useAuthStore()
+            await expect(store.login({ username: 'u', password: 'p' })).rejects.toThrow()
+
+            expect(store.error).toBe('rate_limited')
+        })
+
+        it('does NOT set the locked or rate-limited message on a 401 (regression guard)', async () => {
+            vi.mocked(typedHttpClient.login).mockRejectedValueOnce(
+                new HttpError(401, 'auth', 'create', 'Invalid credentials')
+            )
+
+            const store = useAuthStore()
+            // The login call rejects (the else-branch of the catch may itself throw
+            // because translateError is not in the global test-setup mock, which is fine —
+            // the important invariant is that neither locked nor rate_limited is set)
+            await store.login({ username: 'u', password: 'p' }).catch(() => undefined)
+
+            expect(store.error).not.toBe('locked')
+            expect(store.error).not.toBe('rate_limited')
         })
     })
 

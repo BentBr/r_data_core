@@ -346,6 +346,108 @@ jobs:
                       exit 1
                     fi
 
+    # Layering / hygiene guards: SQL-boundary + file-length (pure shell, fast).
+    backend-static-guards:
+        needs: changes
+        if: ${{ needs.changes.outputs.backend == 'true' }}
+        runs-on: ubuntu-latest
+        steps:
+            -   name: Checkout
+                uses: actions/checkout@v4
+
+            -   name: SQL boundary (queries stay in persistence)
+                run: ./scripts/check-sql-boundary.sh
+
+            -   name: File length (300 soft / 500 hard)
+                run: ./scripts/check-file-length.sh
+
+    # Dependency policy: licenses, sources, duplicate-version visibility.
+    # (Vulnerability advisories are covered by the backend-audit job.)
+    backend-deny:
+        needs: [ changes, backend-prepare ]
+        if: ${{ needs.changes.outputs.backend == 'true' }}
+        runs-on: ubuntu-latest
+        steps:
+            -   name: Checkout
+                uses: actions/checkout@v4
+
+            -   name: Install Rust (nightly)
+                uses: dtolnay/rust-toolchain@master
+                with:
+                    toolchain: nightly
+
+            -   name: Cache cargo bin directory
+                uses: actions/cache@v4
+                with:
+                    path: ~/.cargo/bin
+                    key: ${{ runner.os }}-cargo-bin-${{ hashFiles('Cargo.lock') }}
+                    restore-keys: |
+                        ${{ runner.os }}-cargo-bin-
+
+            -   name: Install cargo-deny
+                run: |
+                    if ! command -v cargo-deny &> /dev/null; then
+                      cargo install cargo-deny --locked
+                    fi
+
+            -   name: cargo-deny (bans + licenses + sources)
+                run: cargo deny check bans licenses sources
+
+    # Unused-dependency check.
+    backend-machete:
+        needs: [ changes, backend-prepare ]
+        if: ${{ needs.changes.outputs.backend == 'true' }}
+        runs-on: ubuntu-latest
+        steps:
+            -   name: Checkout
+                uses: actions/checkout@v4
+
+            -   name: Install Rust (nightly)
+                uses: dtolnay/rust-toolchain@master
+                with:
+                    toolchain: nightly
+
+            -   name: Cache cargo bin directory
+                uses: actions/cache@v4
+                with:
+                    path: ~/.cargo/bin
+                    key: ${{ runner.os }}-cargo-bin-${{ hashFiles('Cargo.lock') }}
+                    restore-keys: |
+                        ${{ runner.os }}-cargo-bin-
+
+            -   name: Install cargo-machete
+                run: |
+                    if ! command -v cargo-machete &> /dev/null; then
+                      cargo install cargo-machete --locked
+                    fi
+
+            -   name: cargo-machete
+                run: cargo machete
+
+    # MSRV verification: production code must build on the documented minimum.
+    backend-msrv:
+        needs: [ changes, backend-prepare ]
+        if: ${{ needs.changes.outputs.backend == 'true' }}
+        runs-on: ubuntu-latest
+        steps:
+            -   name: Checkout
+                uses: actions/checkout@v4
+
+            -   name: Install Rust 1.96.0 (MSRV)
+                uses: dtolnay/rust-toolchain@master
+                with:
+                    toolchain: 1.96.0
+
+            -   name: Cache cargo registry + build
+                uses: swatinem/rust-cache@v2
+                with:
+                    workspaces: .
+
+            -   name: Check on MSRV
+                env:
+                    SQLX_OFFLINE: true
+                run: cargo +1.96.0 check --workspace
+
     # ============================================================================
     # Frontend Jobs - Only run when frontend files change
     # ============================================================================
@@ -658,6 +760,11 @@ jobs:
                 env:
                     E2E_BASE_URL: http://localhost:5173
                     E2E_API_BASE_URL: http://localhost:8080
+                    # Redis runs as a docker container published on the runner's
+                    # localhost (see "Start Redis"); the e2e rate-limit helper
+                    # connects here to clear the per-IP login counter.
+                    E2E_REDIS_HOST: localhost
+                    E2E_REDIS_PORT: '6379'
                 run: pnpm exec playwright test --config=e2e/playwright.config.ts
 
             -   name: Upload Playwright report
@@ -688,6 +795,10 @@ jobs:
             - backend-tests
             - backend-build
             - backend-ts-bindings
+            - backend-static-guards
+            - backend-deny
+            - backend-machete
+            - backend-msrv
             - frontend-lint
             - frontend-tests
             - frontend-audit
@@ -707,6 +818,10 @@ jobs:
                     BACKEND_TESTS: ${{ needs.backend-tests.result }}
                     BACKEND_BUILD: ${{ needs.backend-build.result }}
                     BACKEND_TS_BINDINGS: ${{ needs.backend-ts-bindings.result }}
+                    BACKEND_STATIC_GUARDS: ${{ needs.backend-static-guards.result }}
+                    BACKEND_DENY: ${{ needs.backend-deny.result }}
+                    BACKEND_MACHETE: ${{ needs.backend-machete.result }}
+                    BACKEND_MSRV: ${{ needs.backend-msrv.result }}
                     FRONTEND_LINT: ${{ needs.frontend-lint.result }}
                     FRONTEND_TESTS: ${{ needs.frontend-tests.result }}
                     FRONTEND_AUDIT: ${{ needs.frontend-audit.result }}
@@ -731,6 +846,10 @@ jobs:
                       require_success backend-tests       "$BACKEND_TESTS"
                       require_success backend-build       "$BACKEND_BUILD"
                       require_success backend-ts-bindings "$BACKEND_TS_BINDINGS"
+                      require_success backend-static-guards "$BACKEND_STATIC_GUARDS"
+                      require_success backend-deny        "$BACKEND_DENY"
+                      require_success backend-machete     "$BACKEND_MACHETE"
+                      require_success backend-msrv        "$BACKEND_MSRV"
                     fi
 
                     if [[ "$FRONTEND_NEEDED" == "true" ]]; then

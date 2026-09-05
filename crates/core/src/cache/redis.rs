@@ -108,6 +108,27 @@ impl CacheBackend for RedisCache {
         Ok(())
     }
 
+    async fn increment(&self, key: &str, ttl: u64) -> Result<u32> {
+        let mut conn = self.get_connection().await?;
+
+        let count: i64 = conn
+            .incr(key, 1)
+            .await
+            .map_err(|e| Error::Cache(format!("Failed to increment key in Redis: {e}")))?;
+
+        // NX sets the expiry only when the key has none, so the window starts
+        // at the first hit and is not extended by later ones.
+        let _: i64 = redis::cmd("EXPIRE")
+            .arg(key)
+            .arg(ttl)
+            .arg("NX")
+            .query_async(&mut conn)
+            .await
+            .map_err(|e| Error::Cache(format!("Failed to set expiry in Redis: {e}")))?;
+
+        Ok(u32::try_from(count).unwrap_or(u32::MAX))
+    }
+
     async fn delete(&self, key: &str) -> Result<()> {
         let mut conn = self.get_connection().await?;
 

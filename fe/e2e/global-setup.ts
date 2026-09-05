@@ -12,6 +12,7 @@ import {
     deleteUserByUsername,
     type TestDataIds,
 } from './helpers/api-client'
+import { clearLoginRateLimit } from './helpers/redis'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const TEST_DATA_FILE = path.resolve(__dirname, '.e2e-test-data.json')
@@ -20,6 +21,10 @@ export default async function globalSetup(): Promise<void> {
     console.log('[E2E Setup] Starting global setup...')
 
     const testData: TestDataIds = {}
+
+    // Clear any leftover login rate-limit counter (e.g. from a crashed prior
+    // run) before the first login, so setup is never blocked by a stale 429.
+    await clearLoginRateLimit()
 
     const token = await login()
     console.log('[E2E Setup] Admin login successful')

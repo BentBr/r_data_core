@@ -38,8 +38,7 @@
 
         // Get the icon component from Lucide
         const Icon = (LucideIcons as Record<string, unknown>)[iconName] as
-            | typeof LucideIcons.File
-            | undefined
+            typeof LucideIcons.File | undefined
 
         if (!Icon) {
             console.warn(`Lucide icon "${props.name}" (${iconName}) not found`)

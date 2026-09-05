@@ -2,6 +2,7 @@
 
 use async_trait::async_trait;
 use std::collections::HashMap;
+use time::OffsetDateTime;
 use uuid::Uuid;
 
 use r_data_core_core::entity_definition::definition::EntityDefinition;
@@ -269,6 +270,19 @@ impl r_data_core_persistence::AdminUserRepositoryTrait for AdminUserRepositoryAd
     async fn update_last_login(&self, uuid: &Uuid) -> Result<()> {
         log::debug!("AdminUserRepositoryAdapter::update_last_login called with uuid: {uuid}");
         self.inner.update_last_login(uuid).await
+    }
+
+    async fn update_lockout_state(
+        &self,
+        uuid: &Uuid,
+        status: &r_data_core_core::admin_user::UserStatus,
+        failed_login_attempts: i32,
+        locked_until: Option<OffsetDateTime>,
+    ) -> Result<()> {
+        log::debug!("AdminUserRepositoryAdapter::update_lockout_state called with uuid: {uuid}");
+        self.inner
+            .update_lockout_state(uuid, status, failed_login_attempts, locked_until)
+            .await
     }
 
     async fn create_admin_user<'a>(

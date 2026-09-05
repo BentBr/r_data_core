@@ -37,9 +37,7 @@ impl InMemoryCache {
     /// Panics if `max_size` is 0 and `NonZeroUsize::new(1)` fails (should never happen)
     #[must_use]
     pub fn new(default_ttl: u64, max_size: usize) -> Self {
-        let capacity = NonZeroUsize::new(max_size).unwrap_or_else(|| {
-            NonZeroUsize::new(1).expect("NonZeroUsize::new(1) should never fail")
-        });
+        let capacity = NonZeroUsize::new(max_size).unwrap_or(NonZeroUsize::MIN);
         Self {
             data: RwLock::new(LruCache::new(capacity)),
             default_ttl,
@@ -120,6 +118,32 @@ impl CacheBackend for InMemoryCache {
         Ok(())
     }
 
+    #[allow(clippy::significant_drop_tightening)]
+    async fn increment(&self, key: &str, ttl: u64) -> Result<u32> {
+        let mut cache = self.data.write().await;
+
+        // Keep the existing expiry so the window does not slide forward.
+        let existing = cache.get(key).filter(|e| !Self::is_expired(e));
+        let expires_at = existing.and_then(|e| e.expires_at);
+        let current = existing
+            .and_then(|e| serde_json::from_slice::<u32>(&e.value).ok())
+            .unwrap_or(0);
+
+        let next = current.saturating_add(1);
+        let expires_at =
+            expires_at.or_else(|| (ttl > 0).then(|| Instant::now() + Duration::from_secs(ttl)));
+
+        cache.put(
+            key.to_string(),
+            CacheEntry {
+                value: next.to_string().into_bytes(),
+                expires_at,
+            },
+        );
+
+        Ok(next)
+    }
+
     async fn delete(&self, key: &str) -> Result<()> {
         {
             let mut cache = self.data.write().await;
@@ -159,5 +183,56 @@ impl CacheBackend for InMemoryCache {
         }
 
         Ok(deleted)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{CacheBackend, InMemoryCache};
+
+    #[tokio::test]
+    async fn increment_counts_up_from_absent() {
+        let cache = InMemoryCache::new(60, 16);
+
+        assert_eq!(cache.increment("k", 60).await.unwrap_or(0), 1);
+        assert_eq!(cache.increment("k", 60).await.unwrap_or(0), 2);
+        assert_eq!(cache.get::<u32>("k").await.unwrap_or(None), Some(2));
+    }
+
+    #[tokio::test]
+    async fn increment_keeps_the_original_window() {
+        let cache = InMemoryCache::new(60, 16);
+
+        cache.increment("k", 60).await.unwrap_or(0);
+        let first_expiry = {
+            let mut data = cache.data.write().await;
+            data.get("k").and_then(|e| e.expires_at)
+        };
+
+        cache.increment("k", 600).await.unwrap_or(0);
+        let second_expiry = {
+            let mut data = cache.data.write().await;
+            data.get("k").and_then(|e| e.expires_at)
+        };
+
+        assert_eq!(first_expiry, second_expiry);
+    }
+
+    #[tokio::test]
+    async fn increment_restarts_after_delete() {
+        let cache = InMemoryCache::new(60, 16);
+
+        cache.increment("k", 60).await.unwrap_or(0);
+        cache.delete("k").await.unwrap_or(());
+
+        assert_eq!(cache.increment("k", 60).await.unwrap_or(0), 1);
+    }
+
+    #[tokio::test]
+    async fn increment_reads_a_value_written_by_set() {
+        let cache = InMemoryCache::new(60, 16);
+        cache.set("k", &7u32, Some(60)).await.unwrap_or(());
+
+        assert_eq!(cache.increment("k", 60).await.unwrap_or(0), 8);
     }
 }

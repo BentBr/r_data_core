@@ -3,8 +3,17 @@
 use r_data_core_core::entity_definition::definition::EntityDefinition;
 use r_data_core_core::error::Result;
 use std::collections::HashMap;
+use std::sync::LazyLock;
 
 use super::EntityDefinitionService;
+
+/// Identifier pattern shared by entity-type and field-name validation:
+/// must start with a letter, then letters/digits/underscores.
+static IDENTIFIER_RE: LazyLock<regex::Regex> = LazyLock::new(|| {
+    #[allow(clippy::expect_used)]
+    // hardcoded literal — pattern validity is a compile-time invariant
+    regex::Regex::new(r"^[a-zA-Z][a-zA-Z0-9_]*$").expect("invalid identifier regex")
+});
 
 impl EntityDefinitionService {
     /// Validate entity type name
@@ -16,9 +25,7 @@ impl EntityDefinitionService {
     /// Returns an error if entity type is invalid or reserved
     pub(crate) fn validate_entity_type(entity_type: &str) -> Result<()> {
         // Entity type must be alphanumeric with underscores, starting with a letter
-        let valid_pattern = regex::Regex::new(r"^[a-zA-Z][a-zA-Z0-9_]*$").unwrap();
-
-        if !valid_pattern.is_match(entity_type) {
+        if !IDENTIFIER_RE.is_match(entity_type) {
             return Err(r_data_core_core::error::Error::Validation(format!(
                 "Entity type '{entity_type}' must start with a letter and contain only letters, numbers, and underscores"
             )));
@@ -60,12 +67,9 @@ impl EntityDefinitionService {
             field_names.insert(field.name.to_lowercase(), field_names.len() + 1);
         }
 
-        // Field name must be alphanumeric with underscores, starting with a letter
-        let valid_pattern = regex::Regex::new(r"^[a-zA-Z][a-zA-Z0-9_]*$").unwrap();
-
         // Validate each field
         for field in &definition.fields {
-            if !valid_pattern.is_match(&field.name) {
+            if !IDENTIFIER_RE.is_match(&field.name) {
                 return Err(r_data_core_core::error::Error::Validation(format!(
                     "Field name '{}' must start with a letter and contain only letters, numbers, and underscores",
                     field.name

@@ -1,10 +1,26 @@
 use serde::{de::DeserializeOwned, Serialize};
 use sqlx::{FromRow, PgPool, Postgres, QueryBuilder, Row};
 use std::marker::PhantomData;
+use time::OffsetDateTime;
 use uuid::Uuid;
 
 use r_data_core_core::error::{Error, Result};
 use r_data_core_core::versioning::VersionedData;
+
+/// Deserialize a required timestamp field from an entity's JSON form into a real
+/// [`OffsetDateTime`].
+///
+/// This is format-agnostic: it round-trips through serde, so it works whether
+/// `time` serializes the value as an RFC3339 string or its component-array form.
+/// The resulting `OffsetDateTime` binds correctly to a `TIMESTAMPTZ` column —
+/// binding the raw JSON value as text fails with Postgres error 42804.
+fn parse_timestamp_field(json: &serde_json::Value, field: &str) -> Result<OffsetDateTime> {
+    let value = json
+        .get(field)
+        .cloned()
+        .ok_or_else(|| Error::Entity(format!("Missing {field}")))?;
+    serde_json::from_value(value).map_err(Error::Serialization)
+}
 
 /// Extension trait for ``PgPool`` to add `repository()` function
 pub trait PgPoolExtension {
@@ -197,14 +213,8 @@ where
 
         // Get values for common fields
         let uuid = Uuid::parse_str(uuid).map_err(|_| Error::Entity("Invalid UUID".to_string()))?;
-        let created_at = json
-            .get("created_at")
-            .and_then(|v| v.as_str())
-            .ok_or_else(|| Error::Entity("Missing created_at".to_string()))?;
-        let updated_at = json
-            .get("updated_at")
-            .and_then(|v| v.as_str())
-            .ok_or_else(|| Error::Entity("Missing updated_at".to_string()))?;
+        let created_at = parse_timestamp_field(&json, "created_at")?;
+        let updated_at = parse_timestamp_field(&json, "updated_at")?;
         let created_by = json
             .get("created_by")
             .and_then(|v| v.as_str())
@@ -263,10 +273,7 @@ where
             .get("path")
             .and_then(|v| v.as_str())
             .ok_or_else(|| Error::Entity("Missing path".to_string()))?;
-        let updated_at = json
-            .get("updated_at")
-            .and_then(|v| v.as_str())
-            .ok_or_else(|| Error::Entity("Missing updated_at".to_string()))?;
+        let updated_at = parse_timestamp_field(&json, "updated_at")?;
         let updated_by = json
             .get("updated_by")
             .and_then(|v| v.as_str())

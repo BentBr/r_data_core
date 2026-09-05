@@ -30,6 +30,16 @@ pub trait CacheBackend: Send + Sync {
         ttl: Option<u64>,
     ) -> Result<()>;
 
+    /// Atomically increment an integer counter and return the new value.
+    ///
+    /// The key is created with value `1` and the given TTL when absent. An
+    /// existing key keeps its remaining TTL, so the counter describes a fixed
+    /// window that does not slide forward on every hit.
+    ///
+    /// # Errors
+    /// Returns an error if the counter cannot be updated.
+    async fn increment(&self, key: &str, ttl: u64) -> Result<u32>;
+
     /// Delete a value from the cache
     ///
     /// # Errors

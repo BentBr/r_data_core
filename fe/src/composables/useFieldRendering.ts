@@ -54,8 +54,7 @@ export function useFieldRendering() {
         const rules: ValidationRule[] = []
         // API returns nested structure: constraints.constraints.{property}
         const innerConstraints = field.constraints?.constraints as
-            | Record<string, unknown>
-            | undefined
+            Record<string, unknown> | undefined
 
         if (field.required) {
             rules.push(v => !!v || `${field.display_name || field.name} is required`)

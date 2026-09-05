@@ -101,6 +101,14 @@ services:
             QUEUE_EMAIL_KEY: "queue:email"
             PASSWORD_RESET_THROTTLE_SECONDS: 60
             FRONTEND_BASE_URL: "http://admin.rdatacore.docker"
+            # Reverse proxies whose X-Forwarded-For may be believed. Without this
+            # every request is attributed to the proxy and the per-IP login limit
+            # becomes a global one. Docker bridge range covers the local ingress.
+            TRUSTED_PROXIES: "172.16.0.0/12,192.168.0.0/16,10.0.0.0/8"
+            LOGIN_MAX_FAILED_ATTEMPTS: 5
+            LOGIN_LOCKOUT_DURATION_SECS: 900
+            LOGIN_RATE_LIMIT_MAX_ATTEMPTS: 10
+            LOGIN_RATE_LIMIT_WINDOW_SECS: 900
             OUTBOX_ENABLED: true
             OUTBOX_FETCH_ENABLED: true
             OUTBOX_PUSH_ENABLED: true

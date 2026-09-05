@@ -5,6 +5,7 @@ edition = "2021"
 description = "Persistence (database) crate of - A Master Data Managebent backend providing efficient data handling and distribution with custom entities and workflows"
 authors = ["Bent Brüggemann <mail@bent-brueggemann.de>"]
 license = "Business"
+publish = false  # proprietary — never published to a registry
 
 [dependencies]
 sqlx = { version = "0.8.6", features = ["runtime-tokio-rustls", "postgres", "uuid", "json", "time", "migrate"] }
@@ -17,7 +18,6 @@ async-trait = "0.1"
 time = { version = "0.3", features = ["serde", "formatting", "parsing", "macros"] }
 r_data_core_core = { path = "../core" }
 r_data_core_workflow = { path = "../workflow" }
-argon2 = "0.5"
 dotenvy = "0.15"
 
 
