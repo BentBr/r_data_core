@@ -224,6 +224,21 @@ jobs:
                             owner, repo, state: 'open', head: `${owner}:${head}`, per_page: 10
                         });
 
+                        // Anything a human wrote between these markers is carried
+                        // over, so a hand-written summary survives the next push.
+                        const START = '<!-- pr:summary-start -->';
+                        const END = '<!-- pr:summary-end -->';
+                        const carryOverSummary = (previous, generated) => {
+                            const from = (previous || '').indexOf(START);
+                            const to = (previous || '').indexOf(END);
+                            if (from === -1 || to === -1 || to < from) {
+                                return generated;
+                            }
+                            const kept = previous.slice(from, to + END.length);
+                            core.info('Preserving hand-written PR summary.');
+                            return `${kept}\n\n${generated}`;
+                        };
+
                         let pr;
                         let created = false;
                         if (open.length > 0) {
@@ -231,7 +246,10 @@ jobs:
                             if (pr.base.ref !== base) {
                                 core.info(`Open PR #${pr.number} targets ${pr.base.ref}, not ${base} — leaving as-is.`);
                             } else {
-                                await github.rest.pulls.update({ owner, repo, pull_number: pr.number, title, body });
+                                await github.rest.pulls.update({
+                                    owner, repo, pull_number: pr.number, title,
+                                    body: carryOverSummary(pr.body, body),
+                                });
                                 core.info(`Updated PR #${pr.number}`);
                             }
                         } else {
