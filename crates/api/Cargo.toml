@@ -48,7 +48,7 @@ utoipa = { version = "5.4.0", features = ["actix_extras", "time", "uuid"] }
 utoipa-swagger-ui = { version = "9.0.2", features = ["actix-web", "debug-embed"] }
 
 # Validation
-validator = { version = "0.20.0", features = ["derive"] }
+validator = { version = "0.21.0", features = ["derive"] }
 
 # TypeScript bindings
 ts-rs = { version = "10", features = ["serde-compat"] }

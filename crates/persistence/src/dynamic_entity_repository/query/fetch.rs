@@ -52,7 +52,7 @@ pub async fn get_by_type_impl(
             // Add requested fields
             for field in fields {
                 if !selected_fields.contains(&field) {
-                    selected_fields.push(field.clone());
+                    selected_fields.push(field);
                 }
             }
 
@@ -125,7 +125,7 @@ pub async fn get_all_by_type_impl(
             // Add requested fields
             for field in fields {
                 if !selected_fields.contains(&field) {
-                    selected_fields.push(field.clone());
+                    selected_fields.push(field);
                 }
             }
 

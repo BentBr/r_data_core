@@ -1,3 +1,15 @@
 [advisories]
-ignore = ["RUSTSEC-2023-0071"]
-
+# Each entry needs a reason and a way out. Re-check on every dependency bump:
+# if the upstream fix has landed, drop the id rather than carrying it forever.
+#
+# RUSTSEC-2023-0071 — Marvin attack in `rsa`, reached via sqlx-mysql. We do not
+#   use MySQL; the crate is pulled in by sqlx's feature unification only. No
+#   fixed release exists.
+#
+# RUSTSEC-2026-0258 — `h2` unbounded empty DATA frames (DoS). Fixed in h2
+#   >= 0.4.16, but actix-http 3.13.5 (the latest of the 4.x line) still pins
+#   h2 0.3.x, and no 0.3 backport exists. There is nothing to upgrade to short
+#   of an actix-web major that has not been released. Mitigated in practice by
+#   terminating client connections at the reverse proxy and speaking HTTP/1.1
+#   to the application. Drop this the moment actix-web ships on h2 0.4.
+ignore = ["RUSTSEC-2023-0071", "RUSTSEC-2026-0258"]

@@ -10,6 +10,11 @@ version = 2
 # authoritative advisory gate, so keep this lenient to avoid double-failing on
 # advisory-DB churn.
 yanked = "deny"
+# Keep in step with .cargo/audit.toml, which carries the full reasoning.
+# RUSTSEC-2026-0258: `h2` DoS, fixed in >= 0.4.16, but actix-http 3.13.5 (latest
+# of the 4.x line) still pins h2 0.3.x with no backport. Nothing to upgrade to;
+# drop this as soon as actix-web ships on h2 0.4.
+ignore = ["RUSTSEC-2026-0258"]
 
 [bans]
 # The dependency tree pulls many unavoidable transitive duplicates (e.g. `http`
