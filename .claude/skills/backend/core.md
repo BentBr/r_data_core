@@ -12,20 +12,21 @@ description: Domain models, configuration, cache abstraction, field types, versi
 
 | Module | Responsibility |
 |--------|----------------|
-| `config/` | Configuration loading: `AppConfig`, `WorkerConfig`, `MaintenanceConfig`, `DatabaseConfig`, `CacheConfig`, `QueueConfig`, `LicenseConfig` |
+| `config/` | Configuration loading: `AppConfig`, `WorkerConfig`, `MaintenanceConfig`, `DatabaseConfig`, `CacheConfig`, `QueueConfig`, `LicenseConfig`, `SecurityConfig` |
+| `net.rs` | `IpCidr` / `TrustedProxies` — reverse-proxy address matching |
 | `domain/` | Core domain models: `DynamicEntity`, `AbstractRDataEntity` |
 | `entity_definition/` | Entity schema definitions with field types, validation rules, UI settings |
 | `field/` | Field type definitions, constraints, and value handling |
 | `admin_user/` | Admin user models and operations |
 | `admin_jwt/` | JWT generation/validation for admin auth |
 | `entity_jwt/` | JWT generation/validation for entity/public auth |
-| `cache/` | Cache abstraction (Redis + in-memory backends via `CacheManager`) |
+| `cache/` | Cache abstraction (Redis + in-memory backends via `CacheManager`, incl. atomic `increment`) |
 | `permissions/` | Permission and role models |
 | `public_api/` | Public API models |
 | `refresh_token/` | Refresh token models |
 | `settings/` | System settings management |
 | `versioning/` | Entity versioning support |
-| `crypto/` | Cryptographic utilities |
+| `crypto/` | Argon2 hashing/verification, plus `verify_dummy_password` for constant-cost misses |
 | `maintenance/` | Maintenance utilities |
 | `error.rs` | Custom error types with `thiserror` |
 
@@ -33,7 +34,14 @@ description: Domain models, configuration, cache abstraction, field types, versi
 
 - `DynamicEntity` — the central domain model for flexible runtime entities
 - Configuration structs loaded from environment variables
-- `CacheManager` — dual-backend cache (Redis / in-memory LRU)
+- `CacheManager` — dual-backend cache (Redis / in-memory LRU). `increment(key, ttl)`
+  is atomic (Redis `INCR` + `EXPIRE NX`) and keeps a fixed window; use it for
+  counters rather than read-modify-write via `get`/`set`.
+- `SecurityConfig::global()` — login hardening knobs read from env (trusted
+  proxies, lockout threshold/duration, rate-limit max/window). Deliberately not
+  a field on `ApiConfig`, which ~60 test literals construct by hand.
+- `AppConfig::is_hardened()` — fails closed: only `development`/`dev`/`local`/`test`
+  are relaxed, so staging gets production CORS and SSRF policy.
 - JWT claim types and token generation
 - Field type system (definition, constraints, values)
 

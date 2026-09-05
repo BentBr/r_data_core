@@ -45,6 +45,31 @@ Run via: `rdt clippy`
 | `write_with_newline` | `writeln!` instead of `write!` with `\n` |
 | `module_inception` | Rename inner `mod foo_tests` to `mod tests` |
 
+## No Panics in Production Code
+
+Every production crate root carries:
+
+```rust
+#![deny(unsafe_code)]
+#![deny(clippy::unwrap_used, clippy::expect_used, clippy::panic, clippy::todo, clippy::unimplemented)]
+```
+
+So `unwrap`/`expect`/`panic!`/`todo!`/`unimplemented!` are compile errors outside
+tests. Return a `Result`, use `unwrap_or`/`map_or_else`/`let ... else`, or — when
+the call is genuinely infallible — add a narrowly scoped `#[allow(...)]` **with a
+comment saying why**. `crates/test-support` is exempt (dev-only).
+
+## Structural CI Guards
+
+Four checks run in CI beyond clippy/fmt; run them locally before pushing:
+
+| Guard | Command | Rule |
+|-------|---------|------|
+| SQL boundary | `./scripts/check-sql-boundary.sh` | `sqlx::query*` only in `crates/persistence/src` (and `test-support`) |
+| File length | `./scripts/check-file-length.sh` | 300-line soft cap, 500-line hard cap |
+| Layering | `cargo test --test architecture` | cargo-metadata dependency allowlist |
+| MSRV | `cargo +1.96.0 check --workspace` | no post-1.96 APIs |
+
 ## File Length Limits
 
 - **300 lines**: Soft cap — prefer splitting files that exceed this.

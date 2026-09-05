@@ -44,7 +44,27 @@ blockers with the exact lines to add — never attempt a bypass.
 
 ## CI
 
-`.github/workflows/` mirrors the pre-push gate plus `generate-ts-check`.
+`.github/workflows/` mirrors the pre-push gate plus `generate-ts-check` and the
+structural guards: `check-sql-boundary.sh`, `check-file-length.sh`, the
+`architecture` layering test, `cargo-deny`, `cargo-machete`, and MSRV.
+
+## Security env vars
+
+Set on the `app` service (see `compose.yaml` and `docs/DEVELOPMENT.md`):
+
+| Var | Purpose |
+|-----|---------|
+| `TRUSTED_PROXIES` | IPs/CIDRs whose `X-Forwarded-For` is believed. **Required behind a proxy** or the per-IP login limit becomes global. |
+| `LOGIN_MAX_FAILED_ATTEMPTS` / `LOGIN_LOCKOUT_DURATION_SECS` | Account lockout threshold and expiry (`0` = permanent) |
+| `LOGIN_RATE_LIMIT_MAX_ATTEMPTS` / `LOGIN_RATE_LIMIT_WINDOW_SECS` | Per-IP throttle on `/auth/login` and `/auth/register` |
+| `SSRF_ALLOWED_HOSTS` | Hosts the workflow HTTP adapters may reach past the SSRF guard |
+| `CORS_ORIGINS` | Must be explicit and non-wildcard in a hardened environment or the server refuses to start |
+
+`APP_ENV` fails closed: only `development`/`dev`/`local`/`test` relax CORS and
+the SSRF guard — staging and an unset value are hardened.
+
+Unlock a locked admin: `cargo run --bin user_actions -- --username <n> --action unlock`,
+or `PUT /admin/api/v1/users/{uuid}` with `{"status": "active"}`.
 
 ## Operating rules for the devops agent
 

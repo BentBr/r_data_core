@@ -231,6 +231,88 @@ cargo clippy --workspace --all-targets --all-features -- \
 cargo fmt --check --all
 ```
 
+### CI Guards
+
+Beyond clippy and rustfmt, CI enforces four structural rules. Run them locally
+before pushing — they are cheap and fail fast:
+
+```bash
+./scripts/check-sql-boundary.sh   # SQL only inside crates/persistence
+./scripts/check-file-length.sh    # 300-line soft cap, 500-line hard cap
+cargo test --test architecture      # crate layering (cargo-metadata based)
+cargo +1.96.0 check --workspace    # MSRV
+```
+
+### No Panics in Production Code
+
+Every production crate root denies the panicking escape hatches:
+
+```rust
+#![deny(unsafe_code)]
+#![deny(clippy::unwrap_used, clippy::expect_used, clippy::panic, clippy::todo, clippy::unimplemented)]
+```
+
+Where an unwrap is genuinely infallible, add a narrowly scoped
+`#[allow(...)]` **with a comment saying why**. Tests are exempt.
+
+## Security & Operations
+
+### Client IP and Rate Limiting
+
+The unauthenticated auth endpoints (`/auth/login`, `/auth/register`) are limited
+per client IP. Behind a reverse proxy every request carries the proxy's peer
+address, so the limit would apply to everyone at once unless the deployment
+tells the server which proxies to trust:
+
+1. Set `TRUSTED_PROXIES` to the proxy's address or CIDR block.
+2. Make sure that proxy sets `X-Forwarded-For`.
+
+`X-Forwarded-For` is only read when the immediate peer is in `TRUSTED_PROXIES`;
+otherwise the peer address is used and a forged header is ignored. Requests with
+no peer address share one `unknown` bucket.
+
+The counter is an atomic Redis `INCR` with an expiry set once per window, so
+parallel requests cannot undercount and the window does not slide forward on
+every hit.
+
+### Account Lockout and Unlocking
+
+`LOGIN_MAX_FAILED_ATTEMPTS` consecutive bad passwords lock an account for
+`LOGIN_LOCKOUT_DURATION_SECS`. The lock lifts itself on the next login once the
+expiry has passed — an attacker cannot park an admin account in the locked state
+indefinitely. Setting the duration to `0` makes locks permanent, which then
+requires one of the recovery paths below.
+
+Three ways back in:
+
+| Path | Who | Notes |
+|------|-----|-------|
+| Admin UI / API | An operator with `Users:Update` | `PUT /admin/api/v1/users/{uuid}` with `{"status": "active"}`; the Users tab shows a lock icon on locked accounts |
+| Password reset | The user | The reset flow clears the lockout; needs mail configured |
+| `user_actions` CLI | An operator with DB access | Last resort when nobody can reach the UI |
+
+```bash
+cargo run --bin user_actions -- --username <name> --action unlock
+# also: lock | activate | deactivate | password-reset --password <new>
+```
+
+An operator lock (CLI or `{"status": "locked"}`) carries no expiry and never
+lifts itself.
+
+### Environment Hardening
+
+`AppConfig::is_hardened()` gates the environment-sensitive policy. It fails
+closed: only `development`, `dev`, `local` and `test` are treated as relaxed, so
+staging, preprod and an unset `APP_ENV` are hardened like production.
+
+In a hardened environment:
+
+- `CORS_ORIGINS` must be set to explicit, non-wildcard origins or the server
+  refuses to start.
+- The SSRF guard in the workflow HTTP adapters blocks private, loopback,
+  link-local and IPv4-mapped addresses, re-validating every DNS resolution and
+  every redirect hop. `SSRF_ALLOWED_HOSTS` is the escape hatch.
+
 ## SQLx Notes
 
 This project uses SQLx with compile-time query verification. This means:
@@ -271,6 +353,15 @@ If you encounter compilation errors about missing tables:
 - `CACHE_API_KEY_TTL` - API key cache TTL in seconds (default: 600)
 - `QUEUE_FETCH_KEY` - Redis key for fetch jobs queue (default: "queue:workflows:fetch")
 - `QUEUE_PROCESS_KEY` - Redis key for process jobs queue (default: "queue:workflows:process")
+
+**Security (see [Security & Operations](#security--operations)):**
+- `TRUSTED_PROXIES` - Comma-separated IPs/CIDRs of reverse proxies whose `X-Forwarded-For` may be believed (default: empty)
+- `LOGIN_MAX_FAILED_ATTEMPTS` - Failed passwords before an account is locked (default: 5)
+- `LOGIN_LOCKOUT_DURATION_SECS` - How long a lock lasts before it expires; 0 = until an operator unlocks (default: 900)
+- `LOGIN_RATE_LIMIT_MAX_ATTEMPTS` - Failed logins per client IP per window (default: 10)
+- `LOGIN_RATE_LIMIT_WINDOW_SECS` - Rate-limit window in seconds (default: 900)
+- `SSRF_ALLOWED_HOSTS` - Comma-separated hosts the workflow HTTP adapters may reach even when they resolve to a blocked address (default: empty)
+- `PASSWORD_RESET_THROTTLE_SECONDS` - Minimum seconds between password-reset requests for one account (default: 60)
 
 ### Workflow Worker
 
