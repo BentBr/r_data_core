@@ -17,6 +17,7 @@ pub mod entity_definition_integration_tests;
 pub mod entity_definitions;
 pub mod error_handling_tests;
 pub mod meta;
+pub mod oidc;
 pub mod provider_workflow_endpoints_tests;
 pub mod public_entities_tests;
 pub mod query_validation_integration_tests;

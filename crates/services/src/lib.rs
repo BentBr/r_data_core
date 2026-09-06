@@ -21,6 +21,9 @@ pub mod license;
 pub mod mail;
 pub mod oidc_keys;
 pub mod oidc_provisioning;
+pub mod oidc_runtime;
+#[cfg(test)]
+mod oidc_test_fakes;
 pub mod password_reset;
 pub mod query_validation;
 pub mod role;
@@ -46,6 +49,7 @@ pub use dynamic_entity::DynamicEntityService;
 pub use entity_definition::{EntityDefinitionService, ServiceEntityFieldInfo};
 pub use license::LicenseService;
 pub use mail::MailService;
+pub use oidc_runtime::{OidcAuthError, OidcRuntime};
 pub use password_reset::PasswordResetService;
 pub use query_validation::{
     validate_list_query, FieldValidator, ListQueryParams, ValidatedListQuery,

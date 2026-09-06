@@ -134,6 +134,7 @@ pub async fn build_app_state() -> anyhow::Result<(
         license_service,
         password_reset_service: None,
         system_log_service: None,
+        oidc_runtime: None,
     };
 
     let app_data = web::Data::new(ApiStateWrapper::new(api_state));

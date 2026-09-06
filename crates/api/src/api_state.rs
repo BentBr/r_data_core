@@ -21,6 +21,8 @@ pub trait ApiStateTrait: Send + Sync + 'static {
     fn license_service_ref(&self) -> &dyn std::any::Any;
     fn password_reset_service_ref(&self) -> Option<&dyn std::any::Any>;
     fn system_log_service_ref(&self) -> Option<&dyn std::any::Any>;
+    /// OIDC runtime, or `None` when single sign-on is not configured.
+    fn oidc_runtime_ref(&self) -> Option<&dyn std::any::Any>;
 
     /// Get `API` config - helper method that downcasts from `api_config_ref`
     fn api_config(&self) -> &r_data_core_core::config::ApiConfig {
@@ -137,6 +139,12 @@ pub trait ApiStateTrait: Send + Sync + 'static {
         self.system_log_service_ref()?
             .downcast_ref::<std::sync::Arc<r_data_core_services::SystemLogService>>()
     }
+
+    /// Get the OIDC runtime - returns `None` when single sign-on is off
+    fn oidc_runtime(&self) -> Option<&std::sync::Arc<r_data_core_services::OidcRuntime>> {
+        self.oidc_runtime_ref()?
+            .downcast_ref::<std::sync::Arc<r_data_core_services::OidcRuntime>>()
+    }
 }
 
 /// Wrapper type to allow `web::Data` extraction for `ApiStateTrait`
@@ -203,6 +211,10 @@ impl ApiStateTrait for ApiStateWrapper {
     fn system_log_service_ref(&self) -> Option<&dyn std::any::Any> {
         self.0.system_log_service_ref()
     }
+
+    fn oidc_runtime_ref(&self) -> Option<&dyn std::any::Any> {
+        self.0.oidc_runtime_ref()
+    }
 }
 
 // Note: We can't implement From<T: ApiStateTrait> for ApiStateWrapper because
@@ -254,7 +266,11 @@ pub fn configure_app_with_options(cfg: &mut web::ServiceConfig, options: &ApiCon
     cfg.service(health::admin_health_check)
         .service(health::public_health_check);
 
-    let mut scope = web::scope("").wrap(middleware::ErrorHandler);
+    // Ahead of the handlers so identity-provider tokens populate the same
+    // `AuthUserClaims` the local JWT arm does. Inert unless OIDC is configured.
+    let mut scope = web::scope("")
+        .wrap(middleware::OidcAuth::new())
+        .wrap(middleware::ErrorHandler);
 
     if options.enable_admin {
         log::debug!("Registering admin routes");

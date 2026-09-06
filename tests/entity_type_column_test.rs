@@ -314,6 +314,7 @@ async fn create_test_app_with_api_key_repo(
         license_service,
         password_reset_service: None,
         system_log_service: None,
+        oidc_runtime: None,
     };
 
     let app_data = web::Data::new(r_data_core_api::ApiStateWrapper::new(api_state));

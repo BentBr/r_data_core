@@ -17,6 +17,12 @@ use thiserror::Error;
 const DEFAULT_ROLES_CLAIM: &str = "groups";
 /// How long a fetched key set stays usable when unset.
 const DEFAULT_JWKS_TTL_SECS: u64 = 3600;
+/// How long a resolved identity is reused before being looked up again.
+///
+/// Short on purpose. This window is how long a user deactivated in
+/// `RDataCore` keeps working, so it trades a database round trip per request
+/// against the delay before a revocation takes effect.
+const DEFAULT_RESOLUTION_CACHE_SECS: u64 = 60;
 
 #[derive(Debug, Error, PartialEq, Eq)]
 pub enum OidcConfigError {
@@ -49,6 +55,8 @@ pub struct OidcConfig {
     /// same address. Requires `email_verified` on the token even when enabled.
     pub link_by_email: bool,
     pub jwks_ttl: Duration,
+    /// How long a resolved identity is reused before re-resolving it.
+    pub resolution_cache_ttl: Duration,
 }
 
 impl OidcConfig {
@@ -67,18 +75,12 @@ impl OidcConfig {
 
         let audience = get(map, "RDC_OIDC_AUDIENCE").ok_or(OidcConfigError::MissingAudience)?;
 
-        let jwks_ttl = match get(map, "RDC_OIDC_JWKS_TTL_SECS") {
-            None => Duration::from_secs(DEFAULT_JWKS_TTL_SECS),
-            Some(raw) => raw.parse::<u64>().map_or_else(
-                |_| {
-                    Err(OidcConfigError::InvalidNumber(
-                        "RDC_OIDC_JWKS_TTL_SECS",
-                        raw.to_string(),
-                    ))
-                },
-                |secs| Ok(Duration::from_secs(secs)),
-            )?,
-        };
+        let jwks_ttl = duration(map, "RDC_OIDC_JWKS_TTL_SECS", DEFAULT_JWKS_TTL_SECS)?;
+        let resolution_cache_ttl = duration(
+            map,
+            "RDC_OIDC_RESOLUTION_CACHE_SECS",
+            DEFAULT_RESOLUTION_CACHE_SECS,
+        )?;
 
         Ok(Some(Self {
             issuer: issuer.to_string(),
@@ -92,6 +94,7 @@ impl OidcConfig {
             link_by_email: get(map, "RDC_OIDC_LINK_BY_EMAIL")
                 .is_some_and(|v| v.eq_ignore_ascii_case("true")),
             jwks_ttl,
+            resolution_cache_ttl,
         }))
     }
 
@@ -102,6 +105,20 @@ impl OidcConfig {
     pub fn from_env() -> Result<Option<Self>, OidcConfigError> {
         Self::from_map(&std::env::vars().collect())
     }
+}
+
+/// Read a duration in seconds, falling back to a default when unset.
+fn duration(
+    map: &HashMap<String, String>,
+    key: &'static str,
+    default_secs: u64,
+) -> Result<Duration, OidcConfigError> {
+    let Some(raw) = get(map, key) else {
+        return Ok(Duration::from_secs(default_secs));
+    };
+    raw.parse::<u64>()
+        .map(Duration::from_secs)
+        .map_err(|_| OidcConfigError::InvalidNumber(key, raw.to_string()))
 }
 
 /// Parse `idp-group:rdc-role,other-group:other-role`.

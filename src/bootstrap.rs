@@ -16,18 +16,20 @@ use r_data_core_core::config::AppConfig;
 use r_data_core_core::settings::OutboxSettings;
 use r_data_core_persistence::{
     AdminUserRepository, ApiKeyRepository, DashboardStatsRepository, DynamicEntityRepository,
-    EmailTemplateRepository, EntityDefinitionRepository, OutboxRepository, PasswordResetRepository,
-    SystemLogRepository, WorkflowRepository,
+    EmailTemplateRepository, EntityDefinitionRepository, IdentityRepository, OutboxRepository,
+    PasswordResetRepository, RoleRepository, SystemLogRepository, WorkflowRepository,
 };
 use r_data_core_services::adapters::{
     AdminUserRepositoryAdapter, ApiKeyRepositoryAdapter, DynamicEntityRepositoryAdapter,
     EntityDefinitionRepositoryAdapter,
 };
+use r_data_core_services::oidc_keys::HttpKeySource;
+use r_data_core_services::oidc_provisioning::OidcProvisioningService;
 use r_data_core_services::workflow::outbox::OutboxRetryPolicy;
 use r_data_core_services::{
     AdminUserService, ApiKeyService, DashboardStatsService, DynamicEntityService,
-    EntityDefinitionService, LicenseService, MailService, PasswordResetService, RoleService,
-    SettingsService, SystemLogService, WorkflowRepositoryAdapter, WorkflowService,
+    EntityDefinitionService, LicenseService, MailService, OidcRuntime, PasswordResetService,
+    RoleService, SettingsService, SystemLogService, WorkflowRepositoryAdapter, WorkflowService,
 };
 use r_data_core_workflow::data::job_queue::apalis_redis::ApalisRedisQueue;
 
@@ -193,6 +195,8 @@ pub async fn build_api_state(
     // Initialise password reset service if system mail is configured
     let password_reset_service = build_password_reset_service(config, &pool, queue_client.clone());
 
+    let oidc_runtime = build_oidc_runtime(&pool, &cache_manager)?;
+
     Ok(ApiState {
         db_pool: pool,
         api_config: config.api.clone(),
@@ -208,7 +212,45 @@ pub async fn build_api_state(
         queue: queue_client,
         password_reset_service,
         system_log_service: Some(system_log_service),
+        oidc_runtime,
     })
+}
+
+/// Build the OIDC runtime, or `None` when single sign-on is not configured.
+///
+/// A misconfiguration fails startup rather than silently disabling SSO. An
+/// operator who sets `RDC_OIDC_ISSUER` and gets a server that quietly ignores
+/// it has no way to tell the feature is off until someone cannot log in.
+fn build_oidc_runtime(
+    pool: &PgPool,
+    cache_manager: &Arc<CacheManager>,
+) -> r_data_core_core::error::Result<Option<Arc<OidcRuntime>>> {
+    let Some(oidc_config) = r_data_core_core::oidc::OidcConfig::from_env()
+        .map_err(|e| r_data_core_core::error::Error::Config(e.to_string()))?
+    else {
+        return Ok(None);
+    };
+
+    let issuer = &oidc_config.issuer;
+    info!("Single sign-on enabled, trusting issuer {issuer}");
+
+    let keys = Arc::new(
+        HttpKeySource::new(&oidc_config)
+            .map_err(|e| r_data_core_core::error::Error::Config(e.to_string()))?,
+    );
+
+    let provisioning = Arc::new(OidcProvisioningService::new(
+        Arc::new(IdentityRepository::new(pool.clone())),
+        Arc::new(AdminUserRepository::new(Arc::new(pool.clone()))),
+        Arc::new(RoleRepository::new(pool.clone())),
+    ));
+
+    Ok(Some(Arc::new(OidcRuntime::new(
+        oidc_config,
+        keys,
+        provisioning,
+        cache_manager.clone(),
+    ))))
 }
 
 fn build_workflow_service(

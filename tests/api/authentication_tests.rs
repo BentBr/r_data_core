@@ -90,6 +90,7 @@ mod tests {
             license_service,
             password_reset_service: None,
             system_log_service: None,
+            oidc_runtime: None,
         };
 
         // Create test app with API key authentication middleware
@@ -197,6 +198,7 @@ mod tests {
             license_service,
             password_reset_service: None,
             system_log_service: None,
+            oidc_runtime: None,
         };
 
         // Create test app with API key authentication middleware
@@ -298,6 +300,7 @@ mod tests {
             license_service,
             password_reset_service: None,
             system_log_service: None,
+            oidc_runtime: None,
         };
 
         // Create test app with API key authentication middleware
@@ -405,6 +408,7 @@ mod tests {
             license_service,
             password_reset_service: None,
             system_log_service: None,
+            oidc_runtime: None,
         };
 
         // Create test app with combined authentication middleware
@@ -534,6 +538,7 @@ mod tests {
             license_service,
             password_reset_service: None,
             system_log_service: None,
+            oidc_runtime: None,
         };
 
         // Create test app with combined authentication middleware
@@ -664,6 +669,7 @@ mod tests {
             license_service,
             password_reset_service: None,
             system_log_service: None,
+            oidc_runtime: None,
         };
 
         // Create test app with API key authentication middleware
@@ -774,6 +780,7 @@ mod tests {
             license_service,
             password_reset_service: None,
             system_log_service: None,
+            oidc_runtime: None,
         };
 
         // Create test app with API key authentication middleware
@@ -882,6 +889,7 @@ mod tests {
             license_service,
             password_reset_service: None,
             system_log_service: None,
+            oidc_runtime: None,
         };
 
         // Create test app with JWT authentication middleware

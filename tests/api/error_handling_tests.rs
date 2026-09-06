@@ -90,6 +90,7 @@ async fn test_invalid_uuid_in_jwt_token_returns_401() -> Result<()> {
         license_service: Arc::new(license_service),
         password_reset_service: None,
         system_log_service: None,
+        oidc_runtime: None,
     };
 
     // Create a JWT token with an invalid UUID in the 'sub' field
