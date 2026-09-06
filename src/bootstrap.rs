@@ -28,8 +28,9 @@ use r_data_core_services::oidc_provisioning::OidcProvisioningService;
 use r_data_core_services::workflow::outbox::OutboxRetryPolicy;
 use r_data_core_services::{
     AdminUserService, ApiKeyService, DashboardStatsService, DynamicEntityService,
-    EntityDefinitionService, LicenseService, MailService, OidcRuntime, PasswordResetService,
-    RoleService, SettingsService, SystemLogService, WorkflowRepositoryAdapter, WorkflowService,
+    EntityDefinitionService, LicenseService, MailService, OidcRuntime, OidcServices,
+    PasswordResetService, RoleService, SettingsService, SystemLogService,
+    WorkflowRepositoryAdapter, WorkflowService,
 };
 use r_data_core_workflow::data::job_queue::apalis_redis::ApalisRedisQueue;
 
@@ -195,7 +196,7 @@ pub async fn build_api_state(
     // Initialise password reset service if system mail is configured
     let password_reset_service = build_password_reset_service(config, &pool, queue_client.clone());
 
-    let oidc_runtime = build_oidc_runtime(&pool, &cache_manager)?;
+    let oidc = build_oidc_services(&pool, &cache_manager)?;
 
     Ok(ApiState {
         db_pool: pool,
@@ -212,19 +213,19 @@ pub async fn build_api_state(
         queue: queue_client,
         password_reset_service,
         system_log_service: Some(system_log_service),
-        oidc_runtime,
+        oidc,
     })
 }
 
-/// Build the OIDC runtime, or `None` when single sign-on is not configured.
+/// Build the OIDC services, or `None` when single sign-on is not configured.
 ///
 /// A misconfiguration fails startup rather than silently disabling SSO. An
 /// operator who sets `RDC_OIDC_ISSUER` and gets a server that quietly ignores
 /// it has no way to tell the feature is off until someone cannot log in.
-fn build_oidc_runtime(
+fn build_oidc_services(
     pool: &PgPool,
     cache_manager: &Arc<CacheManager>,
-) -> r_data_core_core::error::Result<Option<Arc<OidcRuntime>>> {
+) -> r_data_core_core::error::Result<Option<Arc<OidcServices>>> {
     let Some(oidc_config) = r_data_core_core::oidc::OidcConfig::from_env()
         .map_err(|e| r_data_core_core::error::Error::Config(e.to_string()))?
     else {
@@ -245,12 +246,17 @@ fn build_oidc_runtime(
         Arc::new(RoleRepository::new(pool.clone())),
     ));
 
-    Ok(Some(Arc::new(OidcRuntime::new(
+    let runtime = Arc::new(OidcRuntime::new(
         oidc_config,
         keys,
         provisioning,
         cache_manager.clone(),
-    ))))
+    ));
+
+    Ok(Some(Arc::new(
+        OidcServices::new(runtime, cache_manager.clone())
+            .map_err(|e| r_data_core_core::error::Error::Config(e.to_string()))?,
+    )))
 }
 
 fn build_workflow_service(

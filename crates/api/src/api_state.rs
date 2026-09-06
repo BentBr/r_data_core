@@ -21,8 +21,8 @@ pub trait ApiStateTrait: Send + Sync + 'static {
     fn license_service_ref(&self) -> &dyn std::any::Any;
     fn password_reset_service_ref(&self) -> Option<&dyn std::any::Any>;
     fn system_log_service_ref(&self) -> Option<&dyn std::any::Any>;
-    /// OIDC runtime, or `None` when single sign-on is not configured.
-    fn oidc_runtime_ref(&self) -> Option<&dyn std::any::Any>;
+    /// OIDC services, or `None` when single sign-on is not configured.
+    fn oidc_ref(&self) -> Option<&dyn std::any::Any>;
 
     /// Get `API` config - helper method that downcasts from `api_config_ref`
     fn api_config(&self) -> &r_data_core_core::config::ApiConfig {
@@ -140,10 +140,10 @@ pub trait ApiStateTrait: Send + Sync + 'static {
             .downcast_ref::<std::sync::Arc<r_data_core_services::SystemLogService>>()
     }
 
-    /// Get the OIDC runtime - returns `None` when single sign-on is off
-    fn oidc_runtime(&self) -> Option<&std::sync::Arc<r_data_core_services::OidcRuntime>> {
-        self.oidc_runtime_ref()?
-            .downcast_ref::<std::sync::Arc<r_data_core_services::OidcRuntime>>()
+    /// Get the OIDC services - returns `None` when single sign-on is off
+    fn oidc(&self) -> Option<&std::sync::Arc<r_data_core_services::OidcServices>> {
+        self.oidc_ref()?
+            .downcast_ref::<std::sync::Arc<r_data_core_services::OidcServices>>()
     }
 }
 
@@ -212,8 +212,8 @@ impl ApiStateTrait for ApiStateWrapper {
         self.0.system_log_service_ref()
     }
 
-    fn oidc_runtime_ref(&self) -> Option<&dyn std::any::Any> {
-        self.0.oidc_runtime_ref()
+    fn oidc_ref(&self) -> Option<&dyn std::any::Any> {
+        self.0.oidc_ref()
     }
 }
 

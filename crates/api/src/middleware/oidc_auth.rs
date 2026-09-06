@@ -18,6 +18,7 @@
 //! answer those.
 
 use std::rc::Rc;
+use std::sync::Arc;
 
 use actix_web::{
     dev::{forward_ready, Service, ServiceRequest, ServiceResponse, Transform},
@@ -87,7 +88,7 @@ where
         // Decided before the future so the borrow of `req` ends here.
         let runtime = req
             .app_data::<web::Data<ApiStateWrapper>>()
-            .and_then(|state| state.oidc_runtime().cloned());
+            .and_then(|state| state.oidc().map(|o| Arc::clone(o.runtime())));
         let token = extract_jwt_token_string(req.request()).map(str::to_string);
 
         Box::pin(async move {

@@ -419,6 +419,27 @@ impl ApiResponse<()> {
         response.to_http_response(StatusCode::TOO_MANY_REQUESTS)
     }
 
+    /// The request was fine; something this server depends on is not.
+    ///
+    /// Distinct from a 500 because it tells a caller the request is worth
+    /// retrying, and distinct from a 403 because it points whoever is on call
+    /// at infrastructure rather than at permissions.
+    #[must_use]
+    pub fn service_unavailable(message: &str) -> HttpResponse {
+        let response = Self {
+            status: Status::Error,
+            message: message.to_string(),
+            data: None,
+            meta: Some(ResponseMeta {
+                pagination: None,
+                request_id: Some(Uuid::now_v7()),
+                timestamp: Some(time::OffsetDateTime::now_utc().to_string()),
+                custom: Some(serde_json::json!({"error_code": "SERVICE_UNAVAILABLE"})),
+            }),
+        };
+        response.to_http_response(StatusCode::SERVICE_UNAVAILABLE)
+    }
+
     #[must_use]
     pub fn unprocessable_entity(message: &str) -> HttpResponse {
         let response = Self {

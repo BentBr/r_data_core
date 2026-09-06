@@ -142,7 +142,7 @@ mod tests {
             license_service,
             password_reset_service: None,
             system_log_service: None,
-            oidc_runtime: None,
+            oidc: None,
         };
 
         let app_data = web::Data::new(r_data_core_api::ApiStateWrapper::new(api_state));

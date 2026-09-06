@@ -14,26 +14,15 @@
 
 use std::time::{Duration, Instant};
 
-use serde::Deserialize;
 use tokio::sync::RwLock;
 
 use r_data_core_core::oidc::keys::{JwkSet, KeySource, KeySourceError};
 use r_data_core_core::oidc::OidcConfig;
 
+use crate::oidc_discovery;
+
 /// Shortest gap between forced re-fetches, however many unknown key ids arrive.
 const REFRESH_COOLDOWN: Duration = Duration::from_secs(60);
-
-/// Timeout for a call to the identity provider.
-///
-/// Short on purpose: this sits in the authentication path, and a hung provider
-/// should fail requests quickly rather than exhaust the connection pool.
-const FETCH_TIMEOUT: Duration = Duration::from_secs(10);
-
-/// The subset of OIDC discovery this needs.
-#[derive(Debug, Deserialize)]
-struct Discovery {
-    jwks_uri: String,
-}
 
 struct Cached {
     keys: JwkSet,
@@ -54,12 +43,8 @@ impl HttpKeySource {
     /// # Errors
     /// Returns `KeySourceError` if the HTTP client cannot be built.
     pub fn new(config: &OidcConfig) -> Result<Self, KeySourceError> {
-        let client = reqwest::Client::builder()
-            .timeout(FETCH_TIMEOUT)
-            .build()
-            .map_err(|e| KeySourceError::Unreachable(e.to_string()))?;
         Ok(Self {
-            client,
+            client: oidc_discovery::client()?,
             issuer: config.issuer.trim_end_matches('/').to_string(),
             ttl: config.jwks_ttl,
             cached: RwLock::new(None),
@@ -67,21 +52,8 @@ impl HttpKeySource {
     }
 
     /// Discover the key-set URL, then fetch it.
-    ///
-    /// Discovery is repeated per fetch rather than cached separately. It is
-    /// one extra request an hour, and it means a provider that moves its key
-    /// set is followed rather than leaving this server stuck on a dead URL.
     async fn fetch(&self) -> Result<JwkSet, KeySourceError> {
-        let discovery_url = format!("{}/.well-known/openid-configuration", self.issuer);
-        let discovery: Discovery = self
-            .client
-            .get(&discovery_url)
-            .send()
-            .await
-            .map_err(|e| KeySourceError::Unreachable(format!("{discovery_url}: {e}")))?
-            .json()
-            .await
-            .map_err(|e| KeySourceError::Malformed(format!("{discovery_url}: {e}")))?;
+        let discovery = oidc_discovery::fetch(&self.client, &self.issuer).await?;
 
         self.client
             .get(&discovery.jwks_uri)

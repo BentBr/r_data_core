@@ -282,7 +282,7 @@ mod tests {
             license_service,
             password_reset_service: None,
             system_log_service: None,
-            oidc_runtime: None,
+            oidc: None,
         };
 
         // Build test app

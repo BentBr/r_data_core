@@ -37,7 +37,7 @@ use r_data_core_core::oidc::OidcConfig;
 use r_data_core_persistence::{AdminUserRepository, IdentityRepository, RoleRepository};
 use r_data_core_services::oidc_keys::HttpKeySource;
 use r_data_core_services::oidc_provisioning::OidcProvisioningService;
-use r_data_core_services::OidcRuntime;
+use r_data_core_services::{OidcRuntime, OidcServices};
 
 pub const AUDIENCE: &str = "r-data-core";
 pub const KID: &str = "test-key-1";
@@ -141,14 +141,14 @@ fn keypair() -> (EncodingKey, serde_json::Value) {
 
 /// The narrowest state the OIDC arm can run against.
 ///
-/// Only `jwt_secret` and `oidc_runtime` are real. The rest return a unit
+/// Only `jwt_secret` and `oidc` are real. The rest return a unit
 /// value, so any route that reaches for a service gets `None` from the
 /// downcast rather than a plausible-looking fake — a test that wanders
 /// outside this path should fail loudly.
 struct MinimalState {
     pool: PgPool,
     nothing: (),
-    oidc_runtime: Option<Arc<OidcRuntime>>,
+    oidc: Option<Arc<OidcServices>>,
 }
 
 impl ApiStateTrait for MinimalState {
@@ -197,10 +197,8 @@ impl ApiStateTrait for MinimalState {
     fn system_log_service_ref(&self) -> Option<&dyn std::any::Any> {
         None
     }
-    fn oidc_runtime_ref(&self) -> Option<&dyn std::any::Any> {
-        self.oidc_runtime
-            .as_ref()
-            .map(|rt| rt as &dyn std::any::Any)
+    fn oidc_ref(&self) -> Option<&dyn std::any::Any> {
+        self.oidc.as_ref().map(|o| o as &dyn std::any::Any)
     }
 }
 
@@ -219,7 +217,8 @@ fn lazy_pool() -> PgPool {
 pub fn state(idp: Option<&Idp>) -> ApiStateWrapper {
     let pool = lazy_pool();
 
-    let oidc_runtime = idp.map(|idp| {
+    let cache = Arc::new(CacheManager::new(CacheConfig::default()));
+    let oidc = idp.map(|idp| {
         let config = OidcConfig::from_map(
             &[
                 ("RDC_OIDC_ISSUER".to_string(), idp.issuer()),
@@ -241,18 +240,19 @@ pub fn state(idp: Option<&Idp>) -> ApiStateWrapper {
             Arc::new(AdminUserRepository::new(Arc::new(pool.clone()))),
             Arc::new(RoleRepository::new(pool.clone())),
         ));
-        Arc::new(OidcRuntime::new(
+        let runtime = Arc::new(OidcRuntime::new(
             config,
             keys,
             provisioning,
-            Arc::new(CacheManager::new(CacheConfig::default())),
-        ))
+            Arc::clone(&cache),
+        ));
+        Arc::new(OidcServices::new(runtime, Arc::clone(&cache)).expect("oidc services"))
     });
 
     ApiStateWrapper::new(MinimalState {
         pool,
         nothing: (),
-        oidc_runtime,
+        oidc,
     })
 }
 

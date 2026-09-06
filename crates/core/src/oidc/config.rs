@@ -17,6 +17,8 @@ use thiserror::Error;
 const DEFAULT_ROLES_CLAIM: &str = "groups";
 /// How long a fetched key set stays usable when unset.
 const DEFAULT_JWKS_TTL_SECS: u64 = 3600;
+/// Where the browser lands after a successful sign-in, when unset.
+const DEFAULT_POST_LOGIN_PATH: &str = "/admin";
 /// How long a resolved identity is reused before being looked up again.
 ///
 /// Short on purpose. This window is how long a user deactivated in
@@ -38,6 +40,38 @@ pub enum OidcConfigError {
     MalformedRoleMap(String),
     #[error("{0} must be a positive integer, got '{1}'")]
     InvalidNumber(&'static str, String),
+    #[error(
+        "RDC_OIDC_CLIENT_ID requires RDC_OIDC_REDIRECT_URI: the browser login flow has \
+         nowhere to send the provider's response without it"
+    )]
+    MissingRedirectUri,
+    #[error(
+        "RDC_OIDC_POST_LOGIN_PATH must be a path within this application, starting with a \
+         single '/', got '{0}'. An absolute or protocol-relative URL here would make the \
+         login endpoint an open redirect, which is a phishing primitive."
+    )]
+    UnsafePostLoginPath(String),
+}
+
+/// A configured secret that does not print itself.
+///
+/// `OidcConfig` derives `Debug`, and configuration gets logged. A bare
+/// `String` here would put the client secret in whatever picks that up.
+#[derive(Clone, PartialEq, Eq)]
+pub struct ClientSecret(String);
+
+impl ClientSecret {
+    /// The secret itself. Named so that reaching for it is a visible choice.
+    #[must_use]
+    pub fn expose(&self) -> &str {
+        &self.0
+    }
+}
+
+impl std::fmt::Debug for ClientSecret {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str("ClientSecret(<redacted>)")
+    }
 }
 
 /// How this instance trusts an external identity provider.
@@ -57,6 +91,16 @@ pub struct OidcConfig {
     pub jwks_ttl: Duration,
     /// How long a resolved identity is reused before re-resolving it.
     pub resolution_cache_ttl: Duration,
+    /// This application's client id at the provider. `None` disables the
+    /// browser login flow; bearer-token validation needs no client identity.
+    pub client_id: Option<String>,
+    /// Client secret, where the provider issues one. Absent for a public
+    /// client, which PKCE makes safe.
+    pub client_secret: Option<ClientSecret>,
+    /// Where the provider sends the browser back. Required with `client_id`.
+    pub redirect_uri: Option<String>,
+    /// Path within this application to land on after a successful sign-in.
+    pub post_login_path: String,
 }
 
 impl OidcConfig {
@@ -82,6 +126,21 @@ impl OidcConfig {
             DEFAULT_RESOLUTION_CACHE_SECS,
         )?;
 
+        let client_id = get(map, "RDC_OIDC_CLIENT_ID").map(str::to_string);
+        let redirect_uri = get(map, "RDC_OIDC_REDIRECT_URI").map(str::to_string);
+        // A client id with nowhere to return to is a flow that cannot complete.
+        // Failing here beats a 500 on the first sign-in attempt.
+        if client_id.is_some() && redirect_uri.is_none() {
+            return Err(OidcConfigError::MissingRedirectUri);
+        }
+
+        let post_login_path = get(map, "RDC_OIDC_POST_LOGIN_PATH")
+            .unwrap_or(DEFAULT_POST_LOGIN_PATH)
+            .to_string();
+        if !is_local_path(&post_login_path) {
+            return Err(OidcConfigError::UnsafePostLoginPath(post_login_path));
+        }
+
         Ok(Some(Self {
             issuer: issuer.to_string(),
             audience: audience.to_string(),
@@ -95,6 +154,10 @@ impl OidcConfig {
                 .is_some_and(|v| v.eq_ignore_ascii_case("true")),
             jwks_ttl,
             resolution_cache_ttl,
+            client_id,
+            client_secret: get(map, "RDC_OIDC_CLIENT_SECRET").map(|s| ClientSecret(s.to_string())),
+            redirect_uri,
+            post_login_path,
         }))
     }
 
@@ -105,6 +168,14 @@ impl OidcConfig {
     pub fn from_env() -> Result<Option<Self>, OidcConfigError> {
         Self::from_map(&std::env::vars().collect())
     }
+}
+
+/// Whether this is a path inside this application, and not a way out of it.
+///
+/// `//evil.example.com` is a protocol-relative URL that browsers follow to
+/// another origin, so the second character matters as much as the first.
+fn is_local_path(value: &str) -> bool {
+    value.starts_with('/') && !value.starts_with("//")
 }
 
 /// Read a duration in seconds, falling back to a default when unset.

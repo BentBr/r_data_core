@@ -90,7 +90,7 @@ pub(super) async fn setup_app() -> r_data_core_core::error::Result<(
         license_service,
         password_reset_service: None,
         system_log_service: None,
-        oidc_runtime: None,
+        oidc: None,
     };
 
     let app = test::init_service(

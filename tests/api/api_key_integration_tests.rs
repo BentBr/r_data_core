@@ -156,7 +156,7 @@ mod tests {
             license_service,
             password_reset_service: None,
             system_log_service: None,
-            oidc_runtime: None,
+            oidc: None,
         };
 
         let app = test::init_service(
@@ -277,7 +277,7 @@ mod tests {
             license_service,
             password_reset_service: None,
             system_log_service: None,
-            oidc_runtime: None,
+            oidc: None,
         };
 
         let app = test::init_service(
@@ -414,7 +414,7 @@ mod tests {
             license_service,
             password_reset_service: None,
             system_log_service: None,
-            oidc_runtime: None,
+            oidc: None,
         };
 
         let app =
@@ -532,7 +532,7 @@ mod tests {
             license_service,
             password_reset_service: None,
             system_log_service: None,
-            oidc_runtime: None,
+            oidc: None,
         };
 
         let app =
@@ -657,7 +657,7 @@ mod tests {
             license_service,
             password_reset_service: None,
             system_log_service: None,
-            oidc_runtime: None,
+            oidc: None,
         };
 
         let app =
@@ -836,7 +836,7 @@ mod tests {
             license_service,
             password_reset_service: None,
             system_log_service: None,
-            oidc_runtime: None,
+            oidc: None,
         };
 
         let app =
@@ -1015,7 +1015,7 @@ mod tests {
             license_service,
             password_reset_service: None,
             system_log_service: None,
-            oidc_runtime: None,
+            oidc: None,
         };
 
         let app = test::init_service(

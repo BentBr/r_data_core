@@ -92,7 +92,7 @@ pub async fn setup_test_app() -> Result<(
         license_service,
         password_reset_service: None,
         system_log_service: None,
-        oidc_runtime: None,
+        oidc: None,
     };
 
     let app = test::init_service(

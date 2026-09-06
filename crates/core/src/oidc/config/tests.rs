@@ -177,3 +177,70 @@ fn an_absent_role_map_is_empty_rather_than_an_error() {
     // Legitimate when every user gets the default role.
     assert!(config_from(&enabled()).role_map.is_empty());
 }
+
+// ── the browser login flow's configuration ──────────────────────────────────
+
+/// The enabled baseline plus whatever this test is varying.
+fn with(extra: &[(&'static str, &'static str)]) -> Vec<(&'static str, &'static str)> {
+    let mut pairs = enabled();
+    pairs.extend(extra.iter().map(|(k, v)| (*k, *v)));
+    pairs
+}
+
+#[test]
+fn a_client_id_without_a_redirect_uri_is_refused() {
+    let outcome = OidcConfig::from_map(&env(&with(&[("RDC_OIDC_CLIENT_ID", "rdc")])));
+
+    assert_eq!(
+        outcome,
+        Err(OidcConfigError::MissingRedirectUri),
+        "a flow that cannot complete should fail at startup, not on first sign-in"
+    );
+}
+
+#[test]
+fn the_browser_flow_stays_off_when_no_client_id_is_given() {
+    let config = config_from(&enabled());
+    assert!(
+        config.client_id.is_none(),
+        "bearer-token validation needs no client identity"
+    );
+    assert_eq!(config.post_login_path, "/admin");
+}
+
+#[test]
+fn a_post_login_path_leaving_this_origin_is_refused() {
+    for escape in ["https://evil.example.com", "//evil.example.com", "admin"] {
+        let outcome = OidcConfig::from_map(&env(&with(&[("RDC_OIDC_POST_LOGIN_PATH", escape)])));
+        assert!(
+            matches!(outcome, Err(OidcConfigError::UnsafePostLoginPath(_))),
+            "{escape:?} would make the login endpoint an open redirect"
+        );
+    }
+}
+
+#[test]
+fn an_empty_post_login_path_falls_back_to_the_safe_default() {
+    let config = config_from(&with(&[("RDC_OIDC_POST_LOGIN_PATH", "")]));
+    assert_eq!(config.post_login_path, "/admin");
+}
+
+#[test]
+fn the_client_secret_does_not_print_itself() {
+    let config = config_from(&with(&[
+        ("RDC_OIDC_CLIENT_ID", "rdc"),
+        ("RDC_OIDC_REDIRECT_URI", "https://rdc.example.com/cb"),
+        ("RDC_OIDC_CLIENT_SECRET", "hunter2-do-not-log-me"),
+    ]));
+
+    let printed = format!("{config:?}");
+    assert!(
+        !printed.contains("hunter2-do-not-log-me"),
+        "configuration gets logged; the secret must not travel with it"
+    );
+    assert_eq!(
+        config.client_secret.as_ref().map(ClientSecret::expose),
+        Some("hunter2-do-not-log-me"),
+        "redaction must not lose the value"
+    );
+}
