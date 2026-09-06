@@ -3,7 +3,10 @@
 pub mod adapters;
 pub mod job_queue;
 pub mod jobs;
+pub mod rate_limit;
 pub mod requests;
+
+pub use rate_limit::WorkflowRateLimit;
 
 use serde::{Deserialize, Serialize};
 use std::fmt::Display;
