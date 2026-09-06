@@ -67,6 +67,19 @@ routes through `AdminUser::set_status` and clears the counter and expiry.
 
 Organized in submodules: `dynamic_entities/`, `entities/`, `workflows/`, `queries/`
 
+### Public workflow auth (`public/workflows/`)
+
+| Piece | Notes |
+|-------|-------|
+| `rate_limit.rs` | Opt-in, per-workflow limit read off the cached workflow, so it adds no DB call. Distinct from the admin login limiter; keyed `workflow_rl:{uuid}:{window}:{client}`, with the window in the key because `increment` sets its TTL with `EXPIRE NX` |
+| `helpers.rs` | Enforces the limit first, then authenticates. Pre-shared keys go through `r_data_core_core::crypto::constant_time_eq` (CWE-208) |
+
+The value the public endpoints authenticate against is `config.provider_auth`,
+beside the DSL rather than inside it — `dsl::to::validate_auth_config` polices
+what a workflow sends outbound and does not cover it.
+`r_data_core_workflow::data::validate_provider_auth_config` enforces
+`MIN_PRE_SHARED_KEY_LEN` on create and update.
+
 ## Key Exports
 
 `ApiState`, `ApiStateWrapper`, `ApiConfiguration`, `ApiResponse`, `ApiStateTrait`
