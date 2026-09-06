@@ -13,6 +13,7 @@ use crate::admin::dsl::routes::options_builders::{
 use crate::auth::auth_enum::RequiredAuth;
 use crate::auth::permission_check;
 use crate::response::ApiResponse;
+use r_data_core_core::dto::dsl::{DryRunRequest, DryRunResponse};
 use r_data_core_core::permissions::role::{PermissionType, ResourceNamespace};
 use r_data_core_workflow::dsl::{
     ArithmeticOp, ArithmeticTransform, AuthenticateTransform, ConcatTransform, DslProgram,
@@ -67,6 +68,72 @@ pub async fn validate_dsl(
         Ok(()) => ApiResponse::ok(DslValidateResponse { valid: true }),
         Err(e) => ApiResponse::<()>::unprocessable_entity_with_violations(
             "Invalid DSL",
+            vec![diagnostics::semantic_violation(e.to_string())],
+        ),
+    }
+}
+
+/// Execute a DSL program against sample input, changing nothing.
+///
+/// Runs the real executor — including the async transforms that
+/// `DslProgram::execute` alone would skip — with entity reads and writes
+/// routed through an in-memory overlay. Mappings, path templates and lookups
+/// are exercised for real and later steps see what earlier ones produced, but
+/// nothing is persisted. Email and outbound pushes are never attempted.
+#[utoipa::path(
+    post,
+    path = "/admin/api/v1/dsl/dry-run",
+    tag = "DSL",
+    request_body = DryRunRequest,
+    responses(
+        (status = 200, description = "Per-step execution trace", body = DryRunResponse),
+        (status = 422, description = "Invalid DSL", body = Value),
+        (status = 401, description = "Unauthorized"),
+        (status = 403, description = "Insufficient permissions"),
+        (status = 500, description = "Internal server error")
+    ),
+    security(("jwt" = []))
+)]
+#[post("/dry-run")]
+pub async fn dry_run_dsl(
+    payload: web::Json<DryRunRequest>,
+    auth: RequiredAuth,
+    state: web::Data<ApiStateWrapper>,
+) -> impl Responder {
+    // A dry-run executes the program, so it is gated like running one rather
+    // than like reading the option catalogue.
+    if !permission_check::has_permission(
+        &auth.0,
+        &ResourceNamespace::Workflows,
+        &PermissionType::Update,
+        None,
+    ) {
+        return ApiResponse::<()>::forbidden("Insufficient permissions to dry-run DSL");
+    }
+
+    let steps = match diagnostics::parse_steps(&payload.steps) {
+        Ok(steps) => steps,
+        Err(violations) => {
+            return ApiResponse::<()>::unprocessable_entity_with_violations(
+                "Invalid DSL",
+                violations,
+            )
+        }
+    };
+
+    let program = DslProgram {
+        steps,
+        on_complete: None,
+    };
+
+    match state
+        .workflow_service()
+        .dry_run(&program, &payload.input)
+        .await
+    {
+        Ok(response) => ApiResponse::ok(response),
+        Err(e) => ApiResponse::<()>::unprocessable_entity_with_violations(
+            "Dry-run failed",
             vec![diagnostics::semantic_violation(e.to_string())],
         ),
     }

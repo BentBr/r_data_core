@@ -20,5 +20,7 @@
 mod repository;
 #[cfg(test)]
 mod repository_tests;
+mod service;
 
 pub use repository::{DryRunEntityRepository, RecordedWrite, WriteKind};
+pub use service::{execute_dry_run, DryRunDeps};

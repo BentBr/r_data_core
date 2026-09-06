@@ -11,6 +11,7 @@ pub fn register_routes(cfg: &mut actix_web::web::ServiceConfig) {
     cfg.service(
         actix_web::web::scope("")
             .service(validate_dsl)
+            .service(dry_run_dsl)
             .service(list_from_options)
             .service(list_to_options)
             .service(list_transform_options),
