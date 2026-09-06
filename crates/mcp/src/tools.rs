@@ -17,6 +17,10 @@ pub mod discover;
 
 use std::sync::Arc;
 
+use rmcp::handler::server::router::tool::ToolRouter;
+use rmcp::handler::server::ServerHandler;
+use rmcp::model::{Implementation, ProtocolVersion, ServerCapabilities, ServerInfo};
+
 use crate::auth::{CallerContext, Permissions};
 use crate::client::RdcClient;
 
@@ -33,19 +37,29 @@ pub struct RdcTools {
     /// reach it through [`RdcTools::caller`] and never build a context
     /// themselves, so that swap touches nothing else.
     pub(crate) caller: CallerContext,
+    /// The tools this caller may use.
+    ///
+    /// Built from every tool, then narrowed with `disable_route` for anything
+    /// this caller lacks permission for. `disable_route` both hides a tool
+    /// from listings *and* rejects calls to it, so the narrowing closes the
+    /// invoke path rather than merely tidying the menu.
+    pub(crate) tool_router: ToolRouter<Self>,
 }
 
 impl RdcTools {
     #[must_use]
-    pub const fn new(
-        client: Arc<RdcClient>,
-        permissions: Permissions,
-        caller: CallerContext,
-    ) -> Self {
+    pub fn new(client: Arc<RdcClient>, permissions: Permissions, caller: CallerContext) -> Self {
+        let mut tool_router = Self::discover_router();
+        for tool in ALL_TOOLS {
+            if !is_tool_visible(tool, &permissions) {
+                tool_router.disable_route(*tool);
+            }
+        }
         Self {
             client,
             permissions,
             caller,
+            tool_router,
         }
     }
 
@@ -146,3 +160,37 @@ pub fn visible_tools(permissions: &Permissions) -> Vec<&'static str> {
 
 #[cfg(test)]
 mod tests;
+
+// `tool_handler` generates an async `list_tools` with no awaits in it. The
+// trait requires the async signature, and the body is not ours to change.
+#[allow(clippy::unused_async_trait_impl)]
+#[rmcp::tool_handler(router = self.tool_router)]
+impl ServerHandler for RdcTools {
+    fn get_info(&self) -> ServerInfo {
+        // ServerInfo and Implementation are #[non_exhaustive], so they are
+        // built by mutation rather than a struct literal.
+        let mut implementation = Implementation::default();
+        implementation.name = "r-data-core-mcp".to_string();
+        implementation.version = env!("CARGO_PKG_VERSION").to_string();
+
+        let mut info = ServerInfo::default();
+        info.protocol_version = ProtocolVersion::LATEST;
+        info.capabilities = ServerCapabilities::builder().enable_tools().build();
+        info.server_info = implementation;
+        info.instructions = Some(
+            "Author, run and debug RDataCore workflows.\n\n\
+                 Before writing a DSL program, call dsl_options for the parts you \
+                 need — it is generated from the running engine and is the only \
+                 accurate description of the language. Do not rely on remembered \
+                 DSL syntax.\n\n\
+                 For a workflow that touches entities, call get_entity_definition \
+                 first; do not guess field names.\n\n\
+                 Always validate_dsl and then test_workflow before saving. \
+                 test_workflow executes for real against an in-memory overlay and \
+                 persists nothing, so iterate there freely. run_workflow, by \
+                 contrast, has real side effects."
+                .to_string(),
+        );
+        info
+    }
+}

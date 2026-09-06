@@ -2800,6 +2800,7 @@ dependencies = [
  "r_data_core_workflow",
  "reqwest",
  "rmcp",
+ "schemars",
  "serde",
  "serde_json",
  "thiserror 1.0.69",
