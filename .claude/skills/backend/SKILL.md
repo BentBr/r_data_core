@@ -17,6 +17,7 @@ color: green
 | workflow | `crates/workflow/` | DSL engine, job queue | core, services |
 | worker | `crates/worker/` | background tasks, scheduler | core, services, workflow |
 | license | `crates/license/` | license verification | core |
+| oidc-http | `crates/oidc-http/` | OIDC discovery + JWKS fetching over HTTP | core |
 | test-support | `crates/test-support/` | shared test helpers, fixtures (dev-only) | — |
 
 **Layering rule:** `core` imports no other workspace crate. Repository

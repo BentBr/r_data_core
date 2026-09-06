@@ -58,6 +58,7 @@ Rust API structs generate TypeScript type definitions via `ts-rs`.
 | workflow | `crates/workflow/` | DSL engine, job queue | `backend/workflow.md` |
 | worker | `crates/worker/` | Background tasks, scheduler | `backend/worker.md` |
 | license | `crates/license/` | License verification | `backend/license.md` |
+| oidc-http | `crates/oidc-http/` | OIDC discovery + JWKS fetching over HTTP | `backend/SKILL.md` |
 | mcp | `crates/mcp/` | MCP server for AI assistants | `backend/mcp.md` |
 | test-support | `crates/test-support/` | Test helpers (dev-only) | `backend/SKILL.md` |
 
