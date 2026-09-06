@@ -63,7 +63,7 @@ function buildRouter() {
     return router
 }
 
-function buildAuthStoreMock(overrides = {}) {
+function buildAuthStoreMock(overrides: Partial<ReturnType<typeof useAuthStore>> = {}) {
     return {
         error: null as string | null,
         isLoading: false,

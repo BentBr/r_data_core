@@ -81,8 +81,37 @@ async fn start_redirects_to_the_provider_and_binds_the_attempt_to_this_browser()
         "Strict would withhold the cookie on the provider's own callback: {cookie}"
     );
     assert!(
+        cookie.contains("Secure"),
+        "the harness configures an https redirect URI, so the cookie must be Secure \
+         regardless of the scheme the test request arrived on: {cookie}"
+    );
+    assert!(
         location.contains(&bound_state(&response)),
         "the cookie must bind the very state the provider is being sent"
+    );
+}
+
+#[actix_web::test]
+async fn a_spoofed_forwarded_proto_cannot_drop_the_secure_flag() {
+    // Actix reads X-Forwarded-Proto from any peer without checking that it is
+    // a trusted proxy. Deriving `Secure` from the connection would therefore
+    // let a caller have the cookie issued without it.
+    let idp = Idp::start().await;
+    let app = app_with!(Some(&idp));
+
+    let response = test::call_service(
+        &app,
+        test::TestRequest::get()
+            .uri("/admin/api/v1/auth/oidc/start")
+            .insert_header(("X-Forwarded-Proto", "http"))
+            .to_request(),
+    )
+    .await;
+
+    let cookie = state_cookie(&response).expect("the binding cookie");
+    assert!(
+        cookie.contains("Secure"),
+        "a request header must not decide whether the cookie is Secure: {cookie}"
     );
 }
 

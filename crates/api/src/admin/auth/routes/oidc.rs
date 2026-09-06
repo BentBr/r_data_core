@@ -77,7 +77,6 @@ pub struct ExchangeRequest {
 )]
 #[get("/auth/oidc/start")]
 pub async fn oidc_start(
-    req: actix_web::HttpRequest,
     data: web::Data<ApiStateWrapper>,
     query: web::Query<StartQuery>,
 ) -> impl Responder {
@@ -91,7 +90,7 @@ pub async fn oidc_start(
             // A sign-in redirect is specific to this attempt and must never be
             // reused from a cache.
             .insert_header((header::CACHE_CONTROL, "no-store"))
-            .cookie(state_cookie(&redirect.state, &req))
+            .cookie(state_cookie(&redirect.state, flow_is_https(&data)))
             .finish(),
         Err(e) => {
             log::error!("Could not start the single-sign-on flow: {e}");
@@ -332,17 +331,34 @@ fn failed_login(landing: &str, reason: &str) -> HttpResponse {
 /// the cookie on exactly the request that needs it. `Lax` still withholds it
 /// from cross-site sub-requests, which is what matters here.
 ///
-/// `Secure` follows the connection: always on for HTTPS, and off for plain
-/// HTTP so local development works. A production deployment is HTTPS, so this
-/// is not a way to end up without it in the place it counts.
-fn state_cookie(state: &str, req: &actix_web::HttpRequest) -> actix_web::cookie::Cookie<'static> {
+/// `Secure` is decided by the **configured** redirect URI's scheme, not by the
+/// request's. Actix reads `X-Forwarded-Proto` from any peer without checking
+/// that it is a trusted proxy, so deriving the flag from the connection would
+/// let anyone able to set that header have the cookie issued without `Secure`.
+/// The redirect URI is operator-set and cannot be influenced by a caller, and
+/// it is by definition the scheme this flow runs over.
+fn state_cookie(state: &str, secure: bool) -> actix_web::cookie::Cookie<'static> {
     actix_web::cookie::Cookie::build(STATE_COOKIE, state.to_string())
         .http_only(true)
         .same_site(actix_web::cookie::SameSite::Lax)
-        .secure(req.connection_info().scheme() == "https")
+        .secure(secure)
         .path("/")
         .max_age(actix_web::cookie::time::Duration::minutes(5))
         .finish()
+}
+
+/// Whether this deployment's sign-in flow runs over HTTPS.
+///
+/// Read from the configured redirect URI. Absent or plain HTTP means local
+/// development, where a `Secure` cookie would simply never be sent.
+fn flow_is_https(data: &ApiStateWrapper) -> bool {
+    data.oidc().is_some_and(|oidc| {
+        oidc.runtime()
+            .config()
+            .redirect_uri
+            .as_deref()
+            .is_some_and(|uri| uri.starts_with("https://"))
+    })
 }
 
 /// The same cookie, expired, so a finished attempt leaves nothing behind.
