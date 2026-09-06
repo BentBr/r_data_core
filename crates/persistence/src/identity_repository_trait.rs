@@ -42,6 +42,18 @@ pub trait IdentityRepositoryTrait: Send + Sync {
     /// Returns an error if the database write fails.
     async fn touch_last_login(&self, provider: &str, subject: &str) -> Result<()>;
 
+    /// Mark an account as created through SSO.
+    ///
+    /// Separate from creation because `create_admin_user` is shared with the
+    /// local-account path and widening its parameters would touch every
+    /// caller. The window between the two statements is safe: the account's
+    /// password is random and discarded, so no password path can use it even
+    /// before the flag lands.
+    ///
+    /// # Errors
+    /// Returns an error if the database write fails.
+    async fn mark_sso_provisioned(&self, admin_user_uuid: Uuid) -> Result<()>;
+
     /// A local account with this address, for optional email linking.
     ///
     /// Only ever called when the operator has enabled linking *and* the

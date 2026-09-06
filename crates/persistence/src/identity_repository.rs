@@ -72,6 +72,15 @@ impl IdentityRepositoryTrait for IdentityRepository {
         Ok(())
     }
 
+    async fn mark_sso_provisioned(&self, admin_user_uuid: Uuid) -> Result<()> {
+        sqlx::query("UPDATE admin_users SET is_sso_provisioned = TRUE WHERE uuid = $1")
+            .bind(admin_user_uuid)
+            .execute(&self.pool)
+            .await
+            .map_err(Error::Database)?;
+        Ok(())
+    }
+
     async fn find_local_user_by_email(&self, email: &str) -> Result<Option<Uuid>> {
         // Deliberately excludes SSO-provisioned accounts: linking is for
         // adopting a pre-existing *local* account, and matching another SSO

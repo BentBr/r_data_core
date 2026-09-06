@@ -20,6 +20,7 @@ pub mod entity_definition;
 pub mod license;
 pub mod mail;
 pub mod oidc_keys;
+pub mod oidc_provisioning;
 pub mod password_reset;
 pub mod query_validation;
 pub mod role;
