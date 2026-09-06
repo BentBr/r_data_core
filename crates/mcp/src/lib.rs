@@ -8,5 +8,6 @@
 //! request carries the caller's own, so it can never exceed the permissions of
 //! the human it acts for.
 
+pub mod auth;
 pub mod client;
 pub mod config;
