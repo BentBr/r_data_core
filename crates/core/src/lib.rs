@@ -14,6 +14,7 @@ pub mod cache;
 pub mod config;
 pub mod crypto;
 pub mod domain;
+pub mod dto;
 pub mod email_template;
 pub mod entity_definition;
 pub mod entity_jwt;
