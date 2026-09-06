@@ -345,3 +345,87 @@ async fn a_raw_field_read_prefers_the_overlay() {
         .unwrap();
     assert_eq!(got.as_deref(), Some("Ada"));
 }
+
+// ── counting and listing, which an earlier version got wrong ────────────────
+
+#[tokio::test]
+async fn updating_an_existing_entity_does_not_inflate_the_count() {
+    // The bug this catches: treating every overlay entry as an addition. An
+    // update puts a row in the overlay that also exists in the database, so
+    // the naive sum counts it twice and a model reading the trace concludes
+    // the dry-run created something it did not.
+    let uuid = Uuid::now_v7();
+    let stub = Arc::new(StubRepo {
+        existing: vec![entity("customer", uuid, "Grace")],
+        writes_received: AtomicUsize::new(0),
+    });
+    let repo = overlay_over(Arc::clone(&stub));
+
+    repo.update(&entity("customer", uuid, "Grace Hopper"))
+        .await
+        .unwrap();
+
+    assert_eq!(
+        repo.count_entities("customer").await.unwrap(),
+        1,
+        "an update changes a row, it does not add one"
+    );
+}
+
+#[tokio::test]
+async fn listing_shows_an_updated_entity_once_with_the_new_values() {
+    let uuid = Uuid::now_v7();
+    let stub = Arc::new(StubRepo {
+        existing: vec![entity("customer", uuid, "Grace")],
+        writes_received: AtomicUsize::new(0),
+    });
+    let repo = overlay_over(Arc::clone(&stub));
+
+    repo.update(&entity("customer", uuid, "Grace Hopper"))
+        .await
+        .unwrap();
+
+    let all = repo
+        .get_all_by_type("customer", 100, 0, None)
+        .await
+        .unwrap();
+    assert_eq!(all.len(), 1, "one row, not the stale and new copies both");
+    assert_eq!(all[0].field_data["name"], json!("Grace Hopper"));
+}
+
+#[tokio::test]
+async fn deleting_an_existing_entity_reduces_the_count_and_hides_it() {
+    let uuid = Uuid::now_v7();
+    let stub = Arc::new(StubRepo {
+        existing: vec![entity("customer", uuid, "Grace")],
+        writes_received: AtomicUsize::new(0),
+    });
+    let repo = overlay_over(Arc::clone(&stub));
+
+    repo.delete_by_type("customer", &uuid).await.unwrap();
+
+    assert_eq!(repo.count_entities("customer").await.unwrap(), 0);
+    assert!(
+        repo.get_all_by_type("customer", 100, 0, None)
+            .await
+            .unwrap()
+            .is_empty(),
+        "a deleted row must not still be listed"
+    );
+}
+
+#[tokio::test]
+async fn creating_then_deleting_within_a_run_nets_to_nothing() {
+    let stub = Arc::new(StubRepo::default());
+    let repo = overlay_over(Arc::clone(&stub));
+    let uuid = Uuid::now_v7();
+
+    repo.create(&entity("customer", uuid, "Ada")).await.unwrap();
+    repo.delete_by_type("customer", &uuid).await.unwrap();
+
+    assert_eq!(
+        repo.count_entities("customer").await.unwrap(),
+        0,
+        "deleting what this run created must not drive the count negative"
+    );
+}

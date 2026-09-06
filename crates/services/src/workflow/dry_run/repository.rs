@@ -56,6 +56,13 @@ struct Overlay {
     entities: HashMap<(String, Uuid), DynamicEntity>,
     /// Deleted keys, so a read after a delete correctly finds nothing.
     deleted: Vec<(String, Uuid)>,
+    /// Keys the dry-run created, as opposed to updated.
+    ///
+    /// Needed to keep counts and listings honest: an update puts an entity in
+    /// the overlay that also exists in the database, and treating every
+    /// overlay entry as an addition would count it twice and list it twice —
+    /// once stale from the database, once from here.
+    created: Vec<(String, Uuid)>,
     writes: Vec<RecordedWrite>,
 }
 
@@ -143,16 +150,37 @@ impl DynamicEntityRepositoryTrait for DryRunEntityRepository {
             .inner
             .get_all_by_type(entity_type, limit, offset, exclusive_fields)
             .await?;
-        let added: Vec<DynamicEntity> = {
+
+        let (overlaid, deleted) = {
             let overlay = self.overlay.lock().await;
-            overlay
+            let overlaid: Vec<(Uuid, DynamicEntity)> = overlay
                 .entities
                 .iter()
                 .filter(|((t, _), _)| t == entity_type)
-                .map(|(_, e)| e.clone())
-                .collect()
+                .map(|((_, uuid), e)| (*uuid, e.clone()))
+                .collect();
+            let deleted: Vec<Uuid> = overlay
+                .deleted
+                .iter()
+                .filter(|(t, _)| t == entity_type)
+                .map(|(_, uuid)| *uuid)
+                .collect();
+            // Released before the merging below, which needs no lock.
+            drop(overlay);
+            (overlaid, deleted)
         };
-        out.extend(added);
+
+        // A row the dry-run deleted must not still be listed.
+        out.retain(|e| !deleted.contains(&Self::uuid_of(e)));
+        // An updated row must appear once, with the new values — not twice,
+        // once stale from the database and once from the overlay.
+        for (uuid, entity) in overlaid {
+            if let Some(existing) = out.iter_mut().find(|e| Self::uuid_of(e) == uuid) {
+                *existing = entity;
+            } else {
+                out.push(entity);
+            }
+        }
         Ok(out)
     }
 
@@ -184,9 +212,11 @@ impl DynamicEntityRepositoryTrait for DryRunEntityRepository {
         let uuid = Self::uuid_of(entity);
         {
             let mut overlay = self.overlay.lock().await;
-            overlay
-                .entities
-                .insert((entity.entity_type.clone(), uuid), entity.clone());
+            let key = (entity.entity_type.clone(), uuid);
+            overlay.entities.insert(key.clone(), entity.clone());
+            if !overlay.created.contains(&key) {
+                overlay.created.push(key);
+            }
             overlay.writes.push(RecordedWrite {
                 kind: WriteKind::Create,
                 entity_type: entity.entity_type.clone(),
@@ -254,15 +284,26 @@ impl DynamicEntityRepositoryTrait for DryRunEntityRepository {
 
     async fn count_entities(&self, entity_type: &str) -> Result<i64> {
         let real = self.inner.count_entities(entity_type).await?;
-        let added = {
+        let (created, removed) = {
             let overlay = self.overlay.lock().await;
-            overlay
-                .entities
-                .keys()
-                .filter(|(t, _)| t == entity_type)
-                .count()
+            // A row created and then deleted in the same run nets to nothing,
+            // so it counts as neither an addition nor a removal.
+            let created = overlay
+                .created
+                .iter()
+                .filter(|key| key.0 == entity_type && !overlay.deleted.contains(key))
+                .count();
+            // Deleting a pre-existing row reduces the real count; deleting one
+            // this run created does not, since it was never in that count.
+            let removed = overlay
+                .deleted
+                .iter()
+                .filter(|key| key.0 == entity_type && !overlay.created.contains(key))
+                .count();
+            drop(overlay);
+            (created, removed)
         };
-        Ok(real + i64::try_from(added).unwrap_or(0))
+        Ok(real + i64::try_from(created).unwrap_or(0) - i64::try_from(removed).unwrap_or(0))
     }
 
     async fn count_children(&self, parent_uuid: &Uuid) -> Result<i64> {
