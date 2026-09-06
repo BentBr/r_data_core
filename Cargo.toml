@@ -56,6 +56,7 @@ actix-cors = "0.7"
 reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls"] }
 r_data_core_api = { path = "crates/api" }
 r_data_core_core = { path = "crates/core" }
+r_data_core_oidc_http = { path = "crates/oidc-http" }
 r_data_core_persistence = { path = "crates/persistence" }
 r_data_core_services = { path = "crates/services" }
 r_data_core_workflow = { path = "crates/workflow" }
@@ -102,5 +103,6 @@ members = [
   "crates/test-support",
   "crates/license",
   "crates/mcp",
+  "crates/oidc-http",
 ]
 resolver = "2"

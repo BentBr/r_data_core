@@ -35,10 +35,10 @@ sha2 = "0.10"
 # The HTTP mode reuses RDataCore's own JWKS fetching rather than reimplementing
 # it: the rate limit that stops a stream of unknown key ids turning this server
 # into a load generator aimed at the identity provider is security-relevant, and
-# a second copy of it would be one refactor away from losing that. sqlx is
-# already in this crate's graph via r_data_core_workflow, so the marginal weight
-# is small.
-r_data_core_services = { path = "../services" }
+# a second copy of it would be one refactor away from losing that. It lives in
+# its own crate precisely so reaching it does not drag the service and
+# persistence layers into an HTTP client of RDataCore.
+r_data_core_oidc_http = { path = "../oidc-http" }
 hyper = { version = "1", features = ["server", "http1", "http2"] }
 hyper-util = { version = "0.1", features = ["server", "server-auto", "tokio"] }
 http-body-util = "0.1"

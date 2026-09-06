@@ -29,6 +29,11 @@ fn allowed_internal_dependencies() -> HashMap<&'static str, BTreeSet<&'static st
     let rules: &[(&str, &[&str])] = &[
         ("r_data_core_core", &[]),
         ("r_data_core_license", &["r_data_core_core"]),
+        // Fetching a provider's keys over HTTP. Sits directly above core so
+        // that both RDataCore and the MCP server can reach it without the MCP
+        // server — an HTTP client of RDataCore — linking the service and
+        // persistence layers.
+        ("r_data_core_oidc_http", &["r_data_core_core"]),
         ("r_data_core_workflow", &["r_data_core_core"]),
         (
             "r_data_core_persistence",
@@ -39,6 +44,7 @@ fn allowed_internal_dependencies() -> HashMap<&'static str, BTreeSet<&'static st
             &[
                 "r_data_core_core",
                 "r_data_core_license",
+                "r_data_core_oidc_http",
                 "r_data_core_persistence",
                 "r_data_core_workflow",
             ],
@@ -54,7 +60,11 @@ fn allowed_internal_dependencies() -> HashMap<&'static str, BTreeSet<&'static st
         ),
         (
             "r_data_core_mcp",
-            &["r_data_core_core", "r_data_core_workflow"],
+            &[
+                "r_data_core_core",
+                "r_data_core_oidc_http",
+                "r_data_core_workflow",
+            ],
         ),
         (
             "r_data_core_api",

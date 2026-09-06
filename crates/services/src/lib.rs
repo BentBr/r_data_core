@@ -19,9 +19,7 @@ pub mod dynamic_entity;
 pub mod entity_definition;
 pub mod license;
 pub mod mail;
-pub mod oidc_discovery;
 pub mod oidc_flow;
-pub mod oidc_keys;
 pub mod oidc_provisioning;
 pub mod oidc_runtime;
 #[cfg(test)]

@@ -37,8 +37,8 @@ use r_data_core_core::cache::CacheManager;
 use r_data_core_core::oidc::keys::OidcClaims;
 use r_data_core_core::oidc::{is_local_redirect_path, OidcConfig};
 
-use crate::oidc_discovery;
 use crate::oidc_runtime::{OidcAuthError, OidcRuntime};
+use r_data_core_oidc_http::discovery as oidc_discovery;
 
 /// How long a started sign-in may sit unfinished.
 const STATE_TTL: Duration = Duration::from_secs(300);

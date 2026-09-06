@@ -14,6 +14,7 @@ use r_data_core_api::ApiState;
 use r_data_core_core::cache::CacheManager;
 use r_data_core_core::config::AppConfig;
 use r_data_core_core::settings::OutboxSettings;
+use r_data_core_oidc_http::HttpKeySource;
 use r_data_core_persistence::{
     AdminUserRepository, ApiKeyRepository, DashboardStatsRepository, DynamicEntityRepository,
     EmailTemplateRepository, EntityDefinitionRepository, IdentityRepository, OutboxRepository,
@@ -23,7 +24,6 @@ use r_data_core_services::adapters::{
     AdminUserRepositoryAdapter, ApiKeyRepositoryAdapter, DynamicEntityRepositoryAdapter,
     EntityDefinitionRepositoryAdapter,
 };
-use r_data_core_services::oidc_keys::HttpKeySource;
 use r_data_core_services::oidc_provisioning::OidcProvisioningService;
 use r_data_core_services::workflow::outbox::OutboxRetryPolicy;
 use r_data_core_services::{

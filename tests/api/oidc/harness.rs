@@ -34,8 +34,8 @@ use r_data_core_api::auth::auth_enum::RequiredAuth;
 use r_data_core_core::cache::CacheManager;
 use r_data_core_core::config::CacheConfig;
 use r_data_core_core::oidc::OidcConfig;
+use r_data_core_oidc_http::HttpKeySource;
 use r_data_core_persistence::{AdminUserRepository, IdentityRepository, RoleRepository};
-use r_data_core_services::oidc_keys::HttpKeySource;
 use r_data_core_services::oidc_provisioning::OidcProvisioningService;
 use r_data_core_services::{OidcRuntime, OidcServices};
 

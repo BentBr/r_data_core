@@ -19,7 +19,7 @@ use tokio::sync::RwLock;
 use r_data_core_core::oidc::keys::{JwkSet, KeySource, KeySourceError};
 use r_data_core_core::oidc::OidcConfig;
 
-use crate::oidc_discovery;
+use crate::discovery;
 
 /// Shortest gap between forced re-fetches, however many unknown key ids arrive.
 const REFRESH_COOLDOWN: Duration = Duration::from_secs(60);
@@ -44,7 +44,7 @@ impl HttpKeySource {
     /// Returns `KeySourceError` if the HTTP client cannot be built.
     pub fn new(config: &OidcConfig) -> Result<Self, KeySourceError> {
         Ok(Self {
-            client: oidc_discovery::client()?,
+            client: discovery::client()?,
             issuer: config.issuer.trim_end_matches('/').to_string(),
             ttl: config.jwks_ttl,
             cached: RwLock::new(None),
@@ -53,7 +53,7 @@ impl HttpKeySource {
 
     /// Discover the key-set URL, then fetch it.
     async fn fetch(&self) -> Result<JwkSet, KeySourceError> {
-        let discovery = oidc_discovery::fetch(&self.client, &self.issuer).await?;
+        let discovery = discovery::fetch(&self.client, &self.issuer).await?;
 
         self.client
             .get(&discovery.jwks_uri)
@@ -123,4 +123,4 @@ impl KeySource for HttpKeySource {
 }
 
 #[cfg(test)]
-mod oidc_keys_tests;
+mod keys_tests;

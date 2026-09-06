@@ -45,7 +45,7 @@ use tokio::sync::RwLock;
 
 use r_data_core_core::oidc::keys::KeySource;
 use r_data_core_core::oidc::{validate_token, OidcConfig};
-use r_data_core_services::oidc_keys::HttpKeySource;
+use r_data_core_oidc_http::HttpKeySource;
 
 use crate::auth::{metadata, CallerContext, OidcBackend, Permissions};
 use crate::client::RdcClient;
