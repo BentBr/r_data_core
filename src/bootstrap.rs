@@ -222,7 +222,14 @@ pub async fn build_api_state(
 /// A misconfiguration fails startup rather than silently disabling SSO. An
 /// operator who sets `RDC_OIDC_ISSUER` and gets a server that quietly ignores
 /// it has no way to tell the feature is off until someone cannot log in.
-fn build_oidc_services(
+///
+/// Public so the integration tests wire single sign-on the same way the binary
+/// does. A test-only copy of this would be one change away from testing a
+/// configuration the server never builds.
+///
+/// # Errors
+/// Returns an error when the OIDC configuration is present but malformed.
+pub fn build_oidc_services(
     pool: &PgPool,
     cache_manager: &Arc<CacheManager>,
 ) -> r_data_core_core::error::Result<Option<Arc<OidcServices>>> {

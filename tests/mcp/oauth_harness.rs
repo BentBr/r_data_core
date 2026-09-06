@@ -45,6 +45,9 @@ pub struct OauthStack {
     _idp: MockServer,
     _rdc: ServerGuard,
     _mcp: ShutdownGuard,
+    /// Declared last so it drops last, after everything that reads the
+    /// variables it removes.
+    _env: EnvGuard,
 }
 
 struct ServerGuard(tokio::task::JoinHandle<()>);
@@ -60,6 +63,22 @@ struct ShutdownGuard(tokio_util::sync::CancellationToken);
 impl Drop for ShutdownGuard {
     fn drop(&mut self) {
         self.0.cancel();
+    }
+}
+
+/// Removes the OIDC variables this harness set.
+///
+/// `build_app_state` reads them from the process environment, so leaving them
+/// behind would give every later test in this binary a server configured
+/// against a mock provider that has since stopped. Dropped last, after the
+/// servers that read them.
+struct EnvGuard;
+
+impl Drop for EnvGuard {
+    fn drop(&mut self) {
+        for key in ["RDC_OIDC_ISSUER", "RDC_OIDC_AUDIENCE", "RDC_OIDC_ROLE_MAP"] {
+            std::env::remove_var(key);
+        }
     }
 }
 
@@ -146,6 +165,7 @@ impl OauthStack {
             _idp: idp,
             _rdc: rdc,
             _mcp: ShutdownGuard(shutdown),
+            _env: EnvGuard,
         }
     }
 

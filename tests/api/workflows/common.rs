@@ -52,6 +52,11 @@ pub async fn setup_app_with_entities() -> anyhow::Result<(
 ///
 /// # Errors
 /// Returns an error if test setup fails
+///
+/// # Panics
+/// Panics if `RDC_OIDC_*` is set to something malformed. A test that
+/// configures single sign-on badly should say so loudly rather than quietly
+/// building a server with the feature off.
 pub async fn build_app_state() -> anyhow::Result<(
     web::Data<ApiStateWrapper>,
     r_data_core_test_support::TestDatabase,
@@ -106,6 +111,12 @@ pub async fn build_app_state() -> anyhow::Result<(
         r_data_core_services::DashboardStatsService::new(Arc::new(dashboard_stats_repository));
 
     let jwt_secret = "test_secret".to_string();
+    // Built from the environment exactly as the binary does, so a test that
+    // sets RDC_OIDC_* gets a server that really trusts that provider. Every
+    // other test leaves those unset and gets `None`.
+    let oidc = r_data_core::bootstrap::build_oidc_services(&pool.pool, &cache_manager)
+        .expect("OIDC configuration should be valid");
+
     let api_state = ApiState {
         db_pool: pool.pool.clone(),
         api_config: r_data_core_core::config::ApiConfig {
@@ -134,7 +145,7 @@ pub async fn build_app_state() -> anyhow::Result<(
         license_service,
         password_reset_service: None,
         system_log_service: None,
-        oidc: None,
+        oidc,
     };
 
     let app_data = web::Data::new(ApiStateWrapper::new(api_state));
