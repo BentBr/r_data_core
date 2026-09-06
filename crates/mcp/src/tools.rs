@@ -13,6 +13,7 @@
 //! could not have avoided. `RDataCore` performs the real check on every call,
 //! and a tool invoked despite being hidden still fails there.
 
+pub mod author;
 pub mod discover;
 
 use std::sync::Arc;
@@ -49,7 +50,7 @@ pub struct RdcTools {
 impl RdcTools {
     #[must_use]
     pub fn new(client: Arc<RdcClient>, permissions: Permissions, caller: CallerContext) -> Self {
-        let mut tool_router = Self::discover_router();
+        let mut tool_router = Self::discover_router() + Self::author_router();
         for tool in ALL_TOOLS {
             if !is_tool_visible(tool, &permissions) {
                 tool_router.disable_route(*tool);
