@@ -9,7 +9,7 @@ use std::result::Result;
 
 use crate::api_state::{ApiStateTrait, ApiStateWrapper};
 use crate::auth::auth_enum::CombinedRequiredAuth;
-use r_data_core_core::entity_jwt;
+use r_data_core_core::{crypto::constant_time_eq, entity_jwt};
 use r_data_core_workflow::data::adapters::auth::{AuthConfig, KeyLocation};
 use r_data_core_workflow::dsl::{DslProgram, FormatConfig, FromDef, OutputMode, ToDef};
 
@@ -204,8 +204,11 @@ fn validate_provider_auth(
                 KeyLocation::Body => None,
             };
 
+            // Constant-time: a plain `==` short-circuits on the first wrong
+            // byte, which lets a caller recover the key one byte at a time by
+            // timing the rejections (CWE-208).
             if let Some(provided) = provided_key {
-                if provided == key {
+                if constant_time_eq(&provided, &key) {
                     req.extensions_mut().insert(true);
                     return Ok(());
                 }

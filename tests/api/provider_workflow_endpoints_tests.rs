@@ -375,6 +375,28 @@ async fn test_provider_endpoint_with_pre_shared_key() -> anyhow::Result<()> {
         resp.status()
     );
 
+    // A guess that shares a prefix with the real key must be rejected exactly
+    // like an unrelated one. The comparison is constant-time (CWE-208), so a
+    // near miss must not be distinguishable from a wild miss.
+    for guess in [
+        "t",
+        "test-secret",
+        "test-secret-key-12",
+        "test-secret-key-1234",
+    ] {
+        let req = test::TestRequest::get()
+            .uri(&format!("/api/v1/workflows/{wf_uuid}"))
+            .insert_header(("X-Pre-Shared-Key", guess))
+            .to_request();
+
+        let resp = test::call_service(&app, req).await;
+        assert_eq!(
+            resp.status().as_u16(),
+            401,
+            "prefix guess {guess:?} must be rejected like any other wrong key"
+        );
+    }
+
     Ok(())
 }
 

@@ -101,3 +101,77 @@ mod tests {
         assert!(verify_password_argon2("same_password", &hash2));
     }
 }
+
+/// Compare two secrets without leaking anything through timing.
+///
+/// A plain `==` on `str` or `String` short-circuits at the first differing
+/// byte, so the time it takes reveals how long a shared prefix the attacker
+/// guessed. Repeated over an alphabet that is a byte-at-a-time recovery of the
+/// secret (CWE-208).
+///
+/// Both sides are hashed first, then the two fixed-size digests are compared
+/// with [`subtle::ConstantTimeEq`]. Hashing is what makes the *length* safe
+/// too: comparing the raw bytes would need a loop bounded by one of the two
+/// lengths, which leaks the secret's length under an input-length sweep. SHA-256
+/// is a fixed 32 bytes whatever goes in, so neither the content nor the length
+/// of `expected` is observable.
+///
+/// The digest is not a security boundary here — it is only a length
+/// equaliser — so a plain hash without a salt is the right primitive. This is
+/// for comparing secrets that are already high-entropy tokens; use
+/// [`verify_password_argon2`] for user-chosen passwords.
+#[must_use]
+pub fn constant_time_eq(provided: &str, expected: &str) -> bool {
+    use sha2::{Digest, Sha256};
+    use subtle::ConstantTimeEq;
+
+    let provided = Sha256::digest(provided.as_bytes());
+    let expected = Sha256::digest(expected.as_bytes());
+
+    provided.ct_eq(&expected).into()
+}
+
+#[cfg(test)]
+mod constant_time_eq_tests {
+    use super::constant_time_eq;
+
+    #[test]
+    fn identical_secrets_match() {
+        assert!(constant_time_eq("s3cret-token", "s3cret-token"));
+    }
+
+    #[test]
+    fn a_different_secret_does_not_match() {
+        assert!(!constant_time_eq("s3cret-token", "s3cret-tokeN"));
+    }
+
+    #[test]
+    fn a_shared_prefix_does_not_match() {
+        assert!(
+            !constant_time_eq("s3cret", "s3cret-token"),
+            "a prefix of the secret must be rejected like any other wrong value"
+        );
+    }
+
+    #[test]
+    fn a_longer_guess_does_not_match() {
+        assert!(!constant_time_eq("s3cret-token-and-more", "s3cret-token"));
+    }
+
+    #[test]
+    fn empty_strings_match_each_other() {
+        assert!(constant_time_eq("", ""));
+    }
+
+    #[test]
+    fn an_empty_guess_does_not_match_a_real_secret() {
+        assert!(!constant_time_eq("", "s3cret-token"));
+    }
+
+    /// Non-ASCII must not panic or be truncated: the comparison is over bytes.
+    #[test]
+    fn multibyte_secrets_are_compared_by_bytes() {
+        assert!(constant_time_eq("schlüssel-🔑", "schlüssel-🔑"));
+        assert!(!constant_time_eq("schlüssel-🔑", "schlussel-🔑"));
+    }
+}
