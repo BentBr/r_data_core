@@ -18,6 +18,12 @@ performance. It is *who the server acts as*.
 owner of the configured key, and the audit trail says so. That is fine on your
 own laptop with your own key.
 
+The key is not sent to the admin API — that requires a JWT. The server
+presents the key once at `/admin/api/v1/auth/api-key/token` and uses the
+short-lived admin token it receives, which carries the key owner's roles and
+nothing more. Revoking the key stops the next exchange, so access ends within
+the token's lifetime rather than whenever a refresh token would have expired.
+
 **HTTP mode holds no credential of its own.** Each request carries its
 caller's token, which the server exchanges for a short-lived RDataCore token
 minted for that same person. It can therefore never exceed what that person
@@ -158,6 +164,13 @@ Requests carrying no `Origin` pass, because non-browser clients send none.
 
 **There is no delete tool.** Not a guarded one, not a disabled one — the
 capability does not exist in the binary, so no amount of prompting reaches it.
+
+**An API key reaches the admin API only through one door.** The admin API
+requires a JWT. `POST /admin/api/v1/auth/api-key/token` is the single endpoint
+that accepts a key, and it answers with a short-lived token carrying the key
+owner's roles. Every other admin route still requires a JWT, so the key's
+reach is one explicit, auditable exchange rather than a second authentication
+path spread across every handler.
 
 **Tool filtering is ergonomics, not security.** Hiding `create_workflow` from
 a read-only caller stops the assistant walking into a 403 it could not have

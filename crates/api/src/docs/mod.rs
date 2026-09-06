@@ -83,6 +83,7 @@ use utoipa_swagger_ui::{Config, SwaggerUi};
         crate::admin::auth::routes::oidc_start,
         crate::admin::auth::routes::oidc_callback,
         crate::admin::auth::routes::oidc_exchange,
+        crate::admin::auth::routes::exchange_api_key,
         crate::admin::auth::routes::reset_password,
         crate::admin::meta::routes::get_dashboard_stats,
     ),

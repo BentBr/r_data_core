@@ -1,5 +1,6 @@
 #![deny(clippy::all, clippy::pedantic, clippy::nursery, warnings)]
 
+pub mod api_key_token;
 pub mod helpers;
 pub mod login;
 pub mod oidc;
@@ -7,6 +8,7 @@ pub mod password_reset;
 pub mod session;
 
 // Re-export everything including utoipa __path_* types needed by docs/mod.rs
+pub use api_key_token::*;
 pub use login::*;
 pub use oidc::*;
 pub use password_reset::*;
@@ -24,5 +26,6 @@ pub fn register_routes(cfg: &mut actix_web::web::ServiceConfig) {
         .service(reset_password)
         .service(oidc_start)
         .service(oidc_callback)
-        .service(oidc_exchange);
+        .service(oidc_exchange)
+        .service(exchange_api_key);
 }

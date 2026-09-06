@@ -14,15 +14,21 @@ fn client_for(server: &MockServer) -> RdcClient {
     map.insert("RDC_BASE_URL".to_string(), server.uri());
     map.insert("RDC_API_KEY".to_string(), "secret".to_string());
     let config = Config::from_map(&map).expect("config");
-    RdcClient::new(&config, Arc::new(ApiKeyBackend::new("secret".to_string()))).expect("client")
+    RdcClient::new(
+        &config,
+        Arc::new(ApiKeyBackend::holding(&config, "an-admin-token").expect("backend")),
+    )
+    .expect("client")
 }
 
 #[tokio::test]
-async fn sends_the_credential_header_and_decodes_the_envelope() {
+async fn sends_the_admin_token_and_decodes_the_envelope() {
     let server = MockServer::start().await;
     Mock::given(method("GET"))
         .and(path("/admin/api/v1/workflows"))
-        .and(header("X-API-Key", "secret"))
+        // A bearer, not the API key: the admin API takes a JWT, and the key
+        // is exchanged for one before any of this.
+        .and(header("Authorization", "Bearer an-admin-token"))
         .respond_with(ResponseTemplate::new(200).set_body_json(json!({
             "status": "success", "message": "ok", "meta": null,
             "data": [{ "name": "nightly" }]
@@ -190,8 +196,11 @@ async fn an_unreachable_server_names_the_url() {
     map.insert("RDC_BASE_URL".to_string(), "http://127.0.0.1:1".to_string());
     map.insert("RDC_API_KEY".to_string(), "secret".to_string());
     let config = Config::from_map(&map).expect("config");
-    let client = RdcClient::new(&config, Arc::new(ApiKeyBackend::new("secret".to_string())))
-        .expect("client");
+    let client = RdcClient::new(
+        &config,
+        Arc::new(ApiKeyBackend::holding(&config, "an-admin-token").expect("backend")),
+    )
+    .expect("client");
 
     let err = client
         .get_json::<serde_json::Value>("/admin/api/v1/workflows", &CallerContext::default())
@@ -220,8 +229,11 @@ async fn a_base_url_with_a_path_prefix_is_preserved() {
     map.insert("RDC_BASE_URL".to_string(), format!("{}/rdc", server.uri()));
     map.insert("RDC_API_KEY".to_string(), "secret".to_string());
     let config = Config::from_map(&map).expect("config");
-    let client = RdcClient::new(&config, Arc::new(ApiKeyBackend::new("secret".to_string())))
-        .expect("client");
+    let client = RdcClient::new(
+        &config,
+        Arc::new(ApiKeyBackend::holding(&config, "an-admin-token").expect("backend")),
+    )
+    .expect("client");
 
     let envelope: Envelope<Vec<serde_json::Value>> = client
         .get_json("/admin/api/v1/workflows", &CallerContext::default())

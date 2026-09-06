@@ -16,7 +16,11 @@ fn client_for(server: &MockServer) -> RdcClient {
     map.insert("RDC_BASE_URL".to_string(), server.uri());
     map.insert("RDC_API_KEY".to_string(), "secret".to_string());
     let config = Config::from_map(&map).expect("config");
-    RdcClient::new(&config, Arc::new(ApiKeyBackend::new("secret".to_string()))).expect("client")
+    RdcClient::new(
+        &config,
+        Arc::new(ApiKeyBackend::holding(&config, "an-admin-token").expect("backend")),
+    )
+    .expect("client")
 }
 
 fn ok(data: &serde_json::Value) -> ResponseTemplate {

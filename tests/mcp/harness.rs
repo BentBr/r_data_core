@@ -88,8 +88,11 @@ impl McpTestStack {
         map.insert("RDC_API_KEY".to_string(), self.api_key.clone());
         let config = Config::from_map(&map).expect("config");
         Arc::new(
-            RdcClient::new(&config, Arc::new(ApiKeyBackend::new(self.api_key.clone())))
-                .expect("client"),
+            RdcClient::new(
+                &config,
+                Arc::new(ApiKeyBackend::new(&config, self.api_key.clone()).expect("auth backend")),
+            )
+            .expect("client"),
         )
     }
 

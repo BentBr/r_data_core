@@ -17,8 +17,11 @@ fn tools_for(server: &MockServer) -> RdcTools {
     map.insert("RDC_BASE_URL".to_string(), server.uri());
     map.insert("RDC_API_KEY".to_string(), "secret".to_string());
     let config = Config::from_map(&map).expect("config");
-    let client = RdcClient::new(&config, Arc::new(ApiKeyBackend::new("secret".to_string())))
-        .expect("client");
+    let client = RdcClient::new(
+        &config,
+        Arc::new(ApiKeyBackend::holding(&config, "an-admin-token").expect("backend")),
+    )
+    .expect("client");
     RdcTools::new(
         Arc::new(client),
         Permissions {

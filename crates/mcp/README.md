@@ -27,9 +27,13 @@ you lack permission for are not advertised, and calls to them are rejected.
 
 ### 1. Create an API key
 
-In the admin panel under **API Keys**, create a key and assign it the roles the
-assistant should act with. The key's permissions are the ceiling on what the
-assistant can do — grant it read-only access if you only want help reading.
+In the admin panel under **API Keys**, create a key. It acts as its owner, so
+that account's roles are the ceiling on what the assistant can do — use an
+account with read-only access if you only want help reading.
+
+The key itself never reaches the admin API, which requires a JWT. The server
+exchanges it for a short-lived admin token at startup and refreshes that
+before it expires; revoking the key stops the next exchange.
 
 ### 2. Build
 

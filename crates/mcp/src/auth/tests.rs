@@ -105,31 +105,3 @@ fn no_permissions_allows_nothing() {
 }
 
 // ── the API key backend ─────────────────────────────────────────────────────
-
-#[tokio::test]
-async fn attaches_the_credential_header() {
-    let backend = ApiKeyBackend::new("secret-value".to_string());
-    let headers = backend
-        .outbound_headers(&CallerContext::default())
-        .await
-        .expect("headers");
-
-    assert!(
-        headers
-            .iter()
-            .any(|(k, v)| k == "X-API-Key" && v == "secret-value"),
-        "expected the credential header RDataCore reads, got {headers:?}"
-    );
-}
-
-#[tokio::test]
-async fn attaches_nothing_else() {
-    // An extra header here would be sent on every request; keep the surface
-    // exactly one header wide.
-    let backend = ApiKeyBackend::new("secret-value".to_string());
-    let headers = backend
-        .outbound_headers(&CallerContext::default())
-        .await
-        .expect("headers");
-    assert_eq!(headers.len(), 1, "got {headers:?}");
-}

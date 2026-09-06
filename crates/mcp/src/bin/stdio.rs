@@ -41,7 +41,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let client = Arc::new(RdcClient::new(
         &config,
-        Arc::new(ApiKeyBackend::new(credential)),
+        Arc::new(ApiKeyBackend::new(&config, credential)?),
     )?);
 
     // Resolve permissions once, so the caller is offered only tools they can
