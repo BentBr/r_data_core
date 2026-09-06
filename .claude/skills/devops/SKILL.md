@@ -84,6 +84,28 @@ Set on the `app` service (see `compose.yaml` and `docs/DEVELOPMENT.md`):
 `APP_ENV` fails closed: only `development`/`dev`/`local`/`test` relax CORS and
 the SSRF guard — staging and an unset value are hardened.
 
+## Single sign-on env vars
+
+Off unless `RDC_OIDC_ISSUER` is set. Full operator guide, including worked
+Keycloak / Auth0 / Entra setups and the reasoning behind each default, is in
+`docs/SSO.md` — point operators there rather than restating it.
+
+| Var | Purpose |
+|-----|---------|
+| `RDC_OIDC_ISSUER` | Provider issuer URL. **Presence enables the feature.** |
+| `RDC_OIDC_AUDIENCE` | Required with the issuer; startup fails without it, because otherwise any token from that provider is accepted |
+| `RDC_OIDC_ROLE_MAP` / `RDC_OIDC_ROLES_CLAIM` | `idp-group:rdc-role,…`, and which claim carries groups (default `groups`). A malformed map entry fails startup |
+| `RDC_OIDC_DEFAULT_ROLE` | Unset means **reject** an unmapped user, not admit them with nothing |
+| `RDC_OIDC_LINK_BY_EMAIL` | Off by default; account-takeover surface when the provider's addresses are unverified |
+| `RDC_OIDC_CLIENT_ID` / `RDC_OIDC_REDIRECT_URI` | Enable the browser flow. A client id without a redirect URI fails startup |
+| `RDC_OIDC_CLIENT_SECRET` | Optional (public client + PKCE). Redacted from debug output |
+| `RDC_OIDC_POST_LOGIN_PATH` / `RDC_OIDC_PROVIDER_NAME` | Landing path (must be local) and the button's label |
+| `RDC_OIDC_JWKS_TTL_SECS` / `RDC_OIDC_RESOLUTION_CACHE_SECS` | Key-set cache (3600) and identity cache (60). The latter is how long a revocation takes to bite |
+
+Misconfiguration fails startup rather than silently disabling SSO: an operator
+who sets the issuer and gets a server that ignores it has no way to tell until
+someone cannot log in.
+
 Unlock a locked admin: `cargo run --bin user-actions -- --username <n> --action unlock`,
 or `PUT /admin/api/v1/users/{uuid}` with `{"status": "active"}`.
 
