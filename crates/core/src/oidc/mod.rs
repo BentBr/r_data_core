@@ -13,5 +13,9 @@
 //! contained.
 
 pub mod config;
+pub mod keys;
+pub mod validation;
 
 pub use config::{OidcConfig, OidcConfigError};
+pub use keys::{Jwk, JwkSet, KeySource, KeySourceError, OidcClaims, StaticKeySource};
+pub use validation::{validate_token, ValidationError};

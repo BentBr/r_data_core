@@ -33,3 +33,10 @@ jsonwebtoken = "9.2"
 ts-rs = { version = "10", features = ["serde-compat"] }
 url = "2"
 urlencoding = "2"
+
+[dev-dependencies]
+# The OIDC validation tests sign real tokens, so they need a real keypair.
+# Deterministically seeded, so a failure reproduces.
+rsa = { version = "0.9", features = ["sha2"] }
+rand_chacha = "0.3"
+rand_core = { version = "0.6", features = ["std"] }
