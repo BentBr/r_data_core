@@ -101,7 +101,10 @@ jobs:
                            "dist/${bin}-${{ matrix.target }}"
                     done
                     cd dist
-                    shasum -a 256 ./* > "SHA256SUMS-${{ matrix.target }}"
+                    # Named explicitly rather than globbed: `./*` would also
+                    # match the checksum file being written, and whether it
+                    # does depends on expansion order.
+                    shasum -a 256 r-data-core-mcp-* > "SHA256SUMS-${{ matrix.target }}"
                     cat "SHA256SUMS-${{ matrix.target }}"
 
             -   name: Stage and checksum (windows)
@@ -115,7 +118,7 @@ jobs:
                            "dist/${bin}-${{ matrix.target }}.exe"
                     done
                     cd dist
-                    sha256sum ./* > "SHA256SUMS-${{ matrix.target }}"
+                    sha256sum r-data-core-mcp-* > "SHA256SUMS-${{ matrix.target }}"
                     cat "SHA256SUMS-${{ matrix.target }}"
 
             -   name: Upload artefacts

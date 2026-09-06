@@ -1,0 +1,25 @@
+{
+    "name": "@rdatacore/mcp-server",
+    "version": "0.1.0",
+    "description": "MCP server for RDataCore — connect AI assistants to your workflows",
+    "bin": {
+        "rdatacore-mcp": "./run.mjs"
+    },
+    "scripts": {
+        "postinstall": "node install.mjs"
+    },
+    "files": [
+        "install.mjs",
+        "run.mjs",
+        "README.md"
+    ],
+    "engines": {
+        "node": ">=18"
+    },
+    "repository": {
+        "type": "git",
+        "url": "git+https://github.com/BentBr/r_data_core.git",
+        "directory": "mcp-npm-package"
+    },
+    "license": "SEE LICENSE IN LICENSE"
+}
