@@ -2,7 +2,10 @@
 
 //! Typed access to the `RDataCore` admin API.
 
+pub mod dsl;
+pub mod entities;
 pub mod error;
+pub mod workflows;
 
 pub use error::ClientError;
 

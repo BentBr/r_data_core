@@ -1,11 +1,11 @@
 #![deny(clippy::all, clippy::pedantic, clippy::nursery, warnings)]
 
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use utoipa::ToSchema;
 
 /// Request to create a new workflow
-#[derive(Debug, Deserialize, ToSchema)]
+#[derive(Debug, Serialize, Deserialize, ToSchema)]
 pub struct CreateWorkflowRequest {
     /// Workflow name
     pub name: String,
@@ -26,7 +26,7 @@ pub struct CreateWorkflowRequest {
 }
 
 /// Request to update an existing workflow
-#[derive(Debug, Deserialize, ToSchema)]
+#[derive(Debug, Serialize, Deserialize, ToSchema)]
 pub struct UpdateWorkflowRequest {
     /// Workflow name
     pub name: String,
