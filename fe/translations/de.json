@@ -376,7 +376,15 @@
             "create_button": "Erstellen",
             "json_invalid": "Ungültiges JSON",
             "config_label": "Workflow Konfiguration",
-            "versioning_disabled": "Versionierung für diesen Workflow deaktivieren"
+            "versioning_disabled": "Versionierung für diesen Workflow deaktivieren",
+            "rate_limit": {
+                "enabled": "Anfragen begrenzen",
+                "max_requests": "Erlaubte Anfragen",
+                "window_minutes": "Pro (Minuten)",
+                "hint": "Gilt nur für den öffentlichen Endpunkt dieses Workflows",
+                "integer": "Muss eine ganze Zahl sein",
+                "min": "Muss mindestens 1 sein"
+            }
         }
     },
     "validation": {
