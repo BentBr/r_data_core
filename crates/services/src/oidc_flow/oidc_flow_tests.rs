@@ -350,9 +350,9 @@ async fn a_provider_that_refuses_the_exchange_is_reported_without_the_code() {
         .mount(&server)
         .await;
 
-    let outcome = round_trip(&flow(&server, &[])).await;
-
-    let error = outcome.err().expect("the exchange should fail");
+    let error = round_trip(&flow(&server, &[]))
+        .await
+        .expect_err("the exchange should fail");
     assert!(
         matches!(error, FlowError::Provider(_)),
         "expected a provider error, got {error:?}"
