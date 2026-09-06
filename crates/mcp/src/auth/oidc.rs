@@ -191,7 +191,16 @@ impl AuthBackend for OidcBackend {
             token: token.clone(),
             refresh_after_secs: self.clock.now_secs().saturating_add(usable),
         };
-        self.cache.write().await.insert(key, entry);
+        let mut cache = self.cache.write().await;
+        // Drop what has aged out before adding to it. Nothing else ever
+        // removes an entry, and a server that runs for months would otherwise
+        // keep one per distinct token it has ever seen — tokens rotate, so
+        // that set only grows. The scan is O(n) on a cache miss, which is
+        // rare by construction.
+        let now = self.clock.now_secs();
+        cache.retain(|_, held| now < held.refresh_after_secs);
+        cache.insert(key, entry);
+        drop(cache);
 
         Ok(bearer_header(&token))
     }

@@ -190,13 +190,20 @@ impl ServerState {
             }
         };
 
-        self.permissions.write().await.insert(
+        let mut cache = self.permissions.write().await;
+        // Evict what has aged out first: nothing else removes an entry, and
+        // one per distinct token seen since startup would grow without bound
+        // on a long-running server.
+        cache.retain(|_, held| held.fetched_at.elapsed() < PERMISSIONS_TTL);
+        cache.insert(
             key,
             CachedPermissions {
                 permissions: permissions.clone(),
                 fetched_at: std::time::Instant::now(),
             },
         );
+        drop(cache);
+
         permissions
     }
 }

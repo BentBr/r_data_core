@@ -328,3 +328,60 @@ async fn an_exchange_without_a_stated_lifetime_still_expires() {
         "an unstated lifetime must not mean an unlimited one"
     );
 }
+
+#[tokio::test]
+async fn aged_out_entries_are_dropped_rather_than_accumulating() {
+    // Nothing else removes an entry, so without pruning a long-running server
+    // keeps one per distinct token it has ever seen — and tokens rotate, so
+    // that set only ever grows.
+    let rdc = MockServer::start().await;
+    mock_exchange(&rdc, "local-token", 100).await;
+
+    let clock = TestClock::new();
+    let backend = OidcBackend::with_clock(&config_for(&rdc.uri()), clock.clone()).expect("backend");
+
+    backend
+        .outbound_headers(&validated_ctx("alice"))
+        .await
+        .expect("alice");
+    assert_eq!(backend.cache.read().await.len(), 1);
+
+    // Well past alice's refresh point, so her entry is dead weight.
+    clock.0.store(1_200, Ordering::SeqCst);
+    backend
+        .outbound_headers(&validated_ctx("bob"))
+        .await
+        .expect("bob");
+
+    assert_eq!(
+        backend.cache.read().await.len(),
+        1,
+        "alice's stale entry should have been evicted when bob's was written"
+    );
+}
+
+#[tokio::test]
+async fn a_live_entry_is_not_evicted_by_another_callers_arrival() {
+    // The pruning must be narrow: evicting a live entry would mean an extra
+    // exchange per caller whenever anyone else connects.
+    let rdc = MockServer::start().await;
+    mock_exchange(&rdc, "local-token", 1800).await;
+
+    let clock = TestClock::new();
+    let backend = OidcBackend::with_clock(&config_for(&rdc.uri()), clock.clone()).expect("backend");
+
+    backend
+        .outbound_headers(&validated_ctx("alice"))
+        .await
+        .expect("alice");
+    backend
+        .outbound_headers(&validated_ctx("bob"))
+        .await
+        .expect("bob");
+
+    assert_eq!(
+        backend.cache.read().await.len(),
+        2,
+        "both callers are within their token's life and should both be held"
+    );
+}
