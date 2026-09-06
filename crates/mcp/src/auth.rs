@@ -60,6 +60,10 @@ impl Permissions {
     /// tool from them. Matching therefore compares namespace and action and
     /// ignores any interposed path.
     ///
+    /// `namespace:admin` grants every action in that namespace, matching how
+    /// `permission_check::has_permission` treats it server-side. Diverging here
+    /// would hide tools from an administrator.
+    ///
     /// Being generous is the right bias: this gates what is *advertised*,
     /// never what is *allowed*. `RDataCore` checks the specific path on every
     /// call and answers 403 if it is out of scope, which the model reads as an
@@ -74,11 +78,39 @@ impl Permissions {
         };
         self.entries.iter().any(|held| {
             held.split_once(':').is_some_and(|(namespace, rest)| {
+                if namespace != want_namespace {
+                    return false;
+                }
                 // `rest` is either "action" or "path:action".
                 let action = rest.rsplit_once(':').map_or(rest, |(_, action)| action);
-                namespace == want_namespace && action == want_action
+                action == want_action || action == "admin"
             })
         })
+    }
+
+    /// Read the shape `GET /admin/api/v1/auth/permissions` returns.
+    ///
+    /// Unknown or missing fields degrade to "no permissions" rather than
+    /// erroring: the caller decides what to do about an empty set, and a
+    /// parse failure here should not take down a session.
+    #[must_use]
+    pub fn from_api_response(body: &serde_json::Value) -> Self {
+        Self {
+            is_super_admin: body
+                .get("is_super_admin")
+                .and_then(serde_json::Value::as_bool)
+                .unwrap_or(false),
+            entries: body
+                .get("permissions")
+                .and_then(serde_json::Value::as_array)
+                .map(|a| {
+                    a.iter()
+                        .filter_map(serde_json::Value::as_str)
+                        .map(str::to_string)
+                        .collect()
+                })
+                .unwrap_or_default(),
+        }
     }
 }
 

@@ -68,6 +68,38 @@ fn a_malformed_requirement_matches_nothing() {
 }
 
 #[test]
+fn a_namespace_admin_permission_grants_every_action_in_it() {
+    // permission_check::has_permission treats "{ns}:admin" as granting all
+    // types. Diverging here would hide tools from an administrator.
+    let perms = Permissions {
+        is_super_admin: false,
+        entries: vec!["workflows:admin".to_string()],
+    };
+    assert!(perms.allows("workflows:read"));
+    assert!(perms.allows("workflows:execute"));
+    assert!(!perms.allows("entities:read"), "but only in its namespace");
+}
+
+#[test]
+fn permissions_parse_from_the_auth_endpoint_response() {
+    let perms = Permissions::from_api_response(&serde_json::json!({
+        "is_super_admin": false,
+        "permissions": ["workflows:read", "entities:read"],
+        "allowed_routes": ["/workflows"]
+    }));
+    assert!(perms.allows("workflows:read"));
+    assert!(!perms.allows("workflows:create"));
+}
+
+#[test]
+fn an_unexpected_permissions_payload_degrades_to_nothing() {
+    // Better an empty tool list than a crashed session.
+    let perms = Permissions::from_api_response(&serde_json::json!({ "unexpected": true }));
+    assert!(!perms.is_super_admin);
+    assert!(!perms.allows("workflows:read"));
+}
+
+#[test]
 fn no_permissions_allows_nothing() {
     assert!(!Permissions::default().allows("workflows:read"));
 }

@@ -19,6 +19,10 @@ r_data_core_workflow = { path = "../workflow" }
 # between majors. schemars comes from rmcp's default features rather than a
 # direct dependency, so the derive versions cannot diverge.
 rmcp = { version = "3.2.0", features = ["server", "macros", "transport-io"] }
+# Pinned to the same minor rmcp resolves: the JsonSchema derive expands to
+# `::schemars::` paths, so it must be a direct dependency, and two versions in
+# the graph produce derive errors that name neither of them.
+schemars = "1.2"
 reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls"] }
 tokio = { version = "1.35", features = ["rt-multi-thread", "macros", "signal", "time", "sync"] }
 serde = { version = "1.0", features = ["derive"] }
