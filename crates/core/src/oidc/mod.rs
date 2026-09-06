@@ -14,8 +14,10 @@
 
 pub mod config;
 pub mod keys;
+pub mod role_mapping;
 pub mod validation;
 
 pub use config::{OidcConfig, OidcConfigError};
 pub use keys::{Jwk, JwkSet, KeySource, KeySourceError, OidcClaims, StaticKeySource};
+pub use role_mapping::{map_roles, MappingError};
 pub use validation::{validate_token, ValidationError};
