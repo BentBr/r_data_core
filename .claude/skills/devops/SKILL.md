@@ -18,6 +18,18 @@ rdt test | test-unit | test-fe | clippy | lint | test-e2e | test-e2e-report | cl
 
 `postgres`, `pg-test`, `redis`, `node` (frontend). All frontend commands run via
 `docker compose exec -T node …` — never `npm`/`pnpm`/`node` on the host.
+
+**Local single sign-on**: `docker compose -f compose.yaml -f compose.sso.yaml up -d`
+adds Keycloak on `auth.rdatacore.docker:8081` with a realm, groups and three
+users imported, and points the `app` service at it. Seed the roles it maps to
+with `.docker/local_dev/keycloak/seed-roles.sql` — nothing seeds roles, and an
+unmatched role map denies every sign-in. Details in `docs/SSO.md`.
+
+**`.docker` names resolve via dinghy** (`codekitchen/dinghy-http-proxy`, a
+standalone container, not in compose) serving DNS on `127.0.0.1:19322` per
+`/etc/resolver/docker`. It wedges when the Docker daemon restarts: names stop
+resolving, and DB-backed tests fail with `PoolTimedOut` because
+`DATABASE_URL` names `pg-test.rdatacore.docker`. Fix: `docker restart http-proxy`.
 `docker compose restart` does NOT apply env-var or network-alias changes — use
 `docker compose up -d <service>` to recreate.
 

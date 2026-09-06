@@ -47,6 +47,67 @@ feature flag and more than a button label is worth.
 
 ---
 
+## Trying it locally
+
+A working Keycloak, realm and users ship with the repo. Nothing to configure:
+
+```bash
+docker compose -f compose.yaml -f compose.sso.yaml up -d
+```
+
+That is the whole setup. Two one-shot services run as part of it: `sso-migrate`
+applies migrations, and `sso-seed` creates the roles the realm's groups map
+onto. Both exit when done and are safe to re-run.
+
+They are not optional conveniences. The app does not migrate at boot by design,
+and nothing else seeds roles — a role map naming a role that does not exist has
+no effect, so every identity would map to nothing and be refused. That looks
+like a broken guard rather than a missing fixture, which is a bad hour to
+spend.
+
+Then open `http://rdatacore.docker/admin` and use the SSO button.
+
+| Who | Password | Group | Maps to | What should happen |
+|---|---|---|---|---|
+| `ada` | `ada` | `rdc-admins` | `sso-admin` | Signs in, broad permissions |
+| `grace` | `grace` | `rdc-editors` | `sso-editor` | Signs in, read plus workflow edit |
+| `mallory` | `mallory` | `rdc-nobodies` | *nothing* | **Refused** — this is default-deny working |
+
+Keycloak's own console is at `http://auth.rdatacore.docker:8081` (`admin` /
+`admin`). Neither those credentials nor anything in the realm is used by
+RDataCore beyond the realm itself.
+
+### Things worth trying
+
+- **Sign in as `mallory`.** The refusal is the feature. Nothing is created for
+  them — check `SELECT count(*) FROM admin_users WHERE username = 'mallory'`.
+- **Sign in as `ada`, then deactivate her in the admin UI** and reload. Access
+  ends within `RDC_OIDC_RESOLUTION_CACHE_SECS`, set to 10 in this stack so you
+  do not have to wait a minute. The identity provider still considers her
+  perfectly valid; RDataCore does not, and RDataCore wins.
+- **Try to set a password on her account** through the user form. Refused: an
+  SSO-provisioned account has no password path.
+- **Try `mallory` again after adding her to `rdc-editors`** in the Keycloak
+  console. She is admitted on the next sign-in, with no change to RDataCore.
+
+### Why port 8081 rather than the usual `.docker` name on port 80
+
+The issuer URL has to be byte-identical in two places that reach Keycloak by
+different routes: your browser, via the host, and the `app` container, which
+fetches the signing keys over the compose network. A token whose `iss` does not
+match is rejected, and a key-set URL the server cannot reach fails every
+sign-in.
+
+Publishing 8081 on the host *and* listening on 8081 inside the container makes
+`http://auth.rdatacore.docker:8081` correct from both sides. Port 80 would need
+root inside the Keycloak image, which it deliberately does not have.
+
+This is the single most common thing to get wrong when wiring a provider, local
+or not: **whatever `iss` your provider puts in its tokens must be exactly what
+`RDC_OIDC_ISSUER` says, and that URL must be reachable from the server.**
+
+---
+
 ## Worked setups
 
 Each of these grants the RDataCore role `editor` to members of one provider

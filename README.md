@@ -95,6 +95,21 @@ The application will be available at `http://rdatacore.docker` if you setup ding
 
 If you are not on macOS, you should create an `compose.override.yaml` and re-assign ports to for the web service to your localhosts.
 
+### Single sign-on locally
+
+A working Keycloak with a realm, groups and test users is included:
+
+```bash
+docker compose -f compose.yaml -f compose.sso.yaml up -d
+```
+
+Migrations and the roles the realm maps onto are applied automatically by two
+one-shot services.
+
+Sign in at `http://rdatacore.docker/admin` as `ada` / `ada`. See
+[docs/SSO.md](./docs/SSO.md) for what to try, including the accounts that are
+meant to be refused.
+
 ### Using Pre-built Docker Images
 
 Pull the latest images from GitHub Container Registry:

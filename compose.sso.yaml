@@ -1,0 +1,128 @@
+# Keycloak, for testing single sign-on locally.
+#
+#   docker compose -f compose.yaml -f compose.sso.yaml up -d
+#
+# Kept out of `compose.yaml` deliberately: single sign-on is off by default, and
+# an identity provider nobody is using is a slow container and a login button
+# that leads nowhere.
+#
+# **Why port 8081 rather than proxying through dinghy on :80.** The issuer URL
+# has to be byte-identical in two places that reach Keycloak by different
+# routes: the browser, which goes through the host, and the `app` container,
+# which fetches the signing keys over the compose network. A token whose `iss`
+# does not match what the server expects is rejected, and a JWKS URL the server
+# cannot reach fails every sign-in.
+#
+# Publishing 8081 on the host *and* listening on 8081 in the container makes
+# `http://auth.rdatacore.docker:8081` correct from both sides — dinghy's DNS
+# points the host at 127.0.0.1, and the compose alias points the app at the
+# container. Port 80 would need root inside the image, which the Keycloak
+# container deliberately does not have.
+
+services:
+    keycloak:
+        container_name: rdata_keycloak
+        image: quay.io/keycloak/keycloak:26.0
+        command:
+            - start-dev
+            - --import-realm
+            - --http-port=8081
+        environment:
+            # Dev-only credentials for the Keycloak admin console itself.
+            # Nothing in RDataCore uses these.
+            KC_BOOTSTRAP_ADMIN_USERNAME: admin
+            KC_BOOTSTRAP_ADMIN_PASSWORD: admin
+            # The URL Keycloak believes it is served at. This is what ends up in
+            # every token's `iss`, so it must match RDC_OIDC_ISSUER exactly.
+            KC_HOSTNAME: http://auth.rdatacore.docker:8081
+            KC_HOSTNAME_STRICT: 'false'
+            KC_HTTP_ENABLED: 'true'
+            VIRTUAL_HOST: .auth.rdatacore.docker
+            VIRTUAL_PORT: '8081'
+        ports:
+            - '8081:8081'
+        volumes:
+            - ./.docker/local_dev/keycloak:/opt/keycloak/data/import:ro
+        healthcheck:
+            # The Keycloak image ships no curl or wget, so this uses bash's own
+            # TCP redirection rather than adding a tool to the image.
+            test:
+                [
+                    'CMD-SHELL',
+                    'exec 3<>/dev/tcp/127.0.0.1/8081 && echo -e "GET /realms/rdatacore HTTP/1.1\nHost: localhost\nConnection: close\n\n" >&3 && cat <&3 | head -1 | grep -q "200 OK"',
+                ]
+            interval: 5s
+            timeout: 5s
+            retries: 30
+            start_period: 30s
+        networks:
+            default:
+                aliases:
+                    - auth.rdatacore.docker
+
+    # Apply migrations, then seed the roles the realm's groups map onto.
+    #
+    # Two one-shot services rather than one, because they need different
+    # images: the migration binary ships in the app image, and `psql` ships in
+    # the postgres one. Both exit when done and re-run harmlessly on the next
+    # `compose up` — migrations are tracked by SQLx, and the seed SQL is
+    # ON CONFLICT DO NOTHING.
+    #
+    # The app does not migrate at boot by design (`main.rs` says so), so
+    # without this a fresh volume gives you a login that fails at provisioning
+    # with no obvious cause.
+    sso-migrate:
+        container_name: rdata_sso_migrate
+        image: r_data_core-app
+        entrypoint: ['/usr/local/bin/run-migrations']
+        environment:
+            DATABASE_URL: postgres://postgres:postgres@postgres:5432/rdata
+            REDIS_URL: redis://redis:6379
+            RUST_LOG: info
+        depends_on:
+            postgres:
+                condition: service_healthy
+        restart: 'no'
+        networks:
+            - default
+
+    sso-seed:
+        container_name: rdata_sso_seed
+        image: postgres:18-alpine
+        environment:
+            PGHOST: postgres
+            PGUSER: postgres
+            PGPASSWORD: postgres
+            PGDATABASE: rdata
+        volumes:
+            - ./.docker/local_dev/keycloak:/seed:ro
+        entrypoint: ['/bin/sh', '/seed/seed.sh']
+        depends_on:
+            postgres:
+                condition: service_healthy
+            sso-migrate:
+                condition: service_completed_successfully
+        restart: 'no'
+        networks:
+            - default
+
+    # Point RDataCore at the realm above. Merged into the `app` service defined
+    # in compose.yaml; every other setting there is untouched.
+    app:
+        environment:
+            RDC_OIDC_ISSUER: http://auth.rdatacore.docker:8081/realms/rdatacore
+            RDC_OIDC_AUDIENCE: r-data-core
+            RDC_OIDC_CLIENT_ID: r-data-core
+            RDC_OIDC_REDIRECT_URI: http://rdatacore.docker/admin/api/v1/auth/oidc/callback
+            # These two roles must exist in RDataCore, or every sign-in is
+            # refused — seed them with
+            # `.docker/local_dev/keycloak/seed-roles.sql`. Neither is
+            # super_admin: claim mapping filters those out by design, so a
+            # group mapped to one would be denied. `rdc-nobodies` is
+            # deliberately unmapped, so there is an account that proves
+            # default-deny.
+            RDC_OIDC_ROLE_MAP: 'rdc-admins:sso-admin,rdc-editors:sso-editor'
+            RDC_OIDC_POST_LOGIN_PATH: /admin
+            # Short, so revoking access in RDataCore bites while you are still
+            # looking at it rather than a minute later.
+            RDC_OIDC_RESOLUTION_CACHE_SECS: '10'
