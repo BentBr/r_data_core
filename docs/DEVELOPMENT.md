@@ -275,6 +275,28 @@ The counter is an atomic Redis `INCR` with an expiry set once per window, so
 parallel requests cannot undercount and the window does not slide forward on
 every hit.
 
+### Public Workflow Authentication
+
+Workflows configured with a pre-shared key are authenticated on that value
+alone, so two controls apply.
+
+**Key requirements.** At least 32 characters, compared in constant time — a
+byte-at-a-time `==` would let a caller recover the key by timing the rejections.
+Generate one with `openssl rand -base64 32`. A workflow saved with a shorter key
+fails validation; existing workflows keep running until their next save, so
+rotate short keys deliberately rather than waiting to be prompted.
+
+**Per-workflow rate limiting.** Off by default. An admin enables it per workflow
+in the workflow's config panel and sets a request count and a window in minutes.
+The counter is scoped to the workflow and the calling client, so one workflow
+never spends another's budget and one caller cannot exhaust the legitimate
+consumer's. Over the limit returns `429` with `Retry-After`. Enforcement runs
+ahead of authentication, so refused traffic costs no key verification.
+
+The settings live in the workflow's `config` JSONB, and workflow reads are
+Redis-cached, so enforcement costs no extra database round-trip. Editing a
+workflow invalidates its cache entry, so a changed limit applies immediately.
+
 ### Account Lockout and Unlocking
 
 `LOGIN_MAX_FAILED_ATTEMPTS` consecutive bad passwords lock an account for

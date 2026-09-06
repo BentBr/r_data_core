@@ -60,6 +60,7 @@ pub fn register_routes(cfg: &mut web::ServiceConfig) {
         (status = 202, description = "Workflow execution queued (use /workflows/{uuid} again to check status)"),
         (status = 401, description = "Unauthorized - authentication required"),
         (status = 404, description = "Workflow not found"),
+        (status = 429, description = "Rate limit exceeded for this workflow"),
         (status = 500, description = "Internal server error")
     ),
     security(
@@ -133,6 +134,7 @@ pub async fn get_workflow_data(
         (status = 202, description = "Workflow execution queued (use /workflows/{uuid}/trigger again to check status)"),
         (status = 401, description = "Unauthorized - authentication required"),
         (status = 404, description = "Workflow not found or not a Consumer workflow with trigger type"),
+        (status = 429, description = "Rate limit exceeded for this workflow"),
         (status = 500, description = "Internal server error")
     ),
     security(
@@ -214,6 +216,7 @@ pub async fn trigger_workflow(
         (status = 200, description = "Workflow metadata", body = serde_json::Value),
         (status = 401, description = "Unauthorized"),
         (status = 404, description = "Workflow not found"),
+        (status = 429, description = "Rate limit exceeded for this workflow"),
         (status = 500, description = "Internal server error")
     ),
     security(
@@ -318,6 +321,7 @@ pub async fn get_workflow_stats(
         (status = 401, description = "Unauthorized - authentication required or invalid credentials"),
         (status = 404, description = "Workflow not found"),
         (status = 405, description = "Method not allowed - only consumer workflows accept POST"),
+        (status = 429, description = "Rate limit exceeded for this workflow"),
         (status = 500, description = "Internal server error")
     ),
     security(

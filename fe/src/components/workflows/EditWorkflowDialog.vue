@@ -50,6 +50,10 @@
                                                 @update:on-complete="onComplete = $event"
                                             />
                                         </div>
+                                        <RateLimitFields
+                                            v-model="rateLimit"
+                                            class="mb-4"
+                                        />
                                         <v-textarea
                                             v-model="configJson"
                                             rows="8"
@@ -98,12 +102,14 @@
     import { getDialogMaxWidth } from '@/design-system/components'
     import DslConfigurator from './DslConfigurator.vue'
     import WorkflowFormFields from './WorkflowFormFields.vue'
+    import RateLimitFields from './RateLimitFields.vue'
     import VersionHistory from '@/components/common/VersionHistory.vue'
     import { useTranslations } from '@/composables/useTranslations'
     import { computeDiffRows } from '@/utils/versionDiff'
     import type { DslStep } from './dsl/dsl-utils'
     import { sanitizeDslSteps, ensureCsvOptions, ensureEntityFilter } from './dsl/dsl-utils'
-    import type { WorkflowConfig } from '@/types/schemas/workflow'
+    import type { WorkflowConfig, WorkflowRateLimit } from '@/types/schemas/workflow'
+    import { DEFAULT_RATE_LIMIT } from '@/types/schemas/workflow'
     import type { OnComplete } from '@/types/schemas/dsl'
 
     const props = defineProps<{ modelValue: boolean; workflowUuid: string | null }>()
@@ -142,6 +148,8 @@
     const configError = ref<string | null>(null)
     const steps = ref<DslStep[]>([])
     const onComplete = ref<OnComplete | null>(null)
+    // The limit lives in config.rate_limit; this ref is the form's view of it.
+    const rateLimit = ref<WorkflowRateLimit>({ ...DEFAULT_RATE_LIMIT })
     const cronError = ref<string | null>(null)
     const cronHelp = ref<string>(
         'Use standard 5-field cron (min hour day month dow), e.g. "*/5 * * * *"'
@@ -247,10 +255,12 @@
                 const cfg = data.config as {
                     steps?: DslStep[]
                     on_complete?: OnComplete | null
+                    rate_limit?: WorkflowRateLimit
                 }
                 isSyncingSteps = true
                 steps.value = Array.isArray(cfg.steps) ? cfg.steps : []
                 onComplete.value = cfg.on_complete ?? null
+                rateLimit.value = { ...DEFAULT_RATE_LIMIT, ...(cfg.rate_limit ?? {}) }
                 // Reset flag after next tick
                 setTimeout(() => {
                     isSyncingSteps = false
@@ -258,6 +268,7 @@
             } catch {
                 steps.value = []
                 onComplete.value = null
+                rateLimit.value = { ...DEFAULT_RATE_LIMIT }
                 isSyncingSteps = false
             }
         } finally {
@@ -394,15 +405,31 @@
 
     // Sync config JSON when steps or on_complete change (fields → JSON)
     watch(
-        [() => steps.value, () => onComplete.value],
-        ([v, oc]) => {
+        [() => steps.value, () => onComplete.value, () => rateLimit.value],
+        ([v, oc, rl]) => {
             if (isSyncingSteps || isSyncingJson) {
                 return
             }
             try {
-                const configObj: Record<string, unknown> = { steps: v }
+                // Merge rather than replace: the config also carries
+                // provider_auth, rate_limit and anything else an admin set by
+                // hand, and rebuilding from scratch silently deletes them.
+                const existing = (parseJson(configJson.value) ?? {}) as Record<string, unknown>
+
+                const configObj: Record<string, unknown> = { ...existing, steps: v }
                 if (oc) {
                     configObj.on_complete = oc
+                } else {
+                    // With a merge, clearing on_complete must remove the key -
+                    // the old rebuild-from-scratch got that for free.
+                    delete configObj.on_complete
+                }
+
+                // Written only once it matters: an untouched dialog leaves the
+                // key out entirely, but a limit that was ever switched on stays
+                // in the config when switched off, so the numbers survive.
+                if (rl.enabled || 'rate_limit' in existing) {
+                    configObj.rate_limit = rl
                 }
                 const newJson = JSON.stringify(configObj, null, 2)
                 // Only update if different to prevent loops
@@ -434,6 +461,10 @@
                     const config = parsed as {
                         steps?: unknown[]
                         on_complete?: OnComplete | null
+                        rate_limit?: WorkflowRateLimit
+                    }
+                    if (config.rate_limit) {
+                        rateLimit.value = { ...DEFAULT_RATE_LIMIT, ...config.rate_limit }
                     }
                     if (Array.isArray(config.steps)) {
                         isSyncingSteps = true
@@ -465,6 +496,7 @@
         configJson,
         configError,
         form,
+        rateLimit,
     })
 </script>
 

@@ -3,7 +3,12 @@
 pub mod adapters;
 pub mod job_queue;
 pub mod jobs;
+pub mod provider_auth;
+pub mod rate_limit;
 pub mod requests;
+
+pub use provider_auth::validate_provider_auth_config;
+pub use rate_limit::WorkflowRateLimit;
 
 use serde::{Deserialize, Serialize};
 use std::fmt::Display;

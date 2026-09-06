@@ -42,6 +42,10 @@
                                         @update:on-complete="onComplete = $event"
                                     />
                                 </div>
+                                <RateLimitFields
+                                    v-model="rateLimit"
+                                    class="mb-4"
+                                />
                                 <v-textarea
                                     v-model="configJson"
                                     rows="8"
@@ -80,9 +84,12 @@
     import { getDialogMaxWidth } from '@/design-system/components'
     import DslConfigurator from './DslConfigurator.vue'
     import WorkflowFormFields from './WorkflowFormFields.vue'
+    import RateLimitFields from './RateLimitFields.vue'
     import type { DslStep } from './dsl/dsl-utils'
     import { sanitizeDslSteps, ensureCsvOptions, ensureEntityFilter } from './dsl/dsl-utils'
     import type { OnComplete } from '@/types/schemas/dsl'
+    import type { WorkflowRateLimit } from '@/types/schemas/workflow'
+    import { DEFAULT_RATE_LIMIT } from '@/types/schemas/workflow'
 
     const props = defineProps<{ modelValue: boolean }>()
     const emit = defineEmits<{
@@ -108,6 +115,8 @@
     const configError = ref<string | null>(null)
     const steps = ref<DslStep[]>([])
     const onComplete = ref<OnComplete | null>(null)
+    // The limit lives in config.rate_limit; this ref is the form's view of it.
+    const rateLimit = ref<WorkflowRateLimit>({ ...DEFAULT_RATE_LIMIT })
     const cronError = ref<string | null>(null)
     const cronHelp = ref<string>(
         'Use standard 5-field cron (min hour day month dow), e.g. "*/5 * * * *"'
@@ -281,15 +290,32 @@
 
     // Sync config JSON when steps or on_complete change (fields → JSON)
     watch(
-        [steps, onComplete],
-        ([v, oc]) => {
+        [steps, onComplete, rateLimit],
+        ([v, oc, rl]) => {
             if (isSyncingSteps || isSyncingJson) {
                 return
             }
             try {
-                const configObj: Record<string, unknown> = { steps: v }
+                // Merge rather than replace: the config also carries
+                // provider_auth, rate_limit and anything else an admin set by
+                // hand, and rebuilding from scratch silently deletes them.
+                const { parsed } = parseJson(configJson.value)
+                const existing = (parsed ?? {}) as Record<string, unknown>
+
+                const configObj: Record<string, unknown> = { ...existing, steps: v }
                 if (oc) {
                     configObj.on_complete = oc
+                } else {
+                    // With a merge, clearing on_complete must remove the key -
+                    // the old rebuild-from-scratch got that for free.
+                    delete configObj.on_complete
+                }
+
+                // Written only once it matters: an untouched dialog leaves the
+                // key out entirely, but a limit that was ever switched on stays
+                // in the config when switched off, so the numbers survive.
+                if (rl.enabled || 'rate_limit' in existing) {
+                    configObj.rate_limit = rl
                 }
                 const newJson = JSON.stringify(configObj, null, 2)
                 // Only update if different to prevent loops
@@ -316,7 +342,14 @@
         try {
             const { parsed } = parseJson(jsonStr)
             if (parsed && typeof parsed === 'object') {
-                const config = parsed as { steps?: unknown[]; on_complete?: OnComplete | null }
+                const config = parsed as {
+                    steps?: unknown[]
+                    on_complete?: OnComplete | null
+                    rate_limit?: WorkflowRateLimit
+                }
+                if (config.rate_limit) {
+                    rateLimit.value = { ...DEFAULT_RATE_LIMIT, ...config.rate_limit }
+                }
                 if (Array.isArray(config.steps)) {
                     isSyncingSteps = true
                     // Sanitize steps when loading from JSON
@@ -344,5 +377,6 @@
         steps,
         configJson,
         configError,
+        rateLimit,
     })
 </script>
