@@ -28,6 +28,10 @@ tokio = { version = "1.35", features = ["rt-multi-thread", "macros", "signal", "
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 async-trait = "0.1"
+# The per-caller token cache is keyed on a digest of the caller's token. A
+# collision there would be impersonation, not a cache miss, so this needs a
+# real hash rather than a fast one.
+sha2 = "0.10"
 thiserror = "1.0"
 url = "2"
 uuid = { version = "1.6", features = ["v7", "serde"] }
