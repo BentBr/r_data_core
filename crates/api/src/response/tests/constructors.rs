@@ -201,7 +201,7 @@ fn violation_field_constructor_supplies_no_location() {
     assert_eq!(v.field, "email");
     assert_eq!(v.code.as_deref(), Some("NOT_BLANK"));
     assert!(v.json_path.is_none());
-    assert!(v.legal_values.is_empty());
+    assert_eq!(v.legal_values, Vec::<String>::new());
 }
 
 /// The new fields are always serialized, so the JSON matches the generated
@@ -223,5 +223,5 @@ fn violation_deserializes_without_the_location_fields() {
     }))
     .expect("legacy payloads must still parse");
     assert!(v.json_path.is_none());
-    assert!(v.legal_values.is_empty());
+    assert_eq!(v.legal_values, Vec::<String>::new());
 }

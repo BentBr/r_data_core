@@ -50,7 +50,7 @@ async fn test_dry_run_applies_transforms_and_reports_the_trace() {
     let req = test::TestRequest::post()
         .uri(DRY_RUN)
         .insert_header(("Authorization", format!("Bearer {token}")))
-        .set_json(&serde_json::json!({
+        .set_json(serde_json::json!({
             "steps": arithmetic_program(),
             "input": { "price": 100 }
         }))
@@ -86,7 +86,7 @@ async fn test_dry_run_reports_nothing_would_be_written_for_a_read_only_program()
     let req = test::TestRequest::post()
         .uri(DRY_RUN)
         .insert_header(("Authorization", format!("Bearer {token}")))
-        .set_json(&serde_json::json!({
+        .set_json(serde_json::json!({
             "steps": arithmetic_program(),
             "input": { "price": 100 }
         }))
@@ -114,7 +114,7 @@ async fn test_dry_run_rejects_an_invalid_program_before_executing() {
     let req = test::TestRequest::post()
         .uri(DRY_RUN)
         .insert_header(("Authorization", format!("Bearer {token}")))
-        .set_json(&serde_json::json!({
+        .set_json(serde_json::json!({
             "steps": [{
                 "from": { "type": "previous_step", "mapping": {} },
                 "transform": { "type": "none" },
@@ -139,7 +139,7 @@ async fn test_dry_run_locates_a_malformed_step() {
     let req = test::TestRequest::post()
         .uri(DRY_RUN)
         .insert_header(("Authorization", format!("Bearer {token}")))
-        .set_json(&serde_json::json!({
+        .set_json(serde_json::json!({
             "steps": [{ "from": { "type": "not_a_source" } }],
             "input": {}
         }))
@@ -160,7 +160,7 @@ async fn test_dry_run_requires_authentication() {
 
     let req = test::TestRequest::post()
         .uri(DRY_RUN)
-        .set_json(&serde_json::json!({ "steps": [], "input": {} }))
+        .set_json(serde_json::json!({ "steps": [], "input": {} }))
         .to_request();
 
     let resp = test::call_service(&app, req).await;
@@ -184,7 +184,7 @@ async fn test_dry_run_leaves_no_trace_in_the_database() {
         let req = test::TestRequest::post()
             .uri(DRY_RUN)
             .insert_header(("Authorization", format!("Bearer {token}")))
-            .set_json(&serde_json::json!({
+            .set_json(serde_json::json!({
                 "steps": arithmetic_program(),
                 "input": { "price": 100 }
             }))

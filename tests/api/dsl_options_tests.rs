@@ -238,7 +238,7 @@ async fn test_validate_reports_a_precise_json_path() {
     let req = test::TestRequest::post()
         .uri(VALIDATE)
         .insert_header(("Authorization", format!("Bearer {token}")))
-        .set_json(&serde_json::json!({
+        .set_json(serde_json::json!({
             "steps": [{
                 "from": { "type": "trigger", "mapping": {} },
                 "transform": { "type": "none" },
@@ -272,7 +272,7 @@ async fn test_validate_lists_legal_values_for_an_unknown_variant() {
     let req = test::TestRequest::post()
         .uri(VALIDATE)
         .insert_header(("Authorization", format!("Bearer {token}")))
-        .set_json(&serde_json::json!({
+        .set_json(serde_json::json!({
             "steps": [{ "from": { "type": "nope" } }]
         }))
         .to_request();
@@ -303,7 +303,7 @@ async fn test_validate_locates_a_semantic_failure() {
     let req = test::TestRequest::post()
         .uri(VALIDATE)
         .insert_header(("Authorization", format!("Bearer {token}")))
-        .set_json(&serde_json::json!({
+        .set_json(serde_json::json!({
             "steps": [{
                 "from": { "type": "previous_step", "mapping": {} },
                 "transform": { "type": "none" },
@@ -337,7 +337,7 @@ async fn test_validate_does_not_invent_a_path_it_cannot_know() {
     let req = test::TestRequest::post()
         .uri(VALIDATE)
         .insert_header(("Authorization", format!("Bearer {token}")))
-        .set_json(&serde_json::json!({ "steps": [] }))
+        .set_json(serde_json::json!({ "steps": [] }))
         .to_request();
 
     let body: serde_json::Value = test::read_body_json(test::call_service(&app, req).await).await;

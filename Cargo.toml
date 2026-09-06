@@ -27,6 +27,10 @@ serial_test = { version = "2.0", features = ["async"] }
 tokio = { version = "1.35", features = ["full", "macros", "rt-multi-thread"] }
 r_data_core_worker = { path = "crates/worker" }
 r_data_core_license = { path = "crates/license" }
+# The MCP integration tests drive the tool surface against a real server, so
+# they need the crate and rmcp's result types.
+r_data_core_mcp = { path = "crates/mcp" }
+rmcp = { version = "3.2.0", features = ["server", "macros"] }
 r_data_core_test_support = { path = "crates/test-support" }
 anyhow = "1.0"
 tempfile = "3.10"

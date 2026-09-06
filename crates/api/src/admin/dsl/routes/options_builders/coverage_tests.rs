@@ -147,7 +147,7 @@ fn options_advertise_nothing_the_engine_does_not_accept() {
     ] {
         let unknown: Vec<&String> = advertised
             .iter()
-            .filter(|got| !expected.iter().any(|want| *want == got.as_str()))
+            .filter(|got| !expected.contains(&got.as_str()))
             .collect();
 
         assert!(

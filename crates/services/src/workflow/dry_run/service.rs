@@ -149,10 +149,12 @@ const fn classify(to_def: &ToDef, entities_available: bool) -> StepEffect {
         // Dispatched against the overlay, so genuinely proven — but only when
         // there is an entity service to dispatch through.
         ToDef::Entity { .. } if entities_available => StepEffect::Executed,
-        ToDef::Entity { .. } => StepEffect::Suppressed,
-        // Cannot be undone, so never attempted.
-        ToDef::Email { .. } => StepEffect::Suppressed,
-        ToDef::Format {
+        // Everything else that touches the outside world is described rather
+        // than performed: an entity write with no service to dispatch through,
+        // and email and pushes, which no overlay could undo.
+        ToDef::Entity { .. }
+        | ToDef::Email { .. }
+        | ToDef::Format {
             output: OutputMode::Push { .. },
             ..
         } => StepEffect::Suppressed,

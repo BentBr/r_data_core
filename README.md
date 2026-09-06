@@ -21,6 +21,17 @@ See our website for more infos [RDataCore](https://rdatacore.eu) (/ˈɹeɪtəkɔ
 > | **ta**   | /tə/   | "tuh"       |
 > | **core** | /kɔːɹ/ | "core"      |
 
+## MCP server (AI assistants)
+
+`crates/mcp` exposes RDataCore over the Model Context Protocol, so an assistant
+can discover your entity schema, author and validate workflow DSL, dry-run it
+without side effects, execute it and read run logs.
+
+It cannot delete anything, cannot modify entities or schemas, and cannot exceed
+the permissions of the API key it is given. See `crates/mcp/README.md` for
+setup.
+
+
 ## Features
 
 - **Dynamic Entity System** - Create custom data structures at runtime through the API

@@ -58,6 +58,7 @@ Rust API structs generate TypeScript type definitions via `ts-rs`.
 | workflow | `crates/workflow/` | DSL engine, job queue | `backend/workflow.md` |
 | worker | `crates/worker/` | Background tasks, scheduler | `backend/worker.md` |
 | license | `crates/license/` | License verification | `backend/license.md` |
+| mcp | `crates/mcp/` | MCP server for AI assistants | `backend/mcp.md` |
 | test-support | `crates/test-support/` | Test helpers (dev-only) | `backend/SKILL.md` |
 
 Frontend: `fe/` — Vue3 + TypeScript + Vuetify admin dashboard. See the `frontend` skill.
@@ -66,7 +67,7 @@ Frontend: `fe/` — Vue3 + TypeScript + Vuetify admin dashboard. See the `fronte
 
 Documentation is organized into grouped skills under `.claude/skills/<name>/SKILL.md`:
 
-- **`backend`** — crate dependency graph, layering rules, scoped-check commands, TS bindings. Supporting docs: `core.md`, `services.md`, `persistence.md`, `api.md`, `workflow.md`, `worker.md`, `license.md`, `database.md`, `api-reference.md`, `conventions.md` (clippy/MSRV/file-length), `quality.md` (testing/review).
+- **`backend`** — crate dependency graph, layering rules, scoped-check commands, TS bindings. Supporting docs: `core.md`, `services.md`, `persistence.md`, `api.md`, `workflow.md`, `worker.md`, `license.md`, `mcp.md`, `database.md`, `api-reference.md`, `conventions.md` (clippy/MSRV/file-length), `quality.md` (testing/review).
 - **`frontend`** — Vue3/TS/Vite/Vuetify/Pinia, generated-types boundary, EN/DE i18n. Supporting: `conventions.md`.
 - **`architecture`** — system view: crate dependency graph, layering, key concepts.
 - **`git`** — conventional commits + decision matrix, pre-push pipeline, `GIT_HOOK_*` toggles. Supporting: `conflicts.md` (merge-conflict classification).

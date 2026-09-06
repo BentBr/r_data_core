@@ -56,7 +56,7 @@ async fn test_restore_appends_a_new_version_carrying_the_old_program() {
     let update = test::TestRequest::put()
         .uri(&format!("/admin/api/v1/workflows/{uuid}"))
         .insert_header(("Authorization", format!("Bearer {token}")))
-        .set_json(&serde_json::json!({
+        .set_json(serde_json::json!({
             "name": format!("renamed-{}", Uuid::now_v7().simple()),
             "kind": "consumer",
             "enabled": false,
@@ -103,7 +103,7 @@ async fn test_restore_does_not_resurrect_old_metadata() {
     let disable = test::TestRequest::put()
         .uri(&format!("/admin/api/v1/workflows/{uuid}"))
         .insert_header(("Authorization", format!("Bearer {token}")))
-        .set_json(&serde_json::json!({
+        .set_json(serde_json::json!({
             "name": format!("wf-{}", Uuid::now_v7().simple()),
             "kind": "consumer",
             "enabled": false,

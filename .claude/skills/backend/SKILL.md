@@ -24,7 +24,7 @@ color: green
 
 ## Supporting docs (read on demand)
 
-- Per crate: `core.md`, `services.md`, `persistence.md`, `api.md`, `workflow.md`, `worker.md`, `license.md`
+- Per crate: `core.md`, `services.md`, `persistence.md`, `api.md`, `workflow.md`, `worker.md`, `license.md`, `mcp.md`
 - `database.md` — SQLx, migrations, compile-time verification, test DB
 - `api-reference.md` — public + admin endpoint tables
 - `conventions.md` — clippy policy, MSRV, file-length caps, allow policy

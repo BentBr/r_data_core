@@ -38,6 +38,26 @@ pub async fn setup_app_with_entities() -> anyhow::Result<(
     String, // JWT token
     String, // API key value
 )> {
+    let (app_data, pool, token, api_key_value) = build_app_state().await?;
+    let app = test::init_service(App::new().app_data(app_data).configure(configure_app)).await;
+    Ok((app, pool, token, api_key_value))
+}
+
+/// Build the application state a test server needs, without binding it to a
+/// transport.
+///
+/// Separated from `setup_app_with_entities` so the same state can back either
+/// an in-process `test::init_service` app or a real listener — the MCP client
+/// speaks HTTP through reqwest and cannot use the in-process one.
+///
+/// # Errors
+/// Returns an error if test setup fails
+pub async fn build_app_state() -> anyhow::Result<(
+    web::Data<ApiStateWrapper>,
+    r_data_core_test_support::TestDatabase,
+    String, // JWT token
+    String, // API key value
+)> {
     let pool = setup_test_db().await;
 
     let cache_config = CacheConfig {
@@ -118,13 +138,6 @@ pub async fn setup_app_with_entities() -> anyhow::Result<(
 
     let app_data = web::Data::new(ApiStateWrapper::new(api_state));
 
-    let app = test::init_service(
-        App::new()
-            .app_data(app_data.clone())
-            .configure(configure_app),
-    )
-    .await;
-
     // Create test admin user and JWT
     let user_uuid = create_test_admin_user(&pool).await?;
     let user: AdminUser = sqlx::query_as("SELECT * FROM admin_users WHERE uuid = $1")
@@ -149,7 +162,7 @@ pub async fn setup_app_with_entities() -> anyhow::Result<(
         .create_new_api_key("test-api-key", "Test key", user_uuid, 30)
         .await?;
 
-    Ok((app, pool, token, api_key_value))
+    Ok((app_data, pool, token, api_key_value))
 }
 
 /// Create a consumer workflow for testing

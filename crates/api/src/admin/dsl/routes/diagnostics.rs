@@ -85,7 +85,7 @@ fn step_index_from(message: &str) -> Option<usize> {
     digits.parse().ok()
 }
 
-/// Pull the alternatives out of serde's `expected one of \`a\`, \`b\`` phrasing.
+/// Pull the alternatives out of serde's "expected one of" phrasing.
 ///
 /// Returns an empty vec for any other failure shape; an empty list means "no
 /// enumerable alternatives", never "none are legal".
@@ -132,7 +132,10 @@ mod tests {
 
     #[test]
     fn returns_no_alternatives_for_an_unrelated_message() {
-        assert!(legal_values_from("invalid type: string, expected u32").is_empty());
+        assert_eq!(
+            legal_values_from("invalid type: string, expected u32"),
+            Vec::<String>::new()
+        );
     }
 
     #[test]
