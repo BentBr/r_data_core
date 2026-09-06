@@ -197,7 +197,13 @@ async fn the_resource_url_supplies_the_default_origin_allowlist() {
     // rmcp disables Origin validation when the list is empty, so an unset
     // allowlist would be a hole rather than a permissive default.
     assert_eq!(config.allowed_origins, vec!["https://mcp.example.com"]);
-    assert_eq!(config.allowed_hosts, vec!["mcp.example.com"]);
+    // Loopback as well as the public authority: the latter is how a deployed
+    // server is reached, the former how it is reached in development and
+    // behind a proxy that rewrites Host.
+    assert_eq!(
+        config.allowed_hosts,
+        vec!["localhost", "127.0.0.1", "[::1]", "mcp.example.com"]
+    );
 }
 
 #[tokio::test]
@@ -290,6 +296,62 @@ async fn a_request_with_no_origin_is_served() {
     // Not a browser. The header exists to distinguish browsers, so its absence
     // is not something to refuse — every non-browser MCP client sends none.
     let server = start(&[("RDC_MCP_ALLOWED_ORIGINS", "https://app.example.com")]).await;
+
+    let response = client()
+        .get(format!("{}{HEALTH_PATH}", server.base))
+        .send()
+        .await
+        .expect("response");
+
+    assert_eq!(response.status(), 200);
+}
+
+#[tokio::test]
+async fn a_request_with_a_foreign_host_is_rejected_on_every_endpoint() {
+    // DNS rebinding points a browser at a server it should not reach, using
+    // the attacker's own name — which arrives in Host. rmcp checks this too,
+    // but only for requests that get as far as its handler; metadata and
+    // health never do.
+    let server = start(&[("RDC_MCP_ALLOWED_HOSTS", "mcp.example.com")]).await;
+
+    for path in [metadata::METADATA_PATH, HEALTH_PATH, MCP_PATH] {
+        let response = client()
+            .get(format!("{}{path}", server.base))
+            .header("Host", "evil.example.com")
+            .send()
+            .await
+            .expect("response");
+
+        assert_eq!(
+            response.status(),
+            403,
+            "{path} must refuse a foreign Host, got {}",
+            response.status()
+        );
+    }
+}
+
+#[tokio::test]
+async fn a_host_that_merely_ends_with_a_permitted_one_is_rejected() {
+    let server = start(&[("RDC_MCP_ALLOWED_HOSTS", "mcp.example.com")]).await;
+
+    for impostor in ["evil-mcp.example.com", "mcp.example.com.evil.test"] {
+        let response = client()
+            .get(format!("{}{}", server.base, metadata::METADATA_PATH))
+            .header("Host", impostor)
+            .send()
+            .await
+            .expect("response");
+
+        assert_eq!(response.status(), 403, "{impostor} must not be served");
+    }
+}
+
+#[tokio::test]
+async fn a_bare_allowlist_entry_matches_any_port() {
+    // An ephemeral or proxied port is not the thing being defended against,
+    // and requiring one would make every local run fail.
+    let server = start(&[("RDC_MCP_ALLOWED_HOSTS", "127.0.0.1")]).await;
 
     let response = client()
         .get(format!("{}{HEALTH_PATH}", server.base))

@@ -288,6 +288,14 @@ pub async fn update_user(
         }
     }
 
+    // Deactivating or re-roling an account has to reach the OIDC resolution
+    // cache too. That cache is keyed on the external identity, so nothing in
+    // the ordinary permission-cache invalidation touches it, and without this
+    // a deactivated federated user keeps working until the window expires.
+    if let Some(oidc) = state.oidc() {
+        oidc.runtime().forget_user(user_uuid).await;
+    }
+
     // Update user via service (handles audit logging)
     let service = state.admin_user_service();
     match service.update_user(&user, actor_uuid).await {

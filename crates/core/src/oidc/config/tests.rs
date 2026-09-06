@@ -205,7 +205,7 @@ fn the_browser_flow_stays_off_when_no_client_id_is_given() {
         config.client_id.is_none(),
         "bearer-token validation needs no client identity"
     );
-    assert_eq!(config.post_login_path, "/admin");
+    assert_eq!(config.post_login_path, "/dashboard");
 }
 
 #[test]
@@ -232,7 +232,7 @@ fn a_post_login_path_leaving_this_origin_is_refused() {
 #[test]
 fn an_empty_post_login_path_falls_back_to_the_safe_default() {
     let config = config_from(&with(&[("RDC_OIDC_POST_LOGIN_PATH", "")]));
-    assert_eq!(config.post_login_path, "/admin");
+    assert_eq!(config.post_login_path, "/dashboard");
 }
 
 #[test]

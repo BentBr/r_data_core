@@ -70,6 +70,20 @@ impl IdentityRepositoryTrait for FakeIdentities {
         Ok(())
     }
 
+    async fn find_identities_for_user(
+        &self,
+        admin_user_uuid: Uuid,
+    ) -> Result<Vec<(String, String)>> {
+        Ok(self
+            .links
+            .lock()
+            .expect("lock")
+            .iter()
+            .filter(|(_, uuid)| **uuid == admin_user_uuid)
+            .map(|((provider, subject), _)| (provider.clone(), subject.clone()))
+            .collect())
+    }
+
     async fn find_local_user_by_email(&self, email: &str) -> Result<Option<Uuid>> {
         Ok(self
             .local_by_email
@@ -93,6 +107,15 @@ impl FakeUsers {
             created: Mutex::new(Vec::new()),
         }
     }
+    /// Deactivate an account, as an operator would.
+    pub fn deactivate(&self, uuid: Uuid) {
+        for user in self.users.lock().expect("lock").iter_mut() {
+            if user.uuid == uuid {
+                user.is_active = false;
+            }
+        }
+    }
+
     pub fn created_count(&self) -> usize {
         self.created.lock().expect("lock").len()
     }

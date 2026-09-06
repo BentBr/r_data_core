@@ -254,7 +254,7 @@ pub fn state(idp: Option<&Idp>) -> ApiStateWrapper {
             provisioning,
             Arc::clone(&cache),
         ));
-        Arc::new(OidcServices::new(runtime, Arc::clone(&cache)).expect("oidc services"))
+        Arc::new(OidcServices::new(runtime, Arc::clone(&cache), None).expect("oidc services"))
     });
 
     ApiStateWrapper::new(MinimalState {

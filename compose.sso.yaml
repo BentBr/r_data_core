@@ -122,7 +122,7 @@ services:
             # deliberately unmapped, so there is an account that proves
             # default-deny.
             RDC_OIDC_ROLE_MAP: 'rdc-admins:sso-admin,rdc-editors:sso-editor'
-            RDC_OIDC_POST_LOGIN_PATH: /admin
+            RDC_OIDC_POST_LOGIN_PATH: /dashboard
             # Short, so revoking access in RDataCore bites while you are still
             # looking at it rather than a minute later.
             RDC_OIDC_RESOLUTION_CACHE_SECS: '10'

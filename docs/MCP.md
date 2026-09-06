@@ -70,17 +70,27 @@ obtains a token, and connects — no manual configuration.
 The *assistant* is the OAuth client, not this server. Register a public client
 with PKCE and whatever redirect URI your assistant documents.
 
-### 2. Decide the audience
+### 2. Set the audience
 
 The MCP server requires `RDC_OIDC_AUDIENCE` and refuses to start without it.
 Without an audience check, any token from that issuer would be accepted —
 including one minted for an unrelated service that happens to share the
 provider.
 
-The MCP audience **may differ** from RDataCore's own. It usually should: they
-are two resources, and a token for one should not be a token for the other.
-The exchange endpoint accepts a token for the MCP audience and answers with a
-token for RDataCore, which is what keeps them separable.
+**Use the same audience as RDataCore, and set it to this server's resource
+URL.** Both halves matter:
+
+- *The same as RDataCore's* because an MCP caller is an RDataCore
+  administrator — the server exists to manage an instance on behalf of a
+  privileged user, and the exchange endpoint validates the presented token
+  against RDataCore's own `RDC_OIDC_AUDIENCE`. A separate MCP audience would
+  simply be refused there.
+- *Equal to `RDC_MCP_RESOURCE_URL`* because the protected-resource metadata
+  advertises that URL as the resource identifier. A client following the
+  specification asks its provider for a token scoped to what was advertised;
+  if this server then checks a different audience, the client does everything
+  right and is rejected with a 401 that explains nothing. The server logs a
+  warning at startup when the two differ.
 
 ### 3. Configure and run
 
@@ -90,7 +100,7 @@ RDC_BASE_URL=https://rdatacore.example.com
 RDC_MCP_BIND=0.0.0.0:8931
 RDC_MCP_RESOURCE_URL=https://mcp.example.com
 RDC_OIDC_ISSUER=https://auth.example.com
-RDC_OIDC_AUDIENCE=rdc-mcp
+RDC_OIDC_AUDIENCE=https://mcp.example.com
 RDC_MCP_ALLOWED_ORIGINS=https://claude.ai
 ```
 
@@ -128,7 +138,7 @@ Terminate TLS at your proxy and forward to `RDC_MCP_BIND`. Endpoints:
 | `RDC_MCP_BIND` | no | `127.0.0.1:8931` | Listen address. The loopback default means an unconfigured server is not reachable from the network. |
 | `RDC_MCP_RESOURCE_URL` | http | — | This server's public URL. Must be https outside localhost. |
 | `RDC_OIDC_ISSUER` | http | — | The provider to trust |
-| `RDC_OIDC_AUDIENCE` | with issuer | — | The audience to require |
+| `RDC_OIDC_AUDIENCE` | with issuer | — | The audience to require. Set it to `RDC_MCP_RESOURCE_URL`, and to the same value RDataCore uses |
 | `RDC_MCP_ALLOWED_ORIGINS` | no | the resource URL's origin | Browser origins permitted to connect |
 | `RDC_MCP_ALLOWED_HOSTS` | no | the resource URL's authority | `Host` values permitted |
 | `RDC_MCP_TIMEOUT_SECS` | no | `30` | Outbound HTTP timeout |

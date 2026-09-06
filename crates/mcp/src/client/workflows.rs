@@ -147,15 +147,19 @@ impl RdcClient {
     ///
     /// # Errors
     /// As [`Self::list_workflows`].
+    /// Trigger a run. The endpoint takes no body — it tells the workflow to
+    /// read from its configured source — and answers with the run's uuid.
     pub async fn run_workflow(
         &self,
         uuid: Uuid,
-        input: Option<&serde_json::Value>,
         ctx: &CallerContext,
     ) -> Result<serde_json::Value, ClientError> {
-        let body = input.cloned().unwrap_or_else(|| json!({}));
         let envelope: Envelope<serde_json::Value> = self
-            .post_json(&format!("/admin/api/v1/workflows/{uuid}/run"), &body, ctx)
+            .post_json(
+                &format!("/admin/api/v1/workflows/{uuid}/run"),
+                &json!({}),
+                ctx,
+            )
             .await?;
         Ok(envelope.data.unwrap_or(serde_json::Value::Null))
     }

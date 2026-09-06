@@ -97,16 +97,28 @@ pub struct OidcFlow {
     runtime: Arc<OidcRuntime>,
     cache: Arc<CacheManager>,
     http: reqwest::Client,
+    /// Where the admin interface is served, when it is not the same origin as
+    /// the API. The callback runs on the API's origin, so redirecting to a
+    /// bare path would land the browser on a host that serves no interface —
+    /// which is exactly what happens in the local compose stack, where the
+    /// API is on `rdatacore.docker` and the interface on
+    /// `admin.rdatacore.docker`.
+    frontend_base_url: Option<String>,
 }
 
 impl OidcFlow {
     /// # Errors
     /// Returns `FlowError::Provider` if the HTTP client cannot be built.
-    pub fn new(runtime: Arc<OidcRuntime>, cache: Arc<CacheManager>) -> Result<Self, FlowError> {
+    pub fn new(
+        runtime: Arc<OidcRuntime>,
+        cache: Arc<CacheManager>,
+        frontend_base_url: Option<String>,
+    ) -> Result<Self, FlowError> {
         Ok(Self {
             runtime,
             cache,
             http: oidc_discovery::client().map_err(|e| FlowError::Provider(e.to_string()))?,
+            frontend_base_url: frontend_base_url.filter(|base| !base.is_empty()),
         })
     }
 
@@ -278,12 +290,22 @@ impl OidcFlow {
         tokens.id_token.ok_or(FlowError::NoIdToken)
     }
 
-    /// Where to land after a successful sign-in.
+    /// Where to send the browser after a sign-in, successful or not.
+    ///
+    /// The path half is still validated as local, so `return_to` cannot carry
+    /// anyone off this deployment. The base half is operator configuration and
+    /// therefore not attacker-influenced — the same split that decides the
+    /// state cookie's `Secure` flag.
     #[must_use]
     pub fn landing_path(&self, return_to: Option<&str>) -> String {
-        return_to
+        let path = return_to
             .filter(|r| is_local_redirect_path(r))
-            .map_or_else(|| self.config().post_login_path.clone(), str::to_string)
+            .map_or_else(|| self.config().post_login_path.clone(), str::to_string);
+
+        self.frontend_base_url.as_ref().map_or_else(
+            || path.clone(),
+            |base| format!("{}{path}", base.trim_end_matches('/')),
+        )
     }
 }
 
@@ -333,8 +355,12 @@ pub struct OidcServices {
 impl OidcServices {
     /// # Errors
     /// Returns `FlowError::Provider` if the HTTP client cannot be built.
-    pub fn new(runtime: Arc<OidcRuntime>, cache: Arc<CacheManager>) -> Result<Self, FlowError> {
-        let flow = OidcFlow::new(Arc::clone(&runtime), cache)?;
+    pub fn new(
+        runtime: Arc<OidcRuntime>,
+        cache: Arc<CacheManager>,
+        frontend_base_url: Option<String>,
+    ) -> Result<Self, FlowError> {
+        let flow = OidcFlow::new(Arc::clone(&runtime), cache, frontend_base_url)?;
         Ok(Self { runtime, flow })
     }
 

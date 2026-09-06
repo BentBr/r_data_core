@@ -114,7 +114,7 @@ pub async fn build_app_state() -> anyhow::Result<(
     // Built from the environment exactly as the binary does, so a test that
     // sets RDC_OIDC_* gets a server that really trusts that provider. Every
     // other test leaves those unset and gets `None`.
-    let oidc = r_data_core::bootstrap::build_oidc_services(&pool.pool, &cache_manager)
+    let oidc = r_data_core::bootstrap::build_oidc_services(&pool.pool, &cache_manager, None)
         .expect("OIDC configuration should be valid");
 
     let api_state = ApiState {

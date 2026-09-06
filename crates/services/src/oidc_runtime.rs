@@ -196,13 +196,30 @@ impl OidcRuntime {
         self.session_claims(&verified, session_seconds).await
     }
 
-    /// Forget the cached resolution for an identity.
-    ///
-    /// Called when an account is deactivated or its roles change, so the
-    /// change takes effect immediately rather than after the cache window.
+    /// Forget the cached resolution for one identity.
     pub async fn forget(&self, issuer: &str, subject: &str) {
         if let Err(e) = self.cache.delete(&resolution_key(issuer, subject)).await {
             log::warn!("could not evict the cached OIDC identity: {e}");
+        }
+    }
+
+    /// Forget every cached resolution belonging to one account.
+    ///
+    /// Called when an account is deactivated, locked, or has its roles
+    /// changed. Without it those changes take effect only after the cache
+    /// window — which is the documented behaviour, but a deactivation is
+    /// precisely the case where waiting a minute is unwelcome.
+    ///
+    /// The cache is keyed on the identity, not the account, so the identities
+    /// have to be looked up to know what to evict.
+    pub async fn forget_user(&self, admin_user_uuid: uuid::Uuid) {
+        match self.provisioning.identities_for(admin_user_uuid).await {
+            Ok(identities) => {
+                for (provider, subject) in identities {
+                    self.forget(&provider, &subject).await;
+                }
+            }
+            Err(e) => log::warn!("could not read identities to evict for an account: {e}"),
         }
     }
 }

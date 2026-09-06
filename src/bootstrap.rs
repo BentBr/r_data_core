@@ -196,7 +196,7 @@ pub async fn build_api_state(
     // Initialise password reset service if system mail is configured
     let password_reset_service = build_password_reset_service(config, &pool, queue_client.clone());
 
-    let oidc = build_oidc_services(&pool, &cache_manager)?;
+    let oidc = build_oidc_services(&pool, &cache_manager, config.frontend_base_url.clone())?;
 
     Ok(ApiState {
         db_pool: pool,
@@ -232,6 +232,7 @@ pub async fn build_api_state(
 pub fn build_oidc_services(
     pool: &PgPool,
     cache_manager: &Arc<CacheManager>,
+    frontend_base_url: Option<String>,
 ) -> r_data_core_core::error::Result<Option<Arc<OidcServices>>> {
     let Some(oidc_config) = r_data_core_core::oidc::OidcConfig::from_env()
         .map_err(|e| r_data_core_core::error::Error::Config(e.to_string()))?
@@ -261,7 +262,7 @@ pub fn build_oidc_services(
     ));
 
     Ok(Some(Arc::new(
-        OidcServices::new(runtime, cache_manager.clone())
+        OidcServices::new(runtime, cache_manager.clone(), frontend_base_url)
             .map_err(|e| r_data_core_core::error::Error::Config(e.to_string()))?,
     )))
 }

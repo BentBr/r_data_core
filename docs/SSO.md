@@ -34,7 +34,7 @@ Two things are enabled separately, and you may want only the first:
 | `RDC_OIDC_CLIENT_ID` | for browser sign-in | unset | This application's client id at the provider. Setting it enables the browser flow. |
 | `RDC_OIDC_REDIRECT_URI` | with `CLIENT_ID` | — | Where the provider sends the browser back. Startup fails if a client id is set without one. |
 | `RDC_OIDC_CLIENT_SECRET` | no | unset | Omit for a public client; PKCE is mandatory either way. Never printed, including in debug output. |
-| `RDC_OIDC_POST_LOGIN_PATH` | no | `/admin` | Where to land after signing in. Must be a path inside this application. |
+| `RDC_OIDC_POST_LOGIN_PATH` | no | `/dashboard` | Route in the admin interface to land on after signing in. Resolved against `FRONTEND_BASE_URL` when the interface is on a different origin from the API. |
 
 The redirect URI is always `<your base URL>/admin/api/v1/auth/oidc/callback`.
 Register exactly that at the provider.
@@ -309,9 +309,9 @@ is; RDataCore says whether they may act.
 
 RDataCore's MCP server is a second resource server against this same issuer,
 so an AI assistant authenticates its user the same way the admin interface
-does. Its audience is configured separately and **usually should differ**:
-they are two resources, and a token for one should not be a token for the
-other.
+does. It uses **the same audience**: an MCP caller is an RDataCore
+administrator, not a separate kind of principal, and the exchange endpoint
+validates presented tokens against this instance's own `RDC_OIDC_AUDIENCE`.
 
 It never forwards a caller's token to RDataCore. It presents it to
 `POST /admin/api/v1/auth/oidc/exchange`, which answers with a short-lived

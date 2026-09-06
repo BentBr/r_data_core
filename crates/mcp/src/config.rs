@@ -158,8 +158,24 @@ impl Config {
             || origin_of(resource_url.as_deref()).into_iter().collect(),
             split_list,
         );
+        // Derived: the public authority plus loopback. Both are needed. The
+        // public one is how a deployed server is reached; loopback is how it
+        // is reached in development and behind a proxy that does not preserve
+        // the original Host — and rmcp's own default is loopback-only for the
+        // same reason. Neither weakens the DNS-rebinding protection this
+        // exists for: an attacker's name resolving to 127.0.0.1 still arrives
+        // with its own Host and is refused.
         let allowed_hosts = get(map, "RDC_MCP_ALLOWED_HOSTS").map_or_else(
-            || authority_of(resource_url.as_deref()).into_iter().collect(),
+            || {
+                let mut hosts: Vec<String> = ["localhost", "127.0.0.1", "[::1]"]
+                    .iter()
+                    .map(|h| (*h).to_string())
+                    .collect();
+                if let Some(authority) = authority_of(resource_url.as_deref()) {
+                    hosts.push(authority);
+                }
+                hosts
+            },
             split_list,
         );
 

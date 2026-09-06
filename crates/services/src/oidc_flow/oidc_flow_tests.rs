@@ -72,7 +72,7 @@ fn flow(server: &MockServer, extra: &[(&str, &str)]) -> OidcFlow {
         )),
         Arc::clone(&cache),
     ));
-    OidcFlow::new(runtime, cache).expect("flow")
+    OidcFlow::new(runtime, cache, None).expect("flow")
 }
 
 /// The query parameters of a redirect URL.
@@ -192,7 +192,7 @@ async fn the_flow_is_refused_when_no_client_is_configured() {
         )),
         Arc::clone(&cache),
     ));
-    let flow = OidcFlow::new(runtime, cache).expect("flow");
+    let flow = OidcFlow::new(runtime, cache, None).expect("flow");
 
     assert!(!flow.is_configured());
     assert!(matches!(
@@ -266,7 +266,7 @@ async fn a_return_to_leaving_this_origin_is_discarded() {
     ] {
         assert_eq!(
             flow.landing_path(Some(escape)),
-            "/admin",
+            "/dashboard",
             "{escape:?} must not be somewhere this login endpoint sends a browser"
         );
     }
@@ -276,8 +276,8 @@ async fn a_return_to_leaving_this_origin_is_discarded() {
 async fn a_local_return_to_is_honoured() {
     let server = provider().await;
     assert_eq!(
-        flow(&server, &[]).landing_path(Some("/admin/workflows/42")),
-        "/admin/workflows/42"
+        flow(&server, &[]).landing_path(Some("/workflows/42")),
+        "/workflows/42"
     );
 }
 
@@ -465,4 +465,78 @@ async fn no_client_secret_is_sent_for_a_public_client() {
         !body.contains("client_secret"),
         "a public client sends none; PKCE is what protects the exchange: {body}"
     );
+}
+
+#[tokio::test]
+async fn the_landing_url_is_resolved_against_the_interface_origin() {
+    // The callback runs on the API's origin. When the admin interface is
+    // served elsewhere — as it is in the local compose stack — a bare path
+    // would send the browser to a host that serves no interface, and the
+    // sign-in would appear to succeed and then land on nothing.
+    let server = provider().await;
+    let base = flow_with_frontend(&server, Some("https://admin.example.com"));
+
+    assert_eq!(
+        base.landing_path(None),
+        "https://admin.example.com/dashboard"
+    );
+    assert_eq!(
+        base.landing_path(Some("/workflows/42")),
+        "https://admin.example.com/workflows/42"
+    );
+}
+
+#[tokio::test]
+async fn a_hostile_return_to_cannot_escape_even_with_a_base_configured() {
+    let server = provider().await;
+    let base = flow_with_frontend(&server, Some("https://admin.example.com"));
+
+    for escape in [
+        "https://evil.example.com",
+        "//evil.example.com",
+        "/\\evil.example.com",
+    ] {
+        assert_eq!(
+            base.landing_path(Some(escape)),
+            "https://admin.example.com/dashboard",
+            "{escape:?} must be discarded before the base is applied"
+        );
+    }
+}
+
+#[tokio::test]
+async fn a_bare_path_is_kept_when_the_interface_shares_the_origin() {
+    let server = provider().await;
+    assert_eq!(flow(&server, &[]).landing_path(None), "/dashboard");
+}
+
+/// A flow whose interface lives at another origin.
+fn flow_with_frontend(server: &MockServer, frontend: Option<&str>) -> OidcFlow {
+    let config = OidcConfig::from_map(
+        &[
+            ("RDC_OIDC_ISSUER".to_string(), server.uri()),
+            ("RDC_OIDC_AUDIENCE".to_string(), "r-data-core".to_string()),
+            ("RDC_OIDC_CLIENT_ID".to_string(), "rdc".to_string()),
+            (
+                "RDC_OIDC_REDIRECT_URI".to_string(),
+                "https://rdc.example.com/cb".to_string(),
+            ),
+        ]
+        .into_iter()
+        .collect(),
+    )
+    .expect("valid")
+    .expect("enabled");
+
+    let cache = Arc::new(CacheManager::new(CacheConfig::default()));
+    let runtime = Arc::new(OidcRuntime::new(
+        config,
+        Arc::new(StaticKeySource::new(JwkSet::default())),
+        Arc::new(service(
+            Arc::new(FakeIdentities::default()),
+            Arc::new(FakeUsers::default()),
+        )),
+        Arc::clone(&cache),
+    ));
+    OidcFlow::new(runtime, cache, frontend.map(str::to_string)).expect("flow")
 }

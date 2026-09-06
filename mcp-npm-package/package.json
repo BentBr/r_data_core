@@ -1,7 +1,7 @@
 {
     "name": "@rdatacore/mcp-server",
     "version": "0.1.0",
-    "description": "MCP server for RDataCore — connect AI assistants to your workflows",
+    "description": "MCP server for RDataCore \u2014 connect AI assistants to your workflows",
     "bin": {
         "rdatacore-mcp": "./run.mjs"
     },
@@ -11,7 +11,8 @@
     "files": [
         "install.mjs",
         "run.mjs",
-        "README.md"
+        "README.md",
+        "LICENSE"
     ],
     "engines": {
         "node": ">=18"

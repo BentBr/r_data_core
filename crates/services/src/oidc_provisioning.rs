@@ -190,6 +190,16 @@ impl OidcProvisioningService {
         )
     }
 
+    /// Every external identity linked to one account.
+    ///
+    /// # Errors
+    /// Returns an error if the database is unavailable.
+    pub async fn identities_for(&self, admin_user_uuid: Uuid) -> Result<Vec<(String, String)>> {
+        self.identities
+            .find_identities_for_user(admin_user_uuid)
+            .await
+    }
+
     async fn available_roles(&self) -> Result<Vec<Role>> {
         self.roles.list_all(1000, 0, None, None).await
     }

@@ -176,7 +176,6 @@ async fn run_workflow_waits_and_returns_status_with_logs() {
     let result = tools_for(&server)
         .run_workflow(Parameters(RunWorkflowParams {
             uuid: WF.to_string(),
-            input: None,
             wait: None,
             timeout_secs: Some(5),
         }))
@@ -204,7 +203,6 @@ async fn run_workflow_can_return_immediately() {
     let result = tools_for(&server)
         .run_workflow(Parameters(RunWorkflowParams {
             uuid: WF.to_string(),
-            input: None,
             wait: Some(false),
             timeout_secs: None,
         }))
@@ -231,7 +229,6 @@ async fn a_run_that_outlives_the_wait_warns_against_running_again() {
     let result = tools_for(&server)
         .run_workflow(Parameters(RunWorkflowParams {
             uuid: WF.to_string(),
-            input: None,
             wait: Some(true),
             timeout_secs: Some(0),
         }))

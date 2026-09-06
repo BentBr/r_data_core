@@ -57,9 +57,14 @@ pub struct TestWorkflowParams {
 #[derive(Debug, Deserialize, JsonSchema)]
 pub struct RunWorkflowParams {
     pub uuid: String,
-    /// Payload for workflows whose first step reads from the API.
-    pub input: Option<serde_json::Value>,
     /// Wait for the run to finish and return its logs. Defaults to true.
+    ///
+    /// There is deliberately no `input` here. Triggering a run makes the
+    /// workflow read from the source it is configured with; the admin
+    /// endpoint takes no payload and the service call takes a trigger id, not
+    /// data. An `input` field would have been accepted and silently dropped,
+    /// which is worse than not offering one — pushing data into a workflow is
+    /// a different operation, through the staging routes.
     pub wait: Option<bool>,
     /// Seconds to wait. Defaults to 25, capped at 55.
     pub timeout_secs: Option<u64>,
@@ -141,17 +146,25 @@ impl RdcTools {
             Err(e) => return Ok(error_result(&e)),
         };
 
-        if let Err(e) = self
-            .client
-            .run_workflow(uuid, params.input.as_ref(), &self.caller())
-            .await
-        {
-            return Ok(error_result(&e));
-        }
+        let ctx = self.caller();
+        let started = match self.client.run_workflow(uuid, &ctx).await {
+            Ok(started) => started,
+            Err(e) => return Ok(error_result(&e)),
+        };
+
+        // The server tells us which run it enqueued. Polling for "the newest
+        // run of this workflow" instead would follow somebody else's run
+        // whenever two start close together — and then report its status and
+        // its logs as though they were ours.
+        let run_uuid = started
+            .get("run_uuid")
+            .and_then(serde_json::Value::as_str)
+            .and_then(|raw| Uuid::parse_str(raw).ok());
 
         if !params.wait.unwrap_or(true) {
             return Ok(json_result(&serde_json::json!({
                 "started": true,
+                "run_uuid": run_uuid,
                 "next": "Poll list_runs for status, then get_run_logs."
             })));
         }
@@ -162,7 +175,7 @@ impl RdcTools {
                 .unwrap_or(DEFAULT_WAIT_SECS)
                 .min(MAX_WAIT_SECS),
         );
-        Ok(self.await_run(uuid, deadline).await)
+        Ok(self.await_run(uuid, run_uuid, deadline, &ctx).await)
     }
 
     /// List runs.
@@ -294,19 +307,41 @@ impl RdcTools {
     }
 
     /// Poll until the run reaches a terminal state or the deadline passes.
-    async fn await_run(&self, uuid: Uuid, deadline: Duration) -> CallToolResult {
+    ///
+    /// Takes the caller rather than building one: in HTTP mode the auth
+    /// backend refuses to produce credentials for an unvalidated context, so a
+    /// default one here would fail every poll *after* the run had already
+    /// started — the worst place to lose the caller.
+    async fn await_run(
+        &self,
+        workflow_uuid: Uuid,
+        run_uuid: Option<Uuid>,
+        deadline: Duration,
+        ctx: &CallerContext,
+    ) -> CallToolResult {
         let started = std::time::Instant::now();
-        let ctx = CallerContext::default();
 
         loop {
-            match self.client.list_runs(Some(uuid), Some(1), &ctx).await {
+            // A handful, not one: our run is the newest only until someone
+            // else starts one. When the server told us which run is ours we
+            // look for exactly that, and fall back to the newest only when it
+            // did not.
+            match self
+                .client
+                .list_runs(Some(workflow_uuid), Some(10), ctx)
+                .await
+            {
                 Ok(runs) => {
-                    if let Some(run) = runs.first() {
+                    let ours = run_uuid.map_or_else(
+                        || runs.first(),
+                        |wanted| runs.iter().find(|run| run.uuid == wanted),
+                    );
+                    if let Some(run) = ours {
                         if TERMINAL_STATUSES
                             .iter()
                             .any(|s| run.status.eq_ignore_ascii_case(s))
                         {
-                            return self.terminal_result(run).await;
+                            return self.terminal_result(run, ctx).await;
                         }
                     }
                 }
@@ -329,10 +364,11 @@ impl RdcTools {
     async fn terminal_result(
         &self,
         run: &r_data_core_core::dto::workflow::WorkflowRunSummary,
+        ctx: &CallerContext,
     ) -> CallToolResult {
         let logs = self
             .client
-            .get_run_logs(run.uuid, Some(100), &CallerContext::default())
+            .get_run_logs(run.uuid, Some(100), ctx)
             .await
             .unwrap_or_default();
 

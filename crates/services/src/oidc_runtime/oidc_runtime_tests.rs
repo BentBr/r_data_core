@@ -226,3 +226,34 @@ fn a_database_outage_is_reported_as_unavailable_not_as_a_refusal() {
         r_data_core_core::error::Error::Auth("this account is locked".to_string()).into();
     assert!(matches!(denied, OidcAuthError::Denied(_)));
 }
+
+#[tokio::test]
+async fn forgetting_an_account_evicts_every_identity_it_owns() {
+    // Deactivating someone in RDataCore has to reach this cache, and the cache
+    // is keyed on the external identity rather than the account — so the
+    // account's identities have to be looked up to know what to drop.
+    let existing = Uuid::now_v7();
+    let identities = Arc::new(FakeIdentities::default());
+    identities
+        .links
+        .lock()
+        .expect("lock")
+        .insert((ISSUER.to_string(), "ada".to_string()), existing);
+    let users = Arc::new(FakeUsers::with(vec![user(existing, "ada", true)]));
+
+    let rt = runtime(Arc::clone(&identities), Arc::clone(&users));
+    let identity = claims("ada", &["rdc-ops"], true);
+
+    rt.session_claims(&identity, 1800).await.expect("resolve");
+
+    // Deactivate, then evict by account rather than by identity.
+    users.deactivate(existing);
+    rt.forget_user(existing).await;
+
+    let after = rt.session_claims(&identity, 1800).await;
+    assert!(
+        matches!(after, Err(OidcAuthError::Denied(_))),
+        "a deactivated account must be refused on the next request, not after the \
+         cache window; got {after:?}"
+    );
+}

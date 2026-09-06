@@ -51,12 +51,22 @@ function targetTriple() {
     return target
 }
 
-/** The release to install: a pinned one, or whatever is latest. */
+/** Tag prefix for this package's releases. */
+const TAG_PREFIX = 'mcp-v'
+
+/**
+ * The release to install: a pinned one, or the newest `mcp-v*`.
+ *
+ * Deliberately not `releases/latest`. That returns the newest release of *any*
+ * tag series, and this repository also publishes the server's own releases —
+ * so it would hand back a tag carrying none of these assets, and the install
+ * would fail with "no asset named ..." rather than anything useful.
+ */
 function releasePath() {
     const pinned = process.env.RDATACORE_MCP_VERSION
     return pinned
         ? `https://api.github.com/repos/${REPO}/releases/tags/${pinned}`
-        : `https://api.github.com/repos/${REPO}/releases/latest`
+        : `https://api.github.com/repos/${REPO}/releases?per_page=50`
 }
 
 async function fetchRelease() {
@@ -78,7 +88,27 @@ async function fetchRelease() {
                     : 'Check your network, or pin a known release with RDATACORE_MCP_VERSION.')
         )
     }
-    return response.json()
+    const body = await response.json()
+    if (!Array.isArray(body)) {
+        return body
+    }
+
+    // Newest first is what the API returns; take the first of our own series
+    // that is neither a draft nor a prerelease.
+    const release = body.find(
+        candidate =>
+            typeof candidate.tag_name === 'string' &&
+            candidate.tag_name.startsWith(TAG_PREFIX) &&
+            !candidate.draft &&
+            !candidate.prerelease
+    )
+    if (!release) {
+        throw new Error(
+            `No published ${TAG_PREFIX}* release among the latest 50 releases of ${REPO}.\n` +
+                `Pin one with RDATACORE_MCP_VERSION=${TAG_PREFIX}X.Y.Z if it is older than that.`
+        )
+    }
+    return release
 }
 
 function assetUrl(release, name) {

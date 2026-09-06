@@ -18,6 +18,13 @@
 //! a permission lookup per request — cached — and removes the question
 //! entirely.
 //!
+//! **`Host` and `Origin` are both checked before anything else.** `rmcp` can
+//! check them too, but only for requests that reach its handler — which means
+//! after this module's authentication, and never for the metadata and health
+//! endpoints, which do not go through it at all. A DNS-rebinding attack aims a
+//! browser at a server it should not reach, and discovery metadata is exactly
+//! what it would want to read, so the check has to sit in front of everything.
+//!
 //! **`Origin` is checked before anything else.** `rmcp` can do this too, but
 //! only for requests that reach its handler — which means after this module's
 //! authentication, and never for the metadata and health endpoints, which do
@@ -111,6 +118,23 @@ impl ServerState {
             .clone_from(&config.allowed_origins);
         if !config.allowed_hosts.is_empty() {
             http_config.allowed_hosts.clone_from(&config.allowed_hosts);
+        }
+
+        // A client that follows the specification reads the advertised
+        // `resource` from the metadata document and asks its provider for a
+        // token scoped to it. If that is not the audience this server checks,
+        // the client does everything right and is rejected anyway — with a 401
+        // that says nothing about why. Cheap to detect, miserable to diagnose.
+        if let (Some(resource), Some(audience)) = (&config.resource_url, &config.oidc_audience) {
+            if resource != audience {
+                log::warn!(
+                    "RDC_MCP_RESOURCE_URL ({resource}) and RDC_OIDC_AUDIENCE ({audience}) \
+                     differ. The metadata document advertises the former, but tokens are \
+                     validated against the latter — a client that requests a token for the \
+                     advertised resource will be refused. Set them to the same value unless \
+                     your provider cannot mint a URL audience."
+                );
+            }
         }
 
         Ok(Self {
@@ -267,6 +291,9 @@ async fn route(state: Arc<ServerState>, req: Request<Incoming>) -> Response<Resp
     if !origin_allowed(&state.config.allowed_origins, &req) {
         return text_response(StatusCode::FORBIDDEN, "origin not allowed");
     }
+    if !host_allowed(&state.config.allowed_hosts, &req) {
+        return text_response(StatusCode::FORBIDDEN, "host not allowed");
+    }
 
     if path == metadata::METADATA_PATH {
         return json_response(
@@ -354,6 +381,42 @@ fn origin_allowed(allowed: &[String], req: &Request<Incoming>) -> bool {
         return true;
     };
     allowed.iter().any(|permitted| permitted == origin)
+}
+
+/// Whether a request's `Host` is one this server answers to.
+///
+/// An empty allowlist means the check is off, matching `rmcp`. A request with
+/// no `Host` is refused rather than waved through: HTTP/1.1 requires one, and
+/// its absence on a request that reached this far is not something to
+/// interpret generously.
+///
+/// An entry may name a bare host or a `host:port`, as `rmcp`'s own does. A
+/// bare entry matches any port, since an ephemeral or proxied port is not the
+/// thing being defended against; an entry with a port matches only that port.
+///
+/// Comparison is whole-string either way. A suffix match would let
+/// `evil-mcp.example.com` past an allowlist naming `mcp.example.com`, which is
+/// the usual way this check is got wrong.
+fn host_allowed(allowed: &[String], req: &Request<Incoming>) -> bool {
+    if allowed.is_empty() {
+        return true;
+    }
+    let Some(host) = req
+        .headers()
+        .get(hyper::header::HOST)
+        .and_then(|v| v.to_str().ok())
+    else {
+        return false;
+    };
+    // `[::1]:8080` -> `[::1]`; `example.com:80` -> `example.com`.
+    let without_port = host
+        .rsplit_once(':')
+        .filter(|(head, _)| !head.ends_with(':') && !head.is_empty())
+        .map_or(host, |(head, _)| head);
+
+    allowed
+        .iter()
+        .any(|permitted| permitted == host || permitted == without_port)
 }
 
 /// The bearer token on a request, if there is a well-formed one.

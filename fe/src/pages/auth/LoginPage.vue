@@ -400,65 +400,6 @@
         window.location.assign(url)
     }
 
-    /**
-     * Adopt a session the callback left in the URL fragment, if there is one.
-     *
-     * The fragment is cleared immediately afterwards, whatever the outcome, so
-     * the tokens do not survive in the address bar or in browser history.
-     */
-    const adoptSsoRedirect = async () => {
-        const fragment = window.location.hash.replace(/^#/, '')
-        if (!fragment) {
-            return
-        }
-        const params = new URLSearchParams(fragment)
-
-        const ssoError = params.get('sso_error')
-        if (ssoError) {
-            clearFragment()
-            snackbar.message = t(`auth.sso.errors.${ssoError}`, t('auth.sso.errors.generic'))
-            snackbar.color = 'error'
-            snackbar.visible = true
-            return
-        }
-
-        const access = params.get('access_token')
-        const refresh = params.get('refresh_token')
-        if (!access || !refresh) {
-            return
-        }
-        clearFragment()
-
-        try {
-            await authStore.adoptSsoSession({
-                access_token: access,
-                refresh_token: refresh,
-                access_expires_at: isoFromUnix(params.get('access_expires_at')),
-                refresh_expires_at: isoFromUnix(params.get('refresh_expires_at')),
-            })
-            void router.push('/dashboard')
-        } catch {
-            snackbar.message = t('auth.sso.errors.generic')
-            snackbar.color = 'error'
-            snackbar.visible = true
-        }
-    }
-
-    const clearFragment = () => {
-        window.history.replaceState(
-            null,
-            '',
-            window.location.pathname + window.location.search
-        )
-    }
-
-    const isoFromUnix = (seconds: string | null): string => {
-        const parsed = Number(seconds)
-        return Number.isFinite(parsed) && parsed > 0
-            ? new Date(parsed * 1000).toISOString()
-            : new Date().toISOString()
-    }
-
     const clearFieldError = (field: 'username' | 'password') => {
         fieldErrors[field] = []
         authStore.clearError()
@@ -513,10 +454,18 @@
             void capabilitiesStore.fetchCapabilities()
         }
 
-        // A single-sign-on callback lands here carrying its tokens. Handle it
-        // before the already-authenticated check below, which would otherwise
-        // navigate away and strip the fragment before it was read.
-        void adoptSsoRedirect()
+        // A failed single-sign-on attempt is reported by the auth store, which
+        // reads the callback's fragment during startup — before the router
+        // guard runs, so a callback to a protected route is not bounced here
+        // with its tokens discarded.
+        if (authStore.ssoError) {
+            snackbar.message = t(
+                `auth.sso.errors.${authStore.ssoError}`,
+                t('auth.sso.errors.generic')
+            )
+            snackbar.color = 'error'
+            snackbar.visible = true
+        }
 
         // If user is already authenticated, redirect to appropriate page
         if (authStore.isAuthenticated) {

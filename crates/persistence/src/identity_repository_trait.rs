@@ -62,4 +62,18 @@ pub trait IdentityRepositoryTrait: Send + Sync {
     /// # Errors
     /// Returns an error if the database query fails.
     async fn find_local_user_by_email(&self, email: &str) -> Result<Option<Uuid>>;
+
+    /// Every external identity linked to one account, as `(provider, subject)`.
+    ///
+    /// Used to evict cached authorization when the account changes. The cache
+    /// is keyed on the identity rather than the account, so a change made
+    /// inside `RDataCore` has no way to find the entries it invalidates
+    /// without this.
+    ///
+    /// # Errors
+    /// Returns an error if the database query fails.
+    async fn find_identities_for_user(
+        &self,
+        admin_user_uuid: Uuid,
+    ) -> Result<Vec<(String, String)>>;
 }

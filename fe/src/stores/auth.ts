@@ -36,6 +36,22 @@ export interface SsoTokens {
  * signed. It exists so the interface does not have to trust identity values
  * that travelled beside the token rather than inside it.
  */
+/** Drop the fragment, keeping path and query, without a navigation. */
+function clearFragment(): void {
+    if (typeof window === 'undefined') {
+        return
+    }
+    window.history.replaceState(null, '', window.location.pathname + window.location.search)
+}
+
+/** Unix seconds from the callback fragment as an ISO timestamp. */
+function isoFromUnix(seconds: string | null): string {
+    const parsed = Number(seconds)
+    return Number.isFinite(parsed) && parsed > 0
+        ? new Date(parsed * 1000).toISOString()
+        : new Date().toISOString()
+}
+
 function readClaim(token: string, claim: 'sub' | 'name'): string {
     try {
         const payload = JSON.parse(atob(token.split('.')[1])) as Record<string, unknown>
@@ -62,6 +78,8 @@ export const useAuthStore = defineStore('auth', () => {
     const isSuperAdmin = ref(false)
     const allowedRoutes = ref<string[]>([])
     const usingDefaultPassword = ref(false)
+    /// Error code from a single-sign-on callback, if the last one failed.
+    const ssoError = ref<string | null>(null)
     const defaultPasswordBannerDismissed = ref(false)
     const mobileWarningDismissed = ref(false)
 
@@ -203,6 +221,51 @@ export const useAuthStore = defineStore('auth', () => {
             throw new Error(error.value)
         } finally {
             isLoading.value = false
+        }
+    }
+
+    /**
+     * Adopt a session the single-sign-on callback left in the URL fragment.
+     *
+     * Runs during startup, before `authReady` resolves, because the callback
+     * can land on **any** route — `return_to` may name a protected one. The
+     * router guard awaits `authReady` and then decides; if the fragment were
+     * only read by the login page, a callback to a protected route would be
+     * bounced to login before anything looked at it, and the tokens would be
+     * thrown away.
+     *
+     * The fragment is cleared either way, so tokens do not linger in the
+     * address bar or in history.
+     */
+    const adoptSsoFragment = async (): Promise<void> => {
+        if (typeof window === 'undefined' || !window.location.hash) {
+            return
+        }
+        const params = new URLSearchParams(window.location.hash.replace(/^#/, ''))
+
+        const failure = params.get('sso_error')
+        if (failure) {
+            ssoError.value = failure
+            clearFragment()
+            return
+        }
+
+        const access = params.get('access_token')
+        const refresh = params.get('refresh_token')
+        if (!access || !refresh) {
+            return
+        }
+        clearFragment()
+
+        try {
+            await adoptSsoSession({
+                access_token: access,
+                refresh_token: refresh,
+                access_expires_at: isoFromUnix(params.get('access_expires_at')),
+                refresh_expires_at: isoFromUnix(params.get('refresh_expires_at')),
+            })
+        } catch {
+            ssoError.value = 'generic'
         }
     }
 
@@ -673,7 +736,16 @@ export const useAuthStore = defineStore('auth', () => {
         resolveAuthReady = resolve
     })
 
-    checkAuthStatus()
+    // Order matters: a single-sign-on callback carries its tokens in the
+    // fragment and may land on any route, so the session has to be adopted
+    // before `checkAuthStatus` concludes there is nobody signed in.
+    adoptSsoFragment()
+        .catch(err => {
+            if (env.enableApiLogging) {
+                console.error('[Auth] SSO fragment adoption failed:', err)
+            }
+        })
+        .then(() => checkAuthStatus())
         .catch(err => {
             if (env.enableApiLogging) {
                 console.error('[Auth] Initial auth check failed:', err)
@@ -698,6 +770,8 @@ export const useAuthStore = defineStore('auth', () => {
         isTokenExpired,
         isDefaultPasswordInUse,
         isMobileWarningDismissed,
+
+        ssoError: readonly(ssoError),
 
         // Actions
         login,

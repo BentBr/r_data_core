@@ -81,6 +81,19 @@ impl IdentityRepositoryTrait for IdentityRepository {
         Ok(())
     }
 
+    async fn find_identities_for_user(
+        &self,
+        admin_user_uuid: Uuid,
+    ) -> Result<Vec<(String, String)>> {
+        sqlx::query_as(
+            "SELECT provider, subject FROM admin_user_identities WHERE admin_user_uuid = $1",
+        )
+        .bind(admin_user_uuid)
+        .fetch_all(&self.pool)
+        .await
+        .map_err(Error::Database)
+    }
+
     async fn find_local_user_by_email(&self, email: &str) -> Result<Option<Uuid>> {
         // Deliberately excludes SSO-provisioned accounts: linking is for
         // adopting a pre-existing *local* account, and matching another SSO

@@ -18,7 +18,12 @@ const DEFAULT_ROLES_CLAIM: &str = "groups";
 /// How long a fetched key set stays usable when unset.
 const DEFAULT_JWKS_TTL_SECS: u64 = 3600;
 /// Where the browser lands after a successful sign-in, when unset.
-const DEFAULT_POST_LOGIN_PATH: &str = "/admin";
+///
+/// A route the admin interface actually has. `/admin` looks plausible and is
+/// not one — it would fall through the router's catch-all to the dashboard,
+/// which is guarded, and the guard would bounce a freshly signed-in user
+/// straight back to the login page.
+const DEFAULT_POST_LOGIN_PATH: &str = "/dashboard";
 /// How long a resolved identity is reused before being looked up again.
 ///
 /// Short on purpose. This window is how long a user deactivated in
