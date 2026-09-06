@@ -127,10 +127,13 @@ async fn admin_user_update_cannot_set_a_password_on_a_provisioned_user() {
     )
     .await;
 
-    assert!(
-        response.status().is_client_error(),
-        "setting a password on a federated account must be refused, got {}",
-        response.status()
+    // 400 specifically. `is_client_error` alone would also be satisfied by a
+    // 422 from request validation, which would let this pass without the guard
+    // ever running.
+    assert_eq!(
+        response.status(),
+        StatusCode::BAD_REQUEST,
+        "setting a password on a federated account must be refused by the guard"
     );
 
     // And refused rather than silently ignored: the stored hash is unchanged,
@@ -186,9 +189,16 @@ async fn register_cannot_create_a_local_account_shadowing_an_sso_identity() {
     )
     .await;
 
-    // Registration answers generically whether or not the name is taken, so
-    // the status says nothing. What matters is that no second row appeared.
-    let _ = response.status();
+    // Registration answers the same way whether or not the name is taken, by
+    // design. Asserting that it got that far matters: a 422 from validation
+    // would leave the row count at 1 too, and the test would pass having
+    // exercised nothing.
+    assert_eq!(
+        response.status(),
+        StatusCode::CREATED,
+        "the request should reach the duplicate check, not fail validation"
+    );
+
     let count: i64 =
         sqlx::query_scalar("SELECT COUNT(*) FROM admin_users WHERE username = 'federated-shadow'")
             .fetch_one(&pool.pool)
