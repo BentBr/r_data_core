@@ -38,6 +38,7 @@ setup.
 - **Workflow Engine** - DSL-based data pipelines with scheduled and on-demand execution ([DSL Documentation](./docs/DSL.md))
 - **API Authentication** - JWT and API key support with role-based access control
 - **Single Sign-On** - OpenID Connect against Keycloak, Auth0, Entra ID or any compliant provider, with claim-to-role mapping ([SSO Documentation](./docs/SSO.md))
+- **MCP Server** - Let an AI assistant author, run and debug workflows, acting as the person who asked ([MCP Documentation](./docs/MCP.md))
 - **Import/Export** - CSV, JSON, XML, and third-party API integrations
 - **Versioning** - Full version history for entities, definitions, and workflows
 - **Self-Hosted** - Your data stays on your infrastructure

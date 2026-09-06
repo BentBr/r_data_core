@@ -242,6 +242,23 @@ is; RDataCore says whether they may act.
 
 ---
 
+## The MCP server
+
+RDataCore's MCP server is a second resource server against this same issuer,
+so an AI assistant authenticates its user the same way the admin interface
+does. Its audience is configured separately and **usually should differ**:
+they are two resources, and a token for one should not be a token for the
+other.
+
+It never forwards a caller's token to RDataCore. It presents it to
+`POST /admin/api/v1/auth/oidc/exchange`, which answers with a short-lived
+local token for that same person — so everything the assistant does is
+attributed to the human who asked for it, and bounded by what they may do.
+
+Deployment guide: [MCP.md](./MCP.md).
+
+---
+
 ## Troubleshooting
 
 | Symptom | Likely cause |

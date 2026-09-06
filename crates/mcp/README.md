@@ -68,12 +68,33 @@ filtering working, not a fault.
 | Variable | Required | Description |
 |---|---|---|
 | `RDC_BASE_URL` | yes | Base URL of your RDataCore instance |
-| `RDC_API_KEY` | stdio | The API key to act as |
+| `RDC_API_KEY` | stdio | The API key to act as. Refused with `http` transport |
 | `RDC_MCP_TIMEOUT_SECS` | no | Outbound HTTP timeout, default 30 |
 | `RDC_MCP_TRANSPORT` | no | `stdio` (default) or `http` |
+| `RDC_MCP_BIND` | no | Listen address for `http`, default `127.0.0.1:8931` |
+| `RDC_MCP_RESOURCE_URL` | http | This server's public URL, for OAuth discovery |
+| `RDC_OIDC_ISSUER` | http | The identity provider to trust |
+| `RDC_OIDC_AUDIENCE` | with issuer | The audience to require |
+| `RDC_MCP_ALLOWED_ORIGINS` | no | Browser origins permitted, default the resource URL's origin |
 
 An empty value counts as unset, so `RDC_API_KEY=` in a compose file produces a
 clear refusal at startup rather than a puzzling 401 later.
+
+## Installing without building
+
+```bash
+npx @rdatacore/mcp-server
+```
+
+Downloads the binary for your platform and verifies it against the release
+checksums. See `mcp-npm-package/README.md`.
+
+## The two binaries
+
+`r-data-core-mcp` serves stdio. `r-data-core-mcp-serve` serves streamable HTTP
+as an OAuth 2.1 resource server, for hosted multi-user deployment — full guide
+in `docs/MCP.md`. Each refuses the other's transport rather than silently
+doing something unexpected.
 
 ## stdio is single-user
 
