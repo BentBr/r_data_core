@@ -268,6 +268,7 @@ mod tests {
             failed_login_attempts: 0,
             locked_until: None,
             super_admin: true,
+            is_sso_provisioned: false,
             uuid: Uuid::now_v7(),
             first_name: Some("Test".to_string()),
             last_name: Some("User".to_string()),

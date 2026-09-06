@@ -61,6 +61,14 @@ pub struct AdminUser {
     /// Super admin flag - overrides all permissions
     pub super_admin: bool,
 
+    /// Whether this account was created through SSO.
+    ///
+    /// Such accounts carry an unusable password hash and must be refused by
+    /// every password-based path — login, forgot-password, reset-password and
+    /// the password fields on user CRUD. Without that, SSO becomes a way to
+    /// create password accounts and forgot-password a way to set one.
+    pub is_sso_provisioned: bool,
+
     pub uuid: Uuid,
     pub first_name: Option<String>,
     pub last_name: Option<String>,
@@ -100,6 +108,10 @@ impl<'r> FromRow<'r, PgRow> for AdminUser {
         let failed_login_attempts: i32 = row.try_get("failed_login_attempts").unwrap_or(0);
         let locked_until: Option<OffsetDateTime> = row.try_get("locked_until").ok().flatten();
         let super_admin = row.try_get("super_admin").unwrap_or(false); // Default to false
+                                                                       // Added in 20260906120000_admin_user_identities. Defaults to false so
+                                                                       // a narrower column selection reads as a local account, which is the
+                                                                       // safe direction: it keeps password paths guarded by an explicit true.
+        let is_sso_provisioned = row.try_get("is_sso_provisioned").unwrap_or(false);
         let is_admin = false; // Default value
 
         Ok(Self {
@@ -113,6 +125,7 @@ impl<'r> FromRow<'r, PgRow> for AdminUser {
             failed_login_attempts,
             locked_until,
             super_admin,
+            is_sso_provisioned,
             first_name,
             last_name,
             is_active,
@@ -199,6 +212,10 @@ impl AdminUserBuilder {
             failed_login_attempts: 0,
             locked_until: None,
             super_admin: self.super_admin,
+            // The builder makes local accounts. SSO provisioning sets this
+            // explicitly, so the default cannot accidentally unguard the
+            // password paths.
+            is_sso_provisioned: false,
             uuid: Uuid::now_v7(),
             first_name: Some(self.first_name),
             last_name: Some(self.last_name),
