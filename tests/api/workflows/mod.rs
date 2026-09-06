@@ -1,6 +1,7 @@
 #![deny(clippy::all, clippy::pedantic, clippy::nursery, warnings)]
 // Workflow E2E tests organized by use case
 
+pub mod cache_invalidation_tests;
 pub mod common;
 pub mod export_async_tests;
 pub mod export_cron_tests;

@@ -22,7 +22,30 @@ impl WorkflowService {
     /// # Errors
     /// Returns an error if the database query fails
     pub async fn get(&self, uuid: Uuid) -> r_data_core_core::error::Result<Option<Workflow>> {
-        self.repo.get_by_uuid(uuid).await
+        let key = Self::cache_key_by_uuid(&uuid);
+
+        if let Some(cache) = &self.cache_manager {
+            if let Ok(Some(cached)) = cache.get::<Workflow>(&key).await {
+                return Ok(Some(cached));
+            }
+        }
+
+        let workflow = self.repo.get_by_uuid(uuid).await?;
+
+        if let (Some(cache), Some(found)) = (&self.cache_manager, workflow.as_ref()) {
+            // Explicit short TTL, never `None`: see WORKFLOW_CACHE_TTL_SECS. A
+            // `None` here would inherit the 3600s default and let a revoked
+            // pre-shared key keep working in another process for an hour.
+            // Cache errors are not fatal: a miss just costs a DB read.
+            if let Err(e) = cache
+                .set(&key, found, Some(super::cache::WORKFLOW_CACHE_TTL_SECS))
+                .await
+            {
+                log::warn!("Failed to cache workflow {uuid}: {e}");
+            }
+        }
+
+        Ok(workflow)
     }
 
     /// Create a new workflow
@@ -95,6 +118,7 @@ impl WorkflowService {
             ))
         })?;
         self.repo.update(uuid, req, updated_by).await?;
+        self.invalidate_workflow_cache(&uuid).await;
 
         if let Some(ref log) = self.system_log {
             log.log_entity_updated(
@@ -129,6 +153,7 @@ impl WorkflowService {
             .map_or_else(|| uuid.to_string(), |w| w.name);
 
         self.repo.delete(uuid).await?;
+        self.invalidate_workflow_cache(&uuid).await;
 
         if let Some(ref log) = self.system_log {
             log.log_entity_deleted(

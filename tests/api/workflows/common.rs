@@ -74,10 +74,13 @@ pub async fn setup_app_with_entities() -> anyhow::Result<(
 
     let wf_repo = WorkflowRepository::new(pool.pool.clone());
     let wf_adapter = WorkflowRepositoryAdapter::new(wf_repo);
+    // Cached on purpose: an invalidation test against an uncached service
+    // passes trivially and proves nothing.
     let workflow_service = r_data_core_services::WorkflowService::new_with_entities(
         Arc::new(wf_adapter),
         dynamic_entity_service.clone(),
     )
+    .with_cache(cache_manager.clone())
     .with_queue(Some(queue.clone()));
 
     let dashboard_stats_repository =

@@ -234,13 +234,16 @@ fn build_workflow_service(
             });
 
     let settings_service = Arc::new(
-        SettingsService::new(pool.clone(), cache_manager).with_outbox_defaults(OutboxSettings {
-            fetch_enabled: config.outbox_fetch_enabled,
-            push_enabled: config.outbox_push_enabled,
-        }),
+        SettingsService::new(pool.clone(), cache_manager.clone()).with_outbox_defaults(
+            OutboxSettings {
+                fetch_enabled: config.outbox_fetch_enabled,
+                push_enabled: config.outbox_push_enabled,
+            },
+        ),
     );
 
     let mut workflow_service = WorkflowService::new(Arc::new(workflow_adapter))
+        .with_cache(cache_manager.clone())
         .with_jwt_config(
             Some(config.api.jwt_secret.clone()),
             config.api.jwt_expiration,
