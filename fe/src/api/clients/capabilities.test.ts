@@ -42,7 +42,6 @@ describe('CapabilitiesClient', () => {
                 system_mail_configured: false,
                 workflow_mail_configured: false,
                 oidc_enabled: false,
-                oidc_provider_name: null,
             }
 
             mockFetch.mockResolvedValueOnce({
@@ -67,7 +66,6 @@ describe('CapabilitiesClient', () => {
                 system_mail_configured: false,
                 workflow_mail_configured: false,
                 oidc_enabled: false,
-                oidc_provider_name: null,
             }
 
             mockFetch.mockResolvedValueOnce({
@@ -90,7 +88,6 @@ describe('CapabilitiesClient', () => {
                 system_mail_configured: true,
                 workflow_mail_configured: false,
                 oidc_enabled: false,
-                oidc_provider_name: null,
             }
 
             mockFetch.mockResolvedValueOnce({
@@ -113,7 +110,6 @@ describe('CapabilitiesClient', () => {
                 system_mail_configured: false,
                 workflow_mail_configured: true,
                 oidc_enabled: false,
-                oidc_provider_name: null,
             }
 
             mockFetch.mockResolvedValueOnce({
@@ -136,7 +132,6 @@ describe('CapabilitiesClient', () => {
                 system_mail_configured: true,
                 workflow_mail_configured: true,
                 oidc_enabled: false,
-                oidc_provider_name: null,
             }
 
             mockFetch.mockResolvedValueOnce({
@@ -173,7 +168,6 @@ describe('CapabilitiesClient', () => {
                 system_mail_configured: false,
                 workflow_mail_configured: false,
                 oidc_enabled: false,
-                oidc_provider_name: null,
             }
 
             mockFetch.mockResolvedValueOnce({

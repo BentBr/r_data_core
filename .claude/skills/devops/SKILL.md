@@ -99,7 +99,7 @@ Keycloak / Auth0 / Entra setups and the reasoning behind each default, is in
 | `RDC_OIDC_LINK_BY_EMAIL` | Off by default; account-takeover surface when the provider's addresses are unverified |
 | `RDC_OIDC_CLIENT_ID` / `RDC_OIDC_REDIRECT_URI` | Enable the browser flow. A client id without a redirect URI fails startup |
 | `RDC_OIDC_CLIENT_SECRET` | Optional (public client + PKCE). Redacted from debug output |
-| `RDC_OIDC_POST_LOGIN_PATH` / `RDC_OIDC_PROVIDER_NAME` | Landing path (must be local) and the button's label |
+| `RDC_OIDC_POST_LOGIN_PATH` | Landing path after sign-in; must be a path inside the app |
 | `RDC_OIDC_JWKS_TTL_SECS` / `RDC_OIDC_RESOLUTION_CACHE_SECS` | Key-set cache (3600) and identity cache (60). The latter is how long a revocation takes to bite |
 
 Misconfiguration fails startup rather than silently disabling SSO: an operator

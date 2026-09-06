@@ -6,9 +6,41 @@ use uuid::Uuid;
 
 use crate::admin::auth::models::{ForgotPasswordRequest, ResetPasswordRequest};
 use crate::api_state::{ApiStateTrait, ApiStateWrapper};
-use crate::auth::auth_enum::RequiredAuth;
+use crate::auth::auth_enum::CombinedRequiredAuth;
 use crate::response::ApiResponse;
 use r_data_core_core::system_log::SystemLogStatus;
+
+/// The claims to answer with, whichever way the caller authenticated.
+///
+/// A JWT already carries them. An API key does not, so the same claims are
+/// rebuilt from the key's owner and their roles — through
+/// `admin_jwt::build_claims`, the one function that flattens permissions, so
+/// the answer is identical to the one a JWT for that user would have given.
+/// Rebuilding them by hand here would be a second implementation of
+/// authorization, which is how the two drift apart.
+async fn resolve_claims(
+    data: &ApiStateWrapper,
+    auth: &CombinedRequiredAuth,
+) -> Option<r_data_core_core::admin_jwt::AuthUserClaims> {
+    use r_data_core_persistence::{AdminUserRepository, AdminUserRepositoryTrait};
+    use std::sync::Arc;
+
+    if let Some(claims) = &auth.jwt_claims {
+        return Some(claims.clone());
+    }
+
+    let key = auth.api_key_info.as_ref()?;
+    let repo = AdminUserRepository::new(Arc::new(data.db_pool().clone()));
+    let user = repo.find_by_uuid(&key.user_uuid).await.ok().flatten()?;
+    let roles = crate::admin::auth::routes::helpers::load_user_roles(&user, data, &repo).await;
+
+    r_data_core_core::admin_jwt::build_claims(
+        &user,
+        &roles,
+        r_data_core_core::admin_jwt::ACCESS_TOKEN_EXPIRY_SECONDS,
+    )
+    .ok()
+}
 
 /// Get user's allowed routes and permissions
 #[utoipa::path(
@@ -21,14 +53,26 @@ use r_data_core_core::system_log::SystemLogStatus;
         (status = 500, description = "Internal server error")
     ),
     security(
-        ("jwt" = [])
+        ("jwt" = []),
+        ("api_key" = [])
     )
 )]
 #[get("/auth/permissions")]
-pub async fn get_user_permissions(auth: RequiredAuth) -> impl Responder {
+pub async fn get_user_permissions(
+    data: web::Data<ApiStateWrapper>,
+    auth: CombinedRequiredAuth,
+) -> impl Responder {
     use r_data_core_services::AuthService;
 
-    let claims = &auth.0;
+    // Accepts an API key as well as a JWT. "What may I do?" is a question any
+    // authenticated principal should be able to ask, and the MCP server asks
+    // it at startup precisely so it can avoid offering tools the caller cannot
+    // use. Refusing API keys here made that impossible — the server could only
+    // fail, and its failure message blamed the key.
+    let Some(claims) = resolve_claims(&data, &auth).await else {
+        return ApiResponse::<()>::unauthorized("Authentication required");
+    };
+    let claims = &claims;
 
     // Use auth service to get user permissions
     let auth_service = AuthService::new();

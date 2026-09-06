@@ -227,10 +227,13 @@ pub struct CapabilitiesResponse {
     /// bearer-token validation is. An instance that accepts provider tokens
     /// but has no client id has nowhere to send a person who clicks the
     /// button, so showing one would be a dead end.
+    ///
+    /// Deliberately the only thing said about single sign-on here. This
+    /// endpoint is public and unauthenticated, and a test asserts every value
+    /// on it stays boolean — a provider's name would tell an anonymous caller
+    /// which identity provider the organisation uses, which is more than a
+    /// feature flag and not worth a nicer button label.
     pub oidc_enabled: bool,
-    /// What to call the provider on the sign-in button, where the operator
-    /// has said. `None` means the button stays generic.
-    pub oidc_provider_name: Option<String>,
 }
 
 /// Query parameters for filtering system logs

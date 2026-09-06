@@ -120,6 +120,28 @@ impl OauthStack {
         let (app_data, pool, _token, _api_key) =
             build_app_state().await.expect("build application state");
 
+        // Nothing seeds roles, and a mapping naming a role that does not exist
+        // has no effect — every identity would then map to nothing and be
+        // refused, which looks like a broken guard rather than a missing
+        // fixture. Create whatever the map points at.
+        for role in role_map
+            .split(',')
+            .filter_map(|entry| entry.split_once(':'))
+            .map(|(_, role)| role.trim())
+            .filter(|role| !role.is_empty())
+        {
+            sqlx::query(
+                "INSERT INTO roles (name, description, permissions, created_by) \
+                 VALUES ($1, $2, '[]'::jsonb, $3) ON CONFLICT (name) DO NOTHING",
+            )
+            .bind(role)
+            .bind(format!("created by the OAuth test harness for {role}"))
+            .bind(uuid::Uuid::nil())
+            .execute(&pool.pool)
+            .await
+            .expect("create the mapped role");
+        }
+
         let listener = std::net::TcpListener::bind("127.0.0.1:0").expect("an ephemeral port");
         let rdc_port = listener.local_addr().expect("the bound port").port();
         let server = HttpServer::new(move || {

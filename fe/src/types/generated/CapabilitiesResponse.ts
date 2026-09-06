@@ -19,10 +19,11 @@ workflow_mail_configured: boolean,
  * bearer-token validation is. An instance that accepts provider tokens
  * but has no client id has nowhere to send a person who clicks the
  * button, so showing one would be a dead end.
+ *
+ * Deliberately the only thing said about single sign-on here. This
+ * endpoint is public and unauthenticated, and a test asserts every value
+ * on it stays boolean — a provider's name would tell an anonymous caller
+ * which identity provider the organisation uses, which is more than a
+ * feature flag and not worth a nicer button label.
  */
-oidc_enabled: boolean, 
-/**
- * What to call the provider on the sign-in button, where the operator
- * has said. `None` means the button stays generic.
- */
-oidc_provider_name: string | null, };
+oidc_enabled: boolean, };

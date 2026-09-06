@@ -139,7 +139,6 @@ pub async fn get_capabilities(data: web::Data<ApiStateWrapper>) -> impl Responde
         system_mail_configured,
         workflow_mail_configured,
         oidc_enabled: oidc.is_some(),
-        oidc_provider_name: oidc.and_then(|o| o.runtime().config().provider_name.clone()),
     })
 }
 

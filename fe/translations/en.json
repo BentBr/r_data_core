@@ -48,7 +48,6 @@
         "sso": {
             "or": "or",
             "sign_in": "Sign in with single sign-on",
-            "sign_in_with": "Sign in with {provider}",
             "errors": {
                 "generic": "Single sign-on failed. Please try again, or sign in with your password.",
                 "unbound_state": "This sign-in could not be verified as started in this browser. Please start again from this page.",

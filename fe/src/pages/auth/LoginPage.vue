@@ -67,7 +67,7 @@
                                             size="sm"
                                         />
                                     </template>
-                                    {{ ssoButtonLabel }}
+                                    {{ t('auth.sso.sign_in') }}
                                 </v-btn>
 
                                 <div class="d-flex align-center mb-4">
@@ -262,7 +262,7 @@
 </template>
 
 <script setup lang="ts">
-    import { ref, reactive, computed, onMounted, onUnmounted } from 'vue'
+    import { ref, reactive, onMounted, onUnmounted } from 'vue'
     import { useRouter } from 'vue-router'
     import { useAuthStore } from '@/stores/auth'
     import { useCapabilitiesStore } from '@/stores/capabilities'
@@ -382,12 +382,6 @@
             }
         }
     }
-
-    const ssoButtonLabel = computed(() =>
-        capabilitiesStore.oidcProviderName
-            ? t('auth.sso.sign_in_with', { provider: capabilitiesStore.oidcProviderName })
-            : t('auth.sso.sign_in')
-    )
 
     /**
      * Hand the browser to the start endpoint.

@@ -7,10 +7,7 @@ import LoginPage from './LoginPage.vue'
 // ── per-file translation mock (overrides global test-setup) ─────────────────
 vi.mock('@/composables/useTranslations', () => ({
     useTranslations: () => ({
-        t: (key: string, params?: Record<string, string> | string) => {
-            if (key === 'auth.sso.sign_in_with' && typeof params === 'object') {
-                return `Sign in with ${params.provider}`
-            }
+        t: (key: string) => {
             const map: Record<string, string> = {
                 'auth.sso.sign_in': 'Sign in with single sign-on',
                 'auth.sso.or': 'or',
@@ -36,7 +33,6 @@ const capabilities = {
     isLoaded: true,
     systemMailConfigured: false,
     oidcEnabled: false,
-    oidcProviderName: null as string | null,
     fetchCapabilities: vi.fn(),
 }
 
@@ -96,7 +92,6 @@ describe('LoginPage single sign-on', () => {
         vi.clearAllMocks()
 
         capabilities.oidcEnabled = false
-        capabilities.oidcProviderName = null
 
         vi.mocked(useAuthStore).mockReturnValue(
             buildAuthStoreMock() as ReturnType<typeof useAuthStore>
@@ -128,15 +123,9 @@ describe('LoginPage single sign-on', () => {
         expect(wrapper.find('[data-testid="sso-signin"]').exists()).toBe(false)
     })
 
-    it('names the provider on the button when the server supplies one', async () => {
-        capabilities.oidcEnabled = true
-        capabilities.oidcProviderName = 'Acme SSO'
-        const wrapper = await mountPage()
-
-        expect(wrapper.find('[data-testid="sso-signin"]').text()).toContain('Sign in with Acme SSO')
-    })
-
-    it('stays generic when the server supplies no provider name', async () => {
+    it('labels the button without naming the provider', async () => {
+        // The capabilities endpoint is public and stays boolean-only, so the
+        // interface never learns which provider the organisation uses.
         capabilities.oidcEnabled = true
         const wrapper = await mountPage()
 

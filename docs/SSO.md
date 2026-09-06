@@ -35,10 +35,15 @@ Two things are enabled separately, and you may want only the first:
 | `RDC_OIDC_REDIRECT_URI` | with `CLIENT_ID` | — | Where the provider sends the browser back. Startup fails if a client id is set without one. |
 | `RDC_OIDC_CLIENT_SECRET` | no | unset | Omit for a public client; PKCE is mandatory either way. Never printed, including in debug output. |
 | `RDC_OIDC_POST_LOGIN_PATH` | no | `/admin` | Where to land after signing in. Must be a path inside this application. |
-| `RDC_OIDC_PROVIDER_NAME` | no | unset | What to call the provider on the button. Unset leaves it generic. |
 
 The redirect URI is always `<your base URL>/admin/api/v1/auth/oidc/callback`.
 Register exactly that at the provider.
+
+The sign-in button is labelled generically rather than with your provider's
+name. `/admin/api/v1/system/capabilities` is public and unauthenticated, and
+it reports only booleans — naming the provider there would tell any anonymous
+caller which identity provider your organisation uses, which is more than a
+feature flag and more than a button label is worth.
 
 ---
 
@@ -66,7 +71,6 @@ RDC_OIDC_CLIENT_ID=r-data-core
 RDC_OIDC_CLIENT_SECRET=<from the Credentials tab, if confidential>
 RDC_OIDC_REDIRECT_URI=https://rdc.example.com/admin/api/v1/auth/oidc/callback
 RDC_OIDC_ROLE_MAP=rdc-editors:editor
-RDC_OIDC_PROVIDER_NAME=Keycloak
 ```
 
 Keycloak does not put the client id in `aud` for ID tokens by default. If
@@ -96,7 +100,6 @@ RDC_OIDC_CLIENT_SECRET=<the Client Secret>
 RDC_OIDC_REDIRECT_URI=https://rdc.example.com/admin/api/v1/auth/oidc/callback
 RDC_OIDC_ROLES_CLAIM=https://rdatacore/groups
 RDC_OIDC_ROLE_MAP=rdc-editors:editor
-RDC_OIDC_PROVIDER_NAME=Auth0
 ```
 
 ### Microsoft Entra ID
@@ -114,7 +117,6 @@ RDC_OIDC_CLIENT_ID=<Application (client) ID>
 RDC_OIDC_CLIENT_SECRET=<a client secret>
 RDC_OIDC_REDIRECT_URI=https://rdc.example.com/admin/api/v1/auth/oidc/callback
 RDC_OIDC_ROLE_MAP=8f4c1b2e-...:editor
-RDC_OIDC_PROVIDER_NAME=Microsoft
 ```
 
 A user in many groups causes Entra to send a `_claim_names` overage reference

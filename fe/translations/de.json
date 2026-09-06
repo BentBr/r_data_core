@@ -48,7 +48,6 @@
         "sso": {
             "or": "oder",
             "sign_in": "Mit Single Sign-on anmelden",
-            "sign_in_with": "Mit {provider} anmelden",
             "errors": {
                 "generic": "Single Sign-on ist fehlgeschlagen. Bitte versuchen Sie es erneut oder melden Sie sich mit Ihrem Passwort an.",
                 "unbound_state": "Diese Anmeldung konnte nicht als in diesem Browser gestartet bestätigt werden. Bitte beginnen Sie erneut auf dieser Seite.",
