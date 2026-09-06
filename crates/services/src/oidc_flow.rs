@@ -35,7 +35,7 @@ use thiserror::Error;
 
 use r_data_core_core::cache::CacheManager;
 use r_data_core_core::oidc::keys::OidcClaims;
-use r_data_core_core::oidc::OidcConfig;
+use r_data_core_core::oidc::{is_local_redirect_path, OidcConfig};
 
 use crate::oidc_discovery;
 use crate::oidc_runtime::{OidcAuthError, OidcRuntime};
@@ -151,7 +151,9 @@ impl OidcFlow {
                     // Anything that is not a local path is dropped rather than
                     // rejected: a stale bookmark should still log someone in,
                     // just to the default place.
-                    return_to: return_to.filter(|r| is_local_path(r)).map(str::to_string),
+                    return_to: return_to
+                        .filter(|r| is_local_redirect_path(r))
+                        .map(str::to_string),
                 },
                 Some(STATE_TTL.as_secs()),
             )
@@ -280,17 +282,9 @@ impl OidcFlow {
     #[must_use]
     pub fn landing_path(&self, return_to: Option<&str>) -> String {
         return_to
-            .filter(|r| is_local_path(r))
+            .filter(|r| is_local_redirect_path(r))
             .map_or_else(|| self.config().post_login_path.clone(), str::to_string)
     }
-}
-
-/// A path inside this application, and not a way out of it.
-///
-/// `//evil.example.com` is a protocol-relative URL that browsers follow to
-/// another origin, so the second character matters as much as the first.
-fn is_local_path(value: &str) -> bool {
-    value.starts_with('/') && !value.starts_with("//")
 }
 
 /// 32 bytes of randomness, URL-safe.

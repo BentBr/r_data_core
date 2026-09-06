@@ -252,6 +252,17 @@ async fn a_return_to_leaving_this_origin_is_discarded() {
         "//evil.example.com",
         "javascript:alert(1)",
         "not-a-path",
+        // Browsers normalise a backslash to a slash, so each of these
+        // resolves to another origin despite starting with a single '/'.
+        // The callback appends the session tokens to whatever this returns,
+        // so a miss here hands them to whoever chose the destination.
+        "/\\evil.example.com",
+        "/\\/evil.example.com",
+        "/\\\\evil.example.com",
+        // Tabs and newlines are stripped before the URL is resolved.
+        "/\t/evil.example.com",
+        "/\n/evil.example.com",
+        "/\r\n//evil.example.com",
     ] {
         assert_eq!(
             flow.landing_path(Some(escape)),

@@ -96,6 +96,21 @@ pub async fn admin_login(
         return handle_password_failure(user, &repo, &data, &rl_key, &login_req.username).await;
     }
 
+    // An SSO-provisioned account holds a random sentinel password that nothing
+    // can match, so this is unreachable in practice — which is exactly why it
+    // is worth stating. It is the guard that survives someone later adding a
+    // path that writes a password hash. Checked only after a correct password,
+    // alongside the locked/inactive check below, so it cannot be used to ask
+    // "is this account federated?" without already having got that far.
+    if user.is_sso_provisioned {
+        log::warn!(
+            "Password login attempted against an SSO-provisioned account; refusing. \
+             This should be unreachable — if it happens, something has written a \
+             usable password hash onto a federated account."
+        );
+        return ApiResponse::unauthorized("Invalid credentials");
+    }
+
     // Credentials are valid: only now is it safe to reveal a locked/inactive
     // account. Do NOT count this against the IP rate limit (the password was
     // correct — it is not a brute-force attempt) and do NOT reset the counter.

@@ -59,10 +59,11 @@ impl Idp {
 
         Mock::given(method("GET"))
             .and(path("/.well-known/openid-configuration"))
-            .respond_with(
-                ResponseTemplate::new(200)
-                    .set_body_json(json!({ "jwks_uri": format!("{}/jwks", server.uri()) })),
-            )
+            .respond_with(ResponseTemplate::new(200).set_body_json(json!({
+                "jwks_uri": format!("{}/jwks", server.uri()),
+                "authorization_endpoint": format!("{}/authorize", server.uri()),
+                "token_endpoint": format!("{}/token", server.uri()),
+            })))
             .mount(&server)
             .await;
 
@@ -227,6 +228,13 @@ pub fn state(idp: Option<&Idp>) -> ApiStateWrapper {
                     "RDC_OIDC_ROLE_MAP".to_string(),
                     "rdc-ops:editor".to_string(),
                 ),
+                // Enough to enable the browser flow, so the login-flow tests
+                // exercise the real endpoints rather than a 404.
+                ("RDC_OIDC_CLIENT_ID".to_string(), "rdc".to_string()),
+                (
+                    "RDC_OIDC_REDIRECT_URI".to_string(),
+                    "https://rdc.example.com/admin/api/v1/auth/oidc/callback".to_string(),
+                ),
             ]
             .into_iter()
             .collect(),
@@ -265,6 +273,15 @@ pub async fn whoami(auth: RequiredAuth) -> HttpResponse {
         "name": auth.0.name,
         "permissions": auth.0.permissions,
     }))
+}
+
+/// Register the real single-sign-on endpoints, at the paths they live at.
+pub fn oidc_routes(cfg: &mut web::ServiceConfig) {
+    cfg.service(
+        web::scope("/admin/api/v1")
+            .service(r_data_core_api::admin::auth::routes::oidc_start)
+            .service(r_data_core_api::admin::auth::routes::oidc_callback),
+    );
 }
 
 /// Register the protected route behind the OIDC arm.

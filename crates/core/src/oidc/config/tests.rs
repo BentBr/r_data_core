@@ -210,7 +210,17 @@ fn the_browser_flow_stays_off_when_no_client_id_is_given() {
 
 #[test]
 fn a_post_login_path_leaving_this_origin_is_refused() {
-    for escape in ["https://evil.example.com", "//evil.example.com", "admin"] {
+    for escape in [
+        "https://evil.example.com",
+        "//evil.example.com",
+        "admin",
+        // A backslash is normalised to a slash by browsers, so this resolves
+        // to another origin. It is the bypass a `starts_with("//")` check
+        // misses, and the reason this validator looks at more than the prefix.
+        "/\\evil.example.com",
+        "/\\/evil.example.com",
+        "/\t/evil.example.com",
+    ] {
         let outcome = OidcConfig::from_map(&env(&with(&[("RDC_OIDC_POST_LOGIN_PATH", escape)])));
         assert!(
             matches!(outcome, Err(OidcConfigError::UnsafePostLoginPath(_))),

@@ -137,7 +137,7 @@ impl OidcConfig {
         let post_login_path = get(map, "RDC_OIDC_POST_LOGIN_PATH")
             .unwrap_or(DEFAULT_POST_LOGIN_PATH)
             .to_string();
-        if !is_local_path(&post_login_path) {
+        if !is_local_redirect_path(&post_login_path) {
             return Err(OidcConfigError::UnsafePostLoginPath(post_login_path));
         }
 
@@ -172,10 +172,35 @@ impl OidcConfig {
 
 /// Whether this is a path inside this application, and not a way out of it.
 ///
-/// `//evil.example.com` is a protocol-relative URL that browsers follow to
-/// another origin, so the second character matters as much as the first.
-fn is_local_path(value: &str) -> bool {
-    value.starts_with('/') && !value.starts_with("//")
+/// Used for every value that can become a `Location` header on a sign-in
+/// path, so getting it wrong is an open redirect — and on a login endpoint,
+/// where the response carries session tokens in its fragment, an open
+/// redirect hands those tokens to whoever chose the destination.
+///
+/// The rules, and why each one is here:
+///
+/// - It must start with `/`. Anything else is an absolute URL or a relative
+///   one, and neither is a place this application controls.
+/// - The second character must not be `/` or `\`. `//evil.example.com` is a
+///   protocol-relative URL that browsers follow to another origin.
+/// - No backslash anywhere. Browsers normalise `\` to `/`, so `/\evil.com`
+///   becomes `//evil.com` — the same escape, spelled differently, and the
+///   reason a naive `starts_with("//")` check is not enough.
+/// - No control characters or whitespace. Browsers strip tabs and newlines
+///   from URLs before resolving them, so `/<tab>/evil.com` is another way to
+///   arrive at `//evil.com`.
+#[must_use]
+pub fn is_local_redirect_path(value: &str) -> bool {
+    let mut chars = value.chars();
+    if chars.next() != Some('/') {
+        return false;
+    }
+    if matches!(chars.next(), Some('/' | '\\')) {
+        return false;
+    }
+    !value
+        .chars()
+        .any(|c| c == '\\' || c.is_control() || c.is_whitespace())
 }
 
 /// Read a duration in seconds, falling back to a default when unset.

@@ -382,6 +382,20 @@ pub async fn update_user(
         use argon2::password_hash::{rand_core::OsRng, PasswordHasher, SaltString};
         use argon2::Argon2;
 
+        // An SSO-provisioned account authenticates at the identity provider
+        // and nowhere else. Letting an admin set a password on one would
+        // bypass every other guard in this feature with a single PUT, and
+        // reopen the local login path the provisioning flow deliberately
+        // closed. Refuse loudly rather than ignore the field: an operator who
+        // thinks they set a password and did not is worse off than one told no.
+        if user.is_sso_provisioned {
+            return ApiResponse::<()>::bad_request(
+                "This user signs in through single sign-on; a password cannot be set on \
+                 their account. Remove the single-sign-on link first if they should \
+                 become a local account.",
+            );
+        }
+
         let salt = SaltString::generate(&mut OsRng);
         let argon2 = Argon2::default();
         match argon2.hash_password(password.as_bytes(), &salt) {

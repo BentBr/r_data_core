@@ -9,6 +9,15 @@
 //! `OidcServices`, so the account-status check and the role mapping cannot
 //! differ between them.
 //!
+//! **Why `state` is also held in a cookie.** Being unguessable and
+//! single-use stops a `state` being replayed, but not login CSRF: an attacker
+//! can start a sign-in in their own browser, obtain a valid `state` bound to
+//! their own identity-provider account, and then induce a victim's browser to
+//! visit the callback with it. The victim would end up holding a session for
+//! the attacker's account, and would go on using it. Binding the `state` to
+//! the browser that started the sign-in closes that: a `state` begun
+//! elsewhere arrives without the matching cookie and is refused.
+//!
 //! **Why the callback hands tokens back in a URL fragment.** The browser must
 //! end up holding the same access and refresh tokens a password login
 //! produces, because that is what lets refresh, logout and revoke-all work
@@ -27,6 +36,9 @@ use crate::response::ApiResponse;
 use r_data_core_core::admin_jwt::ACCESS_TOKEN_EXPIRY_SECONDS;
 use r_data_core_persistence::{AdminUserRepository, AdminUserRepositoryTrait};
 use r_data_core_services::{FlowError, OidcAuthError};
+
+/// Cookie binding a pending sign-in to the browser that began it.
+const STATE_COOKIE: &str = "rdc_sso_state";
 
 /// Query accepted by `start`.
 #[derive(Debug, Deserialize)]
@@ -65,6 +77,7 @@ pub struct ExchangeRequest {
 )]
 #[get("/auth/oidc/start")]
 pub async fn oidc_start(
+    req: actix_web::HttpRequest,
     data: web::Data<ApiStateWrapper>,
     query: web::Query<StartQuery>,
 ) -> impl Responder {
@@ -78,6 +91,7 @@ pub async fn oidc_start(
             // A sign-in redirect is specific to this attempt and must never be
             // reused from a cache.
             .insert_header((header::CACHE_CONTROL, "no-store"))
+            .cookie(state_cookie(&redirect.state, &req))
             .finish(),
         Err(e) => {
             log::error!("Could not start the single-sign-on flow: {e}");
@@ -99,6 +113,7 @@ pub async fn oidc_start(
 )]
 #[get("/auth/oidc/callback")]
 pub async fn oidc_callback(
+    req: actix_web::HttpRequest,
     data: web::Data<ApiStateWrapper>,
     query: web::Query<CallbackQuery>,
 ) -> impl Responder {
@@ -116,6 +131,23 @@ pub async fn oidc_callback(
     let (Some(code), Some(state)) = (&query.code, &query.state) else {
         return failed_login(&flow.landing_path(None), "incomplete_callback");
     };
+
+    // This browser must be the one that started this sign-in. Without the
+    // check, a `state` obtained by an attacker in their own browser can be
+    // completed in a victim's, logging the victim into the attacker's account.
+    // Compared in constant time: the cookie is a per-attempt secret, and a
+    // comparison that stops at the first wrong byte leaks it a byte at a time.
+    let bound = req
+        .cookie(STATE_COOKIE)
+        .is_some_and(|cookie| constant_time_eq(cookie.value(), state));
+    if !bound {
+        log::warn!(
+            "A single-sign-on callback arrived without the matching state cookie. \
+             Either the sign-in was started in another browser — which is what login \
+             CSRF looks like — or the cookie was dropped before the provider returned."
+        );
+        return failed_login(&flow.landing_path(None), "unbound_state");
+    }
 
     let (claims, return_to) = match flow
         .complete(state, code, ACCESS_TOKEN_EXPIRY_SECONDS)
@@ -156,6 +188,8 @@ pub async fn oidc_callback(
         .insert_header((header::LOCATION, format!("{landing}#{fragment}")))
         // Tokens travel in this response. It must not be stored anywhere.
         .insert_header((header::CACHE_CONTROL, "no-store"))
+        // The sign-in is finished; the binding cookie has served its purpose.
+        .cookie(cleared_state_cookie())
         .finish()
 }
 
@@ -285,7 +319,52 @@ fn failed_login(landing: &str, reason: &str) -> HttpResponse {
     HttpResponse::Found()
         .insert_header((header::LOCATION, format!("{landing}#sso_error={reason}")))
         .insert_header((header::CACHE_CONTROL, "no-store"))
+        // The attempt is over either way; leaving the cookie behind would only
+        // give a later request something to match against.
+        .cookie(cleared_state_cookie())
         .finish()
+}
+
+/// The cookie binding a pending sign-in to this browser.
+///
+/// `SameSite=Lax` rather than `Strict`: the callback is a top-level navigation
+/// arriving from the identity provider's origin, and `Strict` would withhold
+/// the cookie on exactly the request that needs it. `Lax` still withholds it
+/// from cross-site sub-requests, which is what matters here.
+///
+/// `Secure` follows the connection: always on for HTTPS, and off for plain
+/// HTTP so local development works. A production deployment is HTTPS, so this
+/// is not a way to end up without it in the place it counts.
+fn state_cookie(state: &str, req: &actix_web::HttpRequest) -> actix_web::cookie::Cookie<'static> {
+    actix_web::cookie::Cookie::build(STATE_COOKIE, state.to_string())
+        .http_only(true)
+        .same_site(actix_web::cookie::SameSite::Lax)
+        .secure(req.connection_info().scheme() == "https")
+        .path("/")
+        .max_age(actix_web::cookie::time::Duration::minutes(5))
+        .finish()
+}
+
+/// The same cookie, expired, so a finished attempt leaves nothing behind.
+fn cleared_state_cookie() -> actix_web::cookie::Cookie<'static> {
+    let mut cookie = actix_web::cookie::Cookie::build(STATE_COOKIE, "")
+        .http_only(true)
+        .same_site(actix_web::cookie::SameSite::Lax)
+        .path("/")
+        .finish();
+    cookie.make_removal();
+    cookie
+}
+
+/// Compare two secrets without revealing where they first differ.
+fn constant_time_eq(left: &str, right: &str) -> bool {
+    if left.len() != right.len() {
+        return false;
+    }
+    left.bytes()
+        .zip(right.bytes())
+        .fold(0u8, |acc, (a, b)| acc | (a ^ b))
+        == 0
 }
 
 /// A stable, non-revealing code for a failed sign-in.
