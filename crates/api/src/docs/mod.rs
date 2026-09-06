@@ -41,6 +41,7 @@ use utoipa_swagger_ui::{Config, SwaggerUi};
         crate::admin::workflows::routes::cron::cron_preview,
         crate::admin::workflows::routes::versions::list_workflow_versions,
         crate::admin::workflows::routes::versions::get_workflow_version,
+        crate::admin::workflows::routes::versions::restore_workflow_version,
         crate::admin::entity_definitions::routes::list_entity_definition_versions,
         crate::admin::entity_definitions::routes::get_entity_definition_version,
         crate::admin::dsl::routes::validate_dsl,
