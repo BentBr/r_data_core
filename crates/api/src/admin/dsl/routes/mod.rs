@@ -1,5 +1,6 @@
 #![deny(clippy::all, clippy::pedantic, clippy::nursery, warnings)]
 
+mod diagnostics;
 pub mod handlers;
 pub mod options_builders;
 

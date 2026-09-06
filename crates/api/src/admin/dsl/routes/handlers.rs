@@ -6,15 +6,16 @@ use actix_web::{get, post, web, Responder};
 use crate::admin::dsl::models::{
     DslOptionsAndExamplesResponse, DslOptionsResponse, DslValidateRequest, DslValidateResponse,
 };
+use crate::admin::dsl::routes::diagnostics;
 use crate::admin::dsl::routes::options_builders::{
     build_from_type_specs, build_to_type_specs, build_transform_type_specs,
 };
 use crate::auth::auth_enum::RequiredAuth;
 use crate::auth::permission_check;
-use crate::response::{ApiResponse, ValidationViolation};
+use crate::response::ApiResponse;
 use r_data_core_core::permissions::role::{PermissionType, ResourceNamespace};
 use r_data_core_workflow::dsl::{
-    ArithmeticOp, ArithmeticTransform, AuthenticateTransform, ConcatTransform, DslProgram, DslStep,
+    ArithmeticOp, ArithmeticTransform, AuthenticateTransform, ConcatTransform, DslProgram,
     EntityFilter, EntityWriteMode, FormatConfig, FromDef, Operand, OutputMode, SourceConfig,
     StringOperand, ToDef, Transform,
 };
@@ -46,27 +47,18 @@ pub async fn validate_dsl(
         return ApiResponse::<()>::forbidden("Insufficient permissions to validate DSL");
     }
 
-    // Convert Vec<Value> to Vec<DslStep> for validation.
-    //
-    // Report every step that fails to parse, and carry serde's own message
-    // through: it names the offending field and, for an unknown variant,
-    // lists the legal ones. Collapsing all of that into a single opaque
-    // "Invalid DSL steps format" left callers with no way to find the problem.
-    let mut steps = Vec::with_capacity(payload.steps.len());
-    let mut violations = Vec::new();
-    for (idx, raw) in payload.steps.iter().enumerate() {
-        match serde_json::from_value::<DslStep>(raw.clone()) {
-            Ok(step) => steps.push(step),
-            Err(e) => violations.push(ValidationViolation {
-                field: format!("steps[{idx}]"),
-                message: e.to_string(),
-                code: Some("DSL_STEP_MALFORMED".to_string()),
-            }),
+    // Parse failures and rule failures both come back located: see
+    // `diagnostics` for why the path matters more than the message.
+    let steps = match diagnostics::parse_steps(&payload.steps) {
+        Ok(steps) => steps,
+        Err(violations) => {
+            return ApiResponse::<()>::unprocessable_entity_with_violations(
+                "Invalid DSL",
+                violations,
+            )
         }
-    }
-    if !violations.is_empty() {
-        return ApiResponse::<()>::unprocessable_entity_with_violations("Invalid DSL", violations);
-    }
+    };
+
     let program = DslProgram {
         steps,
         on_complete: None,
@@ -75,11 +67,7 @@ pub async fn validate_dsl(
         Ok(()) => ApiResponse::ok(DslValidateResponse { valid: true }),
         Err(e) => ApiResponse::<()>::unprocessable_entity_with_violations(
             "Invalid DSL",
-            vec![ValidationViolation {
-                field: "dsl".to_string(),
-                message: e.to_string(),
-                code: Some("DSL_INVALID".to_string()),
-            }],
+            vec![diagnostics::semantic_violation(e.to_string())],
         ),
     }
 }

@@ -173,10 +173,12 @@ pub async fn create_entity(
                         // Convert to Symfony-style violations
                         let violations: Vec<ValidationViolation> = violations
                             .iter()
-                            .map(|v| ValidationViolation {
-                                field: v.field.clone(),
-                                message: v.message.clone(),
-                                code: Some("INVALID".to_string()),
+                            .map(|v| {
+                                ValidationViolation::field(
+                                    v.field.clone(),
+                                    v.message.clone(),
+                                    "INVALID",
+                                )
                             })
                             .collect();
                         return ApiResponse::unprocessable_entity_with_violations(
@@ -208,11 +210,11 @@ pub async fn create_entity(
                             // Handle unique field constraint violations
                             if msg.contains("must be unique") {
                                 let field = extract_field_from_unique_message(msg);
-                                let violations = vec![crate::response::ValidationViolation {
+                                let violations = vec![crate::response::ValidationViolation::field(
                                     field,
-                                    message: msg.clone(),
-                                    code: Some("UNIQUE_VIOLATION".to_string()),
-                                }];
+                                    msg.clone(),
+                                    "UNIQUE_VIOLATION",
+                                )];
                                 return ApiResponse::<()>::unprocessable_entity_with_violations(
                                     "Validation failed",
                                     violations,
@@ -372,11 +374,11 @@ pub async fn update_entity(
                             // Handle unique field constraint violations
                             if msg.contains("must be unique") {
                                 let field = extract_field_from_unique_message(msg);
-                                let violations = vec![crate::response::ValidationViolation {
+                                let violations = vec![crate::response::ValidationViolation::field(
                                     field,
-                                    message: msg.clone(),
-                                    code: Some("UNIQUE_VIOLATION".to_string()),
-                                }];
+                                    msg.clone(),
+                                    "UNIQUE_VIOLATION",
+                                )];
                                 return ApiResponse::<()>::unprocessable_entity_with_violations(
                                     "Validation failed",
                                     violations,

@@ -16,6 +16,38 @@ pub struct ValidationViolation {
     pub message: String,
     /// Optional error code (e.g., `"NOT_BLANK"`, `"NOT_NULL"`)
     pub code: Option<String>,
+    /// JSON path to the offending value, e.g. `steps[0].to.type`.
+    ///
+    /// More precise than `field` where the producer can manage it; `None` when
+    /// it cannot, which is honest rather than pointing somewhere wrong. Always
+    /// serialized (as `null` when absent) so the wire format matches the
+    /// generated TypeScript — ts-rs cannot read `skip_serializing_if`.
+    #[serde(default)]
+    pub json_path: Option<String>,
+    /// Alternatives the caller may use instead, where the failure is a closed
+    /// set — an unknown enum variant, say. Empty means "not enumerable", never
+    /// "nothing is legal".
+    #[serde(default)]
+    pub legal_values: Vec<String>,
+}
+
+impl ValidationViolation {
+    /// A violation located by field name, with no JSON path and no enumerable
+    /// alternatives — the shape almost every producer needs.
+    ///
+    /// Set `json_path` and `legal_values` afterwards where they can genuinely
+    /// be supplied; the DSL diagnostics do, because a caller fixing a nested
+    /// step needs the exact key rather than the top-level field.
+    #[must_use]
+    pub fn field(field: impl Into<String>, message: impl Into<String>, code: &str) -> Self {
+        Self {
+            field: field.into(),
+            message: message.into(),
+            code: Some(code.to_string()),
+            json_path: None,
+            legal_values: Vec::new(),
+        }
+    }
 }
 
 /// Validation error response in Symfony format
