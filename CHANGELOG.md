@@ -1,5 +1,63 @@
 # Changelog
 
+## [0.4.11](https://github.com/BentBr/r_data_core/compare/core-v0.4.10...core-v0.4.11) (2026-09-06)
+
+
+### Features
+
+* **api:** add per-IP login rate limit helper ([c98a023](https://github.com/BentBr/r_data_core/commit/c98a023b5fb7b377bc2364dee259da7ac2ceb54a))
+* **api:** add too_many_requests (429) response constructor ([87c8c87](https://github.com/BentBr/r_data_core/commit/87c8c871a1668ba01e04e13365f2b38b6b5810f9))
+* **api:** enforce account lockout and rate limiting on admin login ([5973bfe](https://github.com/BentBr/r_data_core/commit/5973bfe65690dcaf0a1c9060f1c8522febd2785f))
+* **api:** opt-in per-workflow rate limiting on the public endpoints ([a53c073](https://github.com/BentBr/r_data_core/commit/a53c073847a445b0e6819353aba06d56d430efd2))
+* **auth:** expiring lockouts, real-client-IP limits and constant-cost misses ([c48bd20](https://github.com/BentBr/r_data_core/commit/c48bd208e8c635fc84fb453a511b2360940920bd))
+* **core:** add AppConfig::is_production helper ([efde7c5](https://github.com/BentBr/r_data_core/commit/efde7c57c85a756cf9e572bfe899fec2fc0f8e8f))
+* **core:** add trusted-proxy matching, security config and atomic counters ([69fc61f](https://github.com/BentBr/r_data_core/commit/69fc61f006d8992ca0a2b1f24c36ccc3fcd5060f))
+* **fe:** let admins set a per-workflow request limit ([2718443](https://github.com/BentBr/r_data_core/commit/2718443ac624186dbea191a7421ab925a414e67a))
+* **fe:** show distinct hints for locked/inactive (403) and rate-limited (429) logins ([11f861c](https://github.com/BentBr/r_data_core/commit/11f861c7ef8ecefefbea251fe84697c1636ab162))
+* **i18n:** add locked and rate-limited login error messages (en/de) ([c1fdaf4](https://github.com/BentBr/r_data_core/commit/c1fdaf48508cd6ba51ed678e3cb05ef8ab468a42))
+* let operators unlock accounts from the API and the admin UI ([3f4c2e6](https://github.com/BentBr/r_data_core/commit/3f4c2e690965c230edef1c2dc01277bda3db3654))
+* **persistence:** add admin_users lockout columns (status, failed_login_attempts) ([7c1f02a](https://github.com/BentBr/r_data_core/commit/7c1f02ad2895bddf1295e2991b6dc4f916e2e309))
+* **persistence:** add SQL identifier allowlist validator for dynamic queries ([3f32bee](https://github.com/BentBr/r_data_core/commit/3f32beea9832610489924c905296ee926ec02840))
+* **persistence:** add user_actions admin console binary ([c8da629](https://github.com/BentBr/r_data_core/commit/c8da6291707c2426e7f85ec5a8aac7a178673a90))
+* **persistence:** persist admin user lockout state ([b1bc76a](https://github.com/BentBr/r_data_core/commit/b1bc76a149059311af0d4183f02c92888cc68886))
+* **workflow:** add an optional per-workflow rate-limit config ([5795a23](https://github.com/BentBr/r_data_core/commit/5795a236f19a44dfd60fa538a31317f4dc2a013e))
+* **workflow:** require a 32-character public pre-shared key ([968a0b1](https://github.com/BentBr/r_data_core/commit/968a0b11229e253fb7fd8cb9ee7a348a67c6f510))
+
+
+### Bug Fixes
+
+* **api:** compare workflow pre-shared keys in constant time ([12b2afd](https://github.com/BentBr/r_data_core/commit/12b2afd29f50459e0cd76c2c1e450a5789e5a58b))
+* **api:** count every failed login toward the per-IP rate limit ([71a6d91](https://github.com/BentBr/r_data_core/commit/71a6d916eff0fa5ebe01e4a771b62dcdf074644f))
+* **api:** drive CORS from config and fail closed on wildcard in production ([44751ee](https://github.com/BentBr/r_data_core/commit/44751ee0681f1e3e49763daca1e3f0f834f0202f))
+* **api:** reveal locked/inactive account only after a valid password ([2bb082b](https://github.com/BentBr/r_data_core/commit/2bb082b5fa6fad9a4702cba8afb3750c425387c0))
+* **ci:** call the octokit method that exists for a combined status ([9a8a5f5](https://github.com/BentBr/r_data_core/commit/9a8a5f536d3a241b1c50b0414069387c17111b5f))
+* **core:** read status and failed_login_attempts from admin_users row ([cf68e0c](https://github.com/BentBr/r_data_core/commit/cf68e0cd1acb509af5c5674662d5071da232d6cd))
+* **deps:** clear the cargo audit advisories and a clippy regression ([04a74ea](https://github.com/BentBr/r_data_core/commit/04a74ead8d4edf2af0190216569cd87e87fdca3d))
+* **devops:** anchor the template allowance in protect_secrets ([d5abf79](https://github.com/BentBr/r_data_core/commit/d5abf794326102126b0c41a11e5d6acfd1335945))
+* **devops:** correct clean-e2e script path ([3b252ad](https://github.com/BentBr/r_data_core/commit/3b252ada537c16039714459fed4b7d70f45754f8))
+* **devops:** make a slow pre-push gate survive to the actual push ([278db6a](https://github.com/BentBr/r_data_core/commit/278db6a2cc8a457f24c0f8d9ea4e42b5fb544365))
+* **devops:** stop pre-push hook hanging on frontend tests ([84e0244](https://github.com/BentBr/r_data_core/commit/84e0244650619f850b27a3d2bfa840857d2b04f2))
+* **fe:** align the dev esbuild target so the vite dev server starts ([2624be6](https://github.com/BentBr/r_data_core/commit/2624be6001e11e05251335c5ffa0e366dfc265b3))
+* **fe:** render system-log email preview in a sandboxed iframe ([123ed95](https://github.com/BentBr/r_data_core/commit/123ed956fb58cb5cc0054d5f97dc9b9b780e56ba))
+* harden CORS and the SSRF guard outside developer environments ([ea8b58a](https://github.com/BentBr/r_data_core/commit/ea8b58ae38b4a874e9659909b4271e9bff4e1a19))
+* **persistence:** bind generic-repository timestamps as OffsetDateTime ([57e833d](https://github.com/BentBr/r_data_core/commit/57e833d45570bc750a5f45c24f787c7856af30b0))
+* **persistence:** reject unknown filters in advanced entity query ([35f7ece](https://github.com/BentBr/r_data_core/commit/35f7eceb408a560bfc0128a93a1a2b31dc39c646))
+* **persistence:** route advanced-query identifiers through the canonical validator ([6f311df](https://github.com/BentBr/r_data_core/commit/6f311df2d23b3b740a878be801585ac2ede87405))
+* **persistence:** unify entity-view system fields into one canonical const ([59c16fd](https://github.com/BentBr/r_data_core/commit/59c16fd06c35727053ab41b6e11a8f9150319b24))
+* **persistence:** validate and quote SQL identifiers in dynamic entity filters ([74a1028](https://github.com/BentBr/r_data_core/commit/74a1028e39c679c144141cd6bb3c2c12634e73b6))
+* satisfy the lints a current nightly clippy applies ([ba71383](https://github.com/BentBr/r_data_core/commit/ba71383be62642f15aadacc10aa837b416253fa4))
+* **services:** clear account lockout on password reset ([c364e67](https://github.com/BentBr/r_data_core/commit/c364e671956dae4c2f96a017d776ccc0c8342fa4))
+* **workflow:** add SSRF guard to URI adapters (production-gated) ([a9bb207](https://github.com/BentBr/r_data_core/commit/a9bb207b0257e3e3547223385cddd24af98e5c56))
+* **workflow:** defer BuildPath in step-by-step execution ([e586ea2](https://github.com/BentBr/r_data_core/commit/e586ea271bb1b911c6e47845fab67e59438960a2))
+* **workflow:** harden SSRF guard against IPv4-mapped, DNS-rebinding, and redirect bypasses ([c750428](https://github.com/BentBr/r_data_core/commit/c7504280e4e254b7e5758dc992f26da11318a75b))
+* **workflow:** restore URI validation on push destinations ([affe62e](https://github.com/BentBr/r_data_core/commit/affe62ece1ba6ce3e017606a74cc5a67247a64b1))
+* **workflow:** SSRF resolver honors the allowlist ([47ac6c4](https://github.com/BentBr/r_data_core/commit/47ac6c42c7b305c6ed1eafc3ea3077dcdea5aae9))
+
+
+### Performance Improvements
+
+* **services:** cache workflow reads and invalidate on write ([7f99c78](https://github.com/BentBr/r_data_core/commit/7f99c783c270a1dd974e2ae29feb5989bcf5c949))
+
 ## [0.4.10](https://github.com/BentBr/r_data_core/compare/core-v0.4.9...core-v0.4.10) (2026-06-11)
 
 
