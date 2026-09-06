@@ -9,3 +9,4 @@ export const NAME_MIN_LENGTH = 1;
 export const API_KEY_NAME_MIN_LENGTH = 1;
 export const CSV_DELIMITER_LENGTH = 1;
 export const DSL_STEPS_MIN_COUNT = 1;
+export const MIN_PRE_SHARED_KEY_LEN = 32;

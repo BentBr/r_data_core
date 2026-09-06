@@ -10,6 +10,7 @@ pub mod export_mapping_tests;
 pub mod export_security_tests;
 pub mod expose_via_api_tests;
 pub mod post_endpoint_tests;
+pub mod provider_auth_validation_tests;
 pub mod pull_from_remote_tests;
 pub mod push_to_remote_tests;
 pub mod rate_limit_tests;

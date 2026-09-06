@@ -74,6 +74,11 @@ impl WorkflowService {
                 "Workflow DSL validation failed: {e}"
             ))
         })?;
+
+        // `provider_auth` sits alongside the DSL, not inside it, so the parse
+        // above never sees it. It is the credential guarding the public
+        // endpoint, so it gets its own check.
+        r_data_core_workflow::data::validate_provider_auth_config(&req.config)?;
         let uuid = self.repo.create(req, created_by).await?;
 
         if let Some(ref log) = self.system_log {
@@ -117,6 +122,11 @@ impl WorkflowService {
                 "Workflow DSL validation failed: {e}"
             ))
         })?;
+
+        // `provider_auth` sits alongside the DSL, not inside it, so the parse
+        // above never sees it. It is the credential guarding the public
+        // endpoint, so it gets its own check.
+        r_data_core_workflow::data::validate_provider_auth_config(&req.config)?;
         self.repo.update(uuid, req, updated_by).await?;
         self.invalidate_workflow_cache(&uuid).await;
 
