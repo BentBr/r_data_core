@@ -19,6 +19,7 @@ pub mod execute;
 
 use std::sync::Arc;
 
+use rmcp::handler::server::router::prompt::PromptRouter;
 use rmcp::handler::server::router::tool::ToolRouter;
 use rmcp::handler::server::ServerHandler;
 use rmcp::model::{Implementation, ProtocolVersion, ServerCapabilities, ServerInfo};
@@ -46,6 +47,9 @@ pub struct RdcTools {
     /// from listings *and* rejects calls to it, so the narrowing closes the
     /// invoke path rather than merely tidying the menu.
     pub(crate) tool_router: ToolRouter<Self>,
+    /// The guided sequences. Unlike tools, these are not permission-gated:
+    /// they are advice, and reading advice you cannot act on is harmless.
+    pub(crate) prompt_router: PromptRouter<Self>,
 }
 
 impl RdcTools {
@@ -63,6 +67,7 @@ impl RdcTools {
             permissions,
             caller,
             tool_router,
+            prompt_router: Self::prompt_router(),
         }
     }
 
@@ -168,6 +173,7 @@ mod tests;
 // trait requires the async signature, and the body is not ours to change.
 #[allow(clippy::unused_async_trait_impl)]
 #[rmcp::tool_handler(router = self.tool_router)]
+#[rmcp::prompt_handler(router = self.prompt_router)]
 impl ServerHandler for RdcTools {
     fn get_info(&self) -> ServerInfo {
         // ServerInfo and Implementation are #[non_exhaustive], so they are
@@ -178,7 +184,10 @@ impl ServerHandler for RdcTools {
 
         let mut info = ServerInfo::default();
         info.protocol_version = ProtocolVersion::LATEST;
-        info.capabilities = ServerCapabilities::builder().enable_tools().build();
+        info.capabilities = ServerCapabilities::builder()
+            .enable_tools()
+            .enable_prompts()
+            .build();
         info.server_info = implementation;
         info.instructions = Some(
             "Author, run and debug RDataCore workflows.\n\n\
