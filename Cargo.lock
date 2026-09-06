@@ -2861,6 +2861,7 @@ dependencies = [
  "time",
  "tokio",
  "uuid",
+ "wiremock",
 ]
 
 [[package]]

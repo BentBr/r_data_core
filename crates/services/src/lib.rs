@@ -19,6 +19,7 @@ pub mod dynamic_entity;
 pub mod entity_definition;
 pub mod license;
 pub mod mail;
+pub mod oidc_keys;
 pub mod password_reset;
 pub mod query_validation;
 pub mod role;
