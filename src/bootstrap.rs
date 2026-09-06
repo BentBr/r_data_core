@@ -243,7 +243,7 @@ fn build_workflow_service(
     );
 
     let mut workflow_service = WorkflowService::new(Arc::new(workflow_adapter))
-        .with_cache(cache_manager.clone())
+        .with_cache(cache_manager)
         .with_jwt_config(
             Some(config.api.jwt_secret.clone()),
             config.api.jwt_expiration,

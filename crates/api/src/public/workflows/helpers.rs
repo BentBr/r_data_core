@@ -142,6 +142,11 @@ pub(super) async fn validate_and_authenticate_workflow(
     workflow: &r_data_core_workflow::data::Workflow,
     state: &web::Data<ApiStateWrapper>,
 ) -> Result<(), HttpResponse> {
+    // Before any authentication work: a caller over their budget gets 429
+    // whether or not their key would have been accepted, which also avoids
+    // spending verification effort on traffic we are refusing.
+    super::rate_limit::enforce_workflow_rate_limit(req, workflow, state).await?;
+
     // Authentication is required for all workflows (both Provider and Consumer)
 
     // Validate pre-shared key if configured (sets extension for CombinedRequiredAuth)
