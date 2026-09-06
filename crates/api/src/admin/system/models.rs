@@ -221,6 +221,16 @@ pub struct CapabilitiesResponse {
     pub system_mail_configured: bool,
     /// Whether workflow mail is configured (enables email outputs in workflows)
     pub workflow_mail_configured: bool,
+    /// Whether a browser can sign in through an identity provider.
+    ///
+    /// True only when the *browser* flow is configured, not merely when
+    /// bearer-token validation is. An instance that accepts provider tokens
+    /// but has no client id has nowhere to send a person who clicks the
+    /// button, so showing one would be a dead end.
+    pub oidc_enabled: bool,
+    /// What to call the provider on the sign-in button, where the operator
+    /// has said. `None` means the button stays generic.
+    pub oidc_provider_name: Option<String>,
 }
 
 /// Query parameters for filtering system logs

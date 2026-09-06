@@ -101,6 +101,9 @@ pub struct OidcConfig {
     pub redirect_uri: Option<String>,
     /// Path within this application to land on after a successful sign-in.
     pub post_login_path: String,
+    /// What to call the provider in the sign-in button. `None` leaves the
+    /// button generic, which is correct rather than guessing a brand name.
+    pub provider_name: Option<String>,
 }
 
 impl OidcConfig {
@@ -158,6 +161,7 @@ impl OidcConfig {
             client_secret: get(map, "RDC_OIDC_CLIENT_SECRET").map(|s| ClientSecret(s.to_string())),
             redirect_uri,
             post_login_path,
+            provider_name: get(map, "RDC_OIDC_PROVIDER_NAME").map(str::to_string),
         }))
     }
 

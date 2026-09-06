@@ -133,9 +133,13 @@ pub async fn get_capabilities(data: web::Data<ApiStateWrapper>) -> impl Responde
     let system_mail_configured = data.password_reset_service().is_some();
     let workflow_mail_configured = data.workflow_service().mail_service.is_some();
 
+    let oidc = data.oidc().filter(|oidc| oidc.flow().is_configured());
+
     ApiResponse::ok(CapabilitiesResponse {
         system_mail_configured,
         workflow_mail_configured,
+        oidc_enabled: oidc.is_some(),
+        oidc_provider_name: oidc.and_then(|o| o.runtime().config().provider_name.clone()),
     })
 }
 
