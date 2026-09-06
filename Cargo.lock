@@ -2804,9 +2804,14 @@ name = "r_data_core_mcp"
 version = "0.4.10"
 dependencies = [
  "async-trait",
+ "bytes",
  "env_logger",
+ "http-body-util",
+ "hyper",
+ "hyper-util",
  "log",
  "r_data_core_core",
+ "r_data_core_services",
  "r_data_core_workflow",
  "reqwest",
  "rmcp",
@@ -2815,7 +2820,9 @@ dependencies = [
  "serde_json",
  "sha2",
  "thiserror 1.0.69",
+ "time",
  "tokio",
+ "tokio-util",
  "url",
  "uuid",
  "wiremock",
@@ -3179,19 +3186,28 @@ version = "3.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "42b6914fac0be956fe704a38239c3f44a9f841d1b06a5713d2f638065593f5b5"
 dependencies = [
+ "async-trait",
  "base64 0.23.1",
+ "bytes",
  "chrono",
  "futures",
+ "http 1.4.0",
+ "http-body",
+ "http-body-util",
  "indexmap",
  "pastey",
  "pin-project-lite",
+ "rand 0.10.2",
  "rmcp-macros",
  "schemars",
  "serde",
  "serde_json",
+ "sse-stream",
  "thiserror 2.0.18",
  "tokio",
+ "tokio-stream",
  "tokio-util",
+ "tower-service",
  "tracing",
  "uuid",
 ]
@@ -3836,6 +3852,19 @@ dependencies = [
  "tracing",
  "url",
  "uuid",
+]
+
+[[package]]
+name = "sse-stream"
+version = "0.2.6"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c25ac7aff0abd1dbc474536e40416e1102c7dd9bfba0b9861c6d357f835dcfb4"
+dependencies = [
+ "bytes",
+ "futures-util",
+ "http-body",
+ "http-body-util",
+ "pin-project-lite",
 ]
 
 [[package]]

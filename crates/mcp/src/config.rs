@@ -72,6 +72,16 @@ pub struct Config {
     pub oidc_audience: Option<String>,
     /// This server's own public URL, for OAuth protected-resource metadata.
     pub resource_url: Option<String>,
+    /// Browser origins permitted to reach the MCP endpoint.
+    ///
+    /// The specification requires `Origin` validation against DNS-rebinding
+    /// attacks, and `rmcp` disables the check when the list is empty — so an
+    /// unset allowlist is a hole rather than a permissive default. Defaults to
+    /// the origin of `resource_url`, which is the only origin a correctly
+    /// configured deployment serves from.
+    pub allowed_origins: Vec<String>,
+    /// `Host` authorities permitted to reach the MCP endpoint.
+    pub allowed_hosts: Vec<String>,
     pub timeout: Duration,
 }
 
@@ -144,6 +154,15 @@ impl Config {
             )?,
         };
 
+        let allowed_origins = get(map, "RDC_MCP_ALLOWED_ORIGINS").map_or_else(
+            || origin_of(resource_url.as_deref()).into_iter().collect(),
+            split_list,
+        );
+        let allowed_hosts = get(map, "RDC_MCP_ALLOWED_HOSTS").map_or_else(
+            || authority_of(resource_url.as_deref()).into_iter().collect(),
+            split_list,
+        );
+
         Ok(Self {
             base_url,
             transport,
@@ -151,9 +170,65 @@ impl Config {
             oidc_issuer,
             oidc_audience,
             resource_url,
+            allowed_origins,
+            allowed_hosts,
             timeout,
         })
     }
+}
+
+impl Config {
+    /// This configuration as the `OidcConfig` token validation expects.
+    ///
+    /// Built through `OidcConfig::from_map` rather than by hand so the MCP
+    /// server and `RDataCore` cannot end up with differently-validated
+    /// configurations of the same thing.
+    #[must_use]
+    pub fn oidc_config(&self) -> Option<r_data_core_core::oidc::OidcConfig> {
+        let (Some(issuer), Some(audience)) = (&self.oidc_issuer, &self.oidc_audience) else {
+            return None;
+        };
+        let pairs: HashMap<String, String> = [
+            ("RDC_OIDC_ISSUER".to_string(), issuer.clone()),
+            ("RDC_OIDC_AUDIENCE".to_string(), audience.clone()),
+        ]
+        .into_iter()
+        .collect();
+        r_data_core_core::oidc::OidcConfig::from_map(&pairs)
+            .ok()
+            .flatten()
+    }
+}
+
+/// Split a comma-separated list, discarding empties.
+fn split_list(raw: &str) -> Vec<String> {
+    raw.split(',')
+        .map(str::trim)
+        .filter(|entry| !entry.is_empty())
+        .map(str::to_string)
+        .collect()
+}
+
+/// The `scheme://host[:port]` of a URL.
+fn origin_of(raw: Option<&str>) -> Option<String> {
+    let parsed = Url::parse(raw?).ok()?;
+    let host = parsed.host_str()?;
+    let scheme = parsed.scheme();
+    Some(parsed.port().map_or_else(
+        || format!("{scheme}://{host}"),
+        |port| format!("{scheme}://{host}:{port}"),
+    ))
+}
+
+/// The `host[:port]` of a URL, for `Host` validation.
+fn authority_of(raw: Option<&str>) -> Option<String> {
+    let parsed = Url::parse(raw?).ok()?;
+    let host = parsed.host_str()?;
+    Some(
+        parsed
+            .port()
+            .map_or_else(|| host.to_string(), |port| format!("{host}:{port}")),
+    )
 }
 
 /// Fetch a variable, treating an empty value as absent.
