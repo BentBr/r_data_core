@@ -22,6 +22,7 @@ pub mod error;
 pub mod field;
 pub mod maintenance;
 pub mod net;
+pub mod oidc;
 pub mod outbox;
 pub mod password_reset_token;
 pub mod permissions;
