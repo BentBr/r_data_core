@@ -53,6 +53,10 @@ fn allowed_internal_dependencies() -> HashMap<&'static str, BTreeSet<&'static st
             ],
         ),
         (
+            "r_data_core_mcp",
+            &["r_data_core_core", "r_data_core_workflow"],
+        ),
+        (
             "r_data_core_api",
             &[
                 "r_data_core_core",

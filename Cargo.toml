@@ -88,5 +88,6 @@ members = [
   "crates/worker",
   "crates/test-support",
   "crates/license",
+  "crates/mcp",
 ]
 resolver = "2"
