@@ -50,6 +50,35 @@
                                 {{ t('auth.mobile_warning') }}
                             </v-alert>
 
+                            <!-- Single sign-on, when the server reports it configured -->
+                            <template v-if="capabilitiesStore.oidcEnabled">
+                                <v-btn
+                                    block
+                                    size="large"
+                                    variant="outlined"
+                                    color="primary"
+                                    class="mb-4"
+                                    data-testid="sso-signin"
+                                    @click="startSso"
+                                >
+                                    <template #prepend>
+                                        <SmartIcon
+                                            icon="shield-check"
+                                            size="sm"
+                                        />
+                                    </template>
+                                    {{ ssoButtonLabel }}
+                                </v-btn>
+
+                                <div class="d-flex align-center mb-4">
+                                    <v-divider />
+                                    <span class="mx-3 text-caption text-medium-emphasis">
+                                        {{ t('auth.sso.or') }}
+                                    </span>
+                                    <v-divider />
+                                </div>
+                            </template>
+
                             <v-form
                                 ref="loginForm"
                                 v-model="formValid"
@@ -233,7 +262,7 @@
 </template>
 
 <script setup lang="ts">
-    import { ref, reactive, onMounted, onUnmounted } from 'vue'
+    import { ref, reactive, computed, onMounted, onUnmounted } from 'vue'
     import { useRouter } from 'vue-router'
     import { useAuthStore } from '@/stores/auth'
     import { useCapabilitiesStore } from '@/stores/capabilities'
@@ -354,6 +383,88 @@
         }
     }
 
+    const ssoButtonLabel = computed(() =>
+        capabilitiesStore.oidcProviderName
+            ? t('auth.sso.sign_in_with', { provider: capabilitiesStore.oidcProviderName })
+            : t('auth.sso.sign_in')
+    )
+
+    /**
+     * Hand the browser to the start endpoint.
+     *
+     * A full navigation, not an XHR: `start` answers with a 302 to the
+     * identity provider, and the API client would follow that in the
+     * background and fail on CORS instead of taking the person to their
+     * provider.
+     */
+    const startSso = () => {
+        const redirectParam = router.currentRoute.value.query.redirect
+        const returnTo = Array.isArray(redirectParam) ? redirectParam[0] : redirectParam
+        const url = returnTo
+            ? `/admin/api/v1/auth/oidc/start?return_to=${encodeURIComponent(returnTo)}`
+            : '/admin/api/v1/auth/oidc/start'
+        window.location.assign(url)
+    }
+
+    /**
+     * Adopt a session the callback left in the URL fragment, if there is one.
+     *
+     * The fragment is cleared immediately afterwards, whatever the outcome, so
+     * the tokens do not survive in the address bar or in browser history.
+     */
+    const adoptSsoRedirect = async () => {
+        const fragment = window.location.hash.replace(/^#/, '')
+        if (!fragment) {
+            return
+        }
+        const params = new URLSearchParams(fragment)
+
+        const ssoError = params.get('sso_error')
+        if (ssoError) {
+            clearFragment()
+            snackbar.message = t(`auth.sso.errors.${ssoError}`, t('auth.sso.errors.generic'))
+            snackbar.color = 'error'
+            snackbar.visible = true
+            return
+        }
+
+        const access = params.get('access_token')
+        const refresh = params.get('refresh_token')
+        if (!access || !refresh) {
+            return
+        }
+        clearFragment()
+
+        try {
+            await authStore.adoptSsoSession({
+                access_token: access,
+                refresh_token: refresh,
+                access_expires_at: isoFromUnix(params.get('access_expires_at')),
+                refresh_expires_at: isoFromUnix(params.get('refresh_expires_at')),
+            })
+            void router.push('/dashboard')
+        } catch {
+            snackbar.message = t('auth.sso.errors.generic')
+            snackbar.color = 'error'
+            snackbar.visible = true
+        }
+    }
+
+    const clearFragment = () => {
+        window.history.replaceState(
+            null,
+            '',
+            window.location.pathname + window.location.search
+        )
+    }
+
+    const isoFromUnix = (seconds: string | null): string => {
+        const parsed = Number(seconds)
+        return Number.isFinite(parsed) && parsed > 0
+            ? new Date(parsed * 1000).toISOString()
+            : new Date().toISOString()
+    }
+
     const clearFieldError = (field: 'username' | 'password') => {
         fieldErrors[field] = []
         authStore.clearError()
@@ -407,6 +518,11 @@
         if (!capabilitiesStore.isLoaded) {
             void capabilitiesStore.fetchCapabilities()
         }
+
+        // A single-sign-on callback lands here carrying its tokens. Handle it
+        // before the already-authenticated check below, which would otherwise
+        // navigate away and strip the fragment before it was read.
+        void adoptSsoRedirect()
 
         // If user is already authenticated, redirect to appropriate page
         if (authStore.isAuthenticated) {

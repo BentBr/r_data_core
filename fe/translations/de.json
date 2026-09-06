@@ -44,7 +44,24 @@
         "default_password_warning": "Sicherheitswarnung: Das Standard-Admin-Passwort wird noch verwendet. Bitte ändern Sie es sofort aus Sicherheitsgründen.",
         "default_password_warning_dismiss": "Ausblenden",
         "mobile_warning": "Die Admin-Oberfläche von RDataCore ist nicht für die mobile Nutzung gedacht!",
-        "mobile_warning_dismiss": "Ausblenden"
+        "mobile_warning_dismiss": "Ausblenden",
+        "sso": {
+            "or": "oder",
+            "sign_in": "Mit Single Sign-on anmelden",
+            "sign_in_with": "Mit {provider} anmelden",
+            "errors": {
+                "generic": "Single Sign-on ist fehlgeschlagen. Bitte versuchen Sie es erneut oder melden Sie sich mit Ihrem Passwort an.",
+                "unbound_state": "Diese Anmeldung konnte nicht als in diesem Browser gestartet bestätigt werden. Bitte beginnen Sie erneut auf dieser Seite.",
+                "expired_or_replayed": "Diese Anmeldung ist abgelaufen oder wurde bereits abgeschlossen. Bitte beginnen Sie erneut.",
+                "not_permitted": "Ihr Konto ist nicht zur Anmeldung berechtigt. Bitte wenden Sie sich an eine Administratorin oder einen Administrator.",
+                "invalid_token": "Die Antwort des Identitätsanbieters wurde nicht akzeptiert. Bitte versuchen Sie es erneut.",
+                "provider_refused": "Der Identitätsanbieter hat die Anmeldung nicht abgeschlossen.",
+                "incomplete_callback": "Die Antwort des Identitätsanbieters war unvollständig. Bitte versuchen Sie es erneut.",
+                "provider_error": "Der Identitätsanbieter ist nicht erreichbar. Bitte versuchen Sie es in Kürze erneut.",
+                "unresolved_identity": "Ihr Konto konnte nicht zugeordnet werden. Bitte wenden Sie sich an eine Administratorin oder einen Administrator.",
+                "session_failed": "Ihre Sitzung konnte nicht erstellt werden. Bitte versuchen Sie es erneut."
+            }
+        }
     },
     "navigation": {
         "dashboard": "Dashboard",
@@ -876,7 +893,9 @@
                 "required": "Dieses Feld ist erforderlich",
                 "email_invalid": "Muss eine gültige E-Mail-Adresse sein",
                 "min_length": "Muss mindestens {min} Zeichen lang sein"
-            }
+            },
+            "sso_roles_hint": "Rollen stammen bei jeder Anmeldung vom Identitätsanbieter und können hier nicht geändert werden.",
+            "sso_roles_none": "Keine Rollen zugeordnet"
         },
         "table": {
             "username": "Benutzername",
@@ -1064,9 +1083,9 @@
             "save_failed": "Einstellungen konnten nicht gespeichert werden"
         },
         "workflow_run_logs": {
-            "section_title": "Workflow-Ausf\u00fchrungsprotokolle",
+            "section_title": "Workflow-Ausführungsprotokolle",
             "enabled": "Aktiviert",
-            "max_runs": "Max. Ausf\u00fchrungen pro Workflow (leer lassen f\u00fcr unbegrenzt)",
+            "max_runs": "Max. Ausführungen pro Workflow (leer lassen für unbegrenzt)",
             "max_age_days": "Max. Alter in Tagen (leer lassen, um Altersbereinigung zu deaktivieren)",
             "save": "Speichern",
             "save_success": "Einstellungen gespeichert",

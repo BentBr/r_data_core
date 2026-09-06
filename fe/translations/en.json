@@ -44,7 +44,24 @@
         "default_password_warning": "Security Warning: The default admin password is still in use. Please change it immediately for security.",
         "default_password_warning_dismiss": "Dismiss",
         "mobile_warning": "The admin interface of RDataCore is not meant to be used mobile!",
-        "mobile_warning_dismiss": "Dismiss"
+        "mobile_warning_dismiss": "Dismiss",
+        "sso": {
+            "or": "or",
+            "sign_in": "Sign in with single sign-on",
+            "sign_in_with": "Sign in with {provider}",
+            "errors": {
+                "generic": "Single sign-on failed. Please try again, or sign in with your password.",
+                "unbound_state": "This sign-in could not be verified as started in this browser. Please start again from this page.",
+                "expired_or_replayed": "This sign-in has expired or was already completed. Please start again.",
+                "not_permitted": "Your account is not permitted to sign in. Contact an administrator.",
+                "invalid_token": "The identity provider's response was not accepted. Please try again.",
+                "provider_refused": "The identity provider did not complete the sign-in.",
+                "incomplete_callback": "The identity provider's response was incomplete. Please try again.",
+                "provider_error": "The identity provider could not be reached. Please try again shortly.",
+                "unresolved_identity": "Your account could not be resolved. Contact an administrator.",
+                "session_failed": "Your session could not be created. Please try again."
+            }
+        }
     },
     "navigation": {
         "dashboard": "Dashboard",
@@ -876,7 +893,9 @@
                 "required": "This field is required",
                 "email_invalid": "Must be a valid email",
                 "min_length": "Must be at least {min} characters"
-            }
+            },
+            "sso_roles_hint": "Roles come from the identity provider on each sign-in and cannot be changed here.",
+            "sso_roles_none": "No roles mapped"
         },
         "table": {
             "username": "Username",

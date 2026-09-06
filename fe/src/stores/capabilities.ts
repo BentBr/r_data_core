@@ -5,6 +5,8 @@ import { typedHttpClient } from '@/api/typed-client'
 export const useCapabilitiesStore = defineStore('capabilities', () => {
     const systemMailConfigured = ref(false)
     const workflowMailConfigured = ref(false)
+    const oidcEnabled = ref(false)
+    const oidcProviderName = ref<string | null>(null)
     const isLoaded = ref(false)
 
     async function fetchCapabilities() {
@@ -12,6 +14,8 @@ export const useCapabilitiesStore = defineStore('capabilities', () => {
             const response = await typedHttpClient.getCapabilities()
             systemMailConfigured.value = response.system_mail_configured
             workflowMailConfigured.value = response.workflow_mail_configured
+            oidcEnabled.value = response.oidc_enabled
+            oidcProviderName.value = response.oidc_provider_name
             isLoaded.value = true
         } catch (error) {
             console.error('Failed to fetch capabilities:', error)
@@ -23,6 +27,8 @@ export const useCapabilitiesStore = defineStore('capabilities', () => {
     return {
         systemMailConfigured: readonly(systemMailConfigured),
         workflowMailConfigured: readonly(workflowMailConfigured),
+        oidcEnabled: readonly(oidcEnabled),
+        oidcProviderName: readonly(oidcProviderName),
         isLoaded: readonly(isLoaded),
         fetchCapabilities,
     }

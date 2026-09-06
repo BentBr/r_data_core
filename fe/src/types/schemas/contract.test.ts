@@ -80,6 +80,7 @@ describe('Generated type contract tests', () => {
                 created_at: '2024-01-01T00:00:00Z',
                 updated_at: '2024-06-15T10:30:00Z',
                 created_by: '01923e4a-bbbb-7d8e-9f01-234567890abc',
+                is_sso_provisioned: false,
             })
             expect(fixture.uuid).toBeTruthy()
         })
@@ -103,6 +104,7 @@ describe('Generated type contract tests', () => {
                 created_at: '2024-01-01T00:00:00Z',
                 updated_at: '2024-01-01T00:00:00Z',
                 created_by: '01923e4a-bbbb-7d8e-9f01-234567890abc',
+                is_sso_provisioned: false,
             })
             expect(fixture.first_name).toBeNull()
             expect(fixture.last_login).toBeNull()

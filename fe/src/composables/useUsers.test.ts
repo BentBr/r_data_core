@@ -57,6 +57,7 @@ describe('useUsers', () => {
                 created_at: '2024-01-01T00:00:00Z',
                 updated_at: '2024-01-01T00:00:00Z',
                 created_by: '123e4567-e89b-12d3-a456-426614174001',
+                is_sso_provisioned: false,
             },
         ]
 
@@ -110,6 +111,7 @@ describe('useUsers', () => {
             created_at: '2024-01-01T00:00:00Z',
             updated_at: '2024-01-01T00:00:00Z',
             created_by: '123e4567-e89b-12d3-a456-426614174001',
+            is_sso_provisioned: false,
         }
 
         vi.mocked(typedHttpClient.createUser).mockResolvedValue(mockUser)
@@ -146,6 +148,7 @@ describe('useUsers', () => {
             created_at: '2024-01-01T00:00:00Z',
             updated_at: '2024-01-01T00:00:00Z',
             created_by: '123e4567-e89b-12d3-a456-426614174001',
+            is_sso_provisioned: false,
         }
 
         vi.mocked(typedHttpClient.updateUser).mockResolvedValue(mockUser)
@@ -302,6 +305,7 @@ describe('useUsers', () => {
                 created_at: '2024-01-01T00:00:00Z',
                 updated_at: '2024-01-01T00:00:00Z',
                 created_by: '123e4567-e89b-12d3-a456-426614174001',
+                is_sso_provisioned: false,
             }
 
             vi.mocked(typedHttpClient.createUser).mockResolvedValue(mockUser)
@@ -335,6 +339,7 @@ describe('useUsers', () => {
                 created_at: '2024-01-01T00:00:00Z',
                 updated_at: '2024-01-01T00:00:00Z',
                 created_by: '123e4567-e89b-12d3-a456-426614174001',
+                is_sso_provisioned: false,
             }
 
             vi.mocked(typedHttpClient.updateUser).mockResolvedValue(mockUser)
