@@ -9,8 +9,10 @@
 //! answer and no bug here can grant more than the human has.
 
 pub mod api_key;
+pub mod metadata;
 
 pub use api_key::ApiKeyBackend;
+pub use metadata::{challenge_header, protected_resource_document, METADATA_PATH};
 
 use thiserror::Error;
 
