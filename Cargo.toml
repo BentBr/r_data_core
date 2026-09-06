@@ -27,6 +27,10 @@ serial_test = { version = "2.0", features = ["async"] }
 tokio = { version = "1.35", features = ["full", "macros", "rt-multi-thread"] }
 r_data_core_worker = { path = "crates/worker" }
 r_data_core_license = { path = "crates/license" }
+# The MCP integration tests drive the tool surface against a real server, so
+# they need the crate and rmcp's result types.
+r_data_core_mcp = { path = "crates/mcp" }
+rmcp = { version = "3.2.0", features = ["server", "macros"] }
 r_data_core_test_support = { path = "crates/test-support" }
 anyhow = "1.0"
 tempfile = "3.10"
@@ -34,6 +38,15 @@ serde = { version = "1.0", features = ["derive"] }
 time = { version = "0.3", features = ["serde", "formatting", "parsing", "macros"] }
 sha2 = "0.10"
 hex = "0.4"
+# The OIDC middleware tests stand up a mock identity provider and sign real
+# tokens against it. Deterministically seeded, so a failure reproduces.
+wiremock = "0.6"
+jsonwebtoken = "9"
+rsa = { version = "0.9", features = ["sha2"] }
+rand_chacha = "0.3"
+rand_core = { version = "0.6", features = ["std"] }
+base64 = "0.22"
+tokio-util = "0.7"
 
 # The rest of the dependencies
 [dependencies]
@@ -43,6 +56,7 @@ actix-cors = "0.7"
 reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls"] }
 r_data_core_api = { path = "crates/api" }
 r_data_core_core = { path = "crates/core" }
+r_data_core_oidc_http = { path = "crates/oidc-http" }
 r_data_core_persistence = { path = "crates/persistence" }
 r_data_core_services = { path = "crates/services" }
 r_data_core_workflow = { path = "crates/workflow" }
@@ -88,5 +102,7 @@ members = [
   "crates/worker",
   "crates/test-support",
   "crates/license",
+  "crates/mcp",
+  "crates/oidc-http",
 ]
 resolver = "2"

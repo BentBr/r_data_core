@@ -162,3 +162,36 @@ impl WorkflowService {
         FetchDispatchMode::Direct
     }
 }
+
+impl WorkflowService {
+    /// Execute a DSL program against sample input without changing anything.
+    ///
+    /// Entity reads and writes go through an in-memory overlay, so mappings,
+    /// path templates and lookups run for real and later steps see what
+    /// earlier ones produced — but nothing is persisted. Email and outbound
+    /// pushes are never attempted, because no overlay can undo them.
+    ///
+    /// A deployment without a dynamic entity service can still dry-run
+    /// programs that never touch entities; steps that would need one are
+    /// reported as unavailable rather than silently skipped.
+    ///
+    /// # Errors
+    /// Returns an error if the program is invalid or a step fails.
+    pub async fn dry_run(
+        &self,
+        program: &r_data_core_workflow::dsl::DslProgram,
+        input: &serde_json::Value,
+    ) -> r_data_core_core::error::Result<r_data_core_core::dto::dsl::DryRunResponse> {
+        crate::workflow::dry_run::execute_dry_run(
+            program,
+            input,
+            crate::workflow::dry_run::DryRunDeps {
+                entity_service: self.dynamic_entity_service.as_deref(),
+                workflow_repository: &self.repo,
+                jwt_secret: self.jwt_secret.as_deref(),
+                jwt_expiration: self.jwt_expiration,
+            },
+        )
+        .await
+    }
+}

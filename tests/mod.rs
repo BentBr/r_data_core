@@ -3,6 +3,7 @@ pub mod adapters;
 pub mod api;
 pub mod cache;
 pub mod license;
+mod mcp;
 pub mod repositories;
 pub mod services;
 pub mod statistics;

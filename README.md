@@ -21,11 +21,24 @@ See our website for more infos [RDataCore](https://rdatacore.eu) (/ˈɹeɪtəkɔ
 > | **ta**   | /tə/   | "tuh"       |
 > | **core** | /kɔːɹ/ | "core"      |
 
+## MCP server (AI assistants)
+
+`crates/mcp` exposes RDataCore over the Model Context Protocol, so an assistant
+can discover your entity schema, author and validate workflow DSL, dry-run it
+without side effects, execute it and read run logs.
+
+It cannot delete anything, cannot modify entities or schemas, and cannot exceed
+the permissions of the API key it is given. See `crates/mcp/README.md` for
+setup.
+
+
 ## Features
 
 - **Dynamic Entity System** - Create custom data structures at runtime through the API
 - **Workflow Engine** - DSL-based data pipelines with scheduled and on-demand execution ([DSL Documentation](./docs/DSL.md))
 - **API Authentication** - JWT and API key support with role-based access control
+- **Single Sign-On** - OpenID Connect against Keycloak, Auth0, Entra ID or any compliant provider, with claim-to-role mapping ([SSO Documentation](./docs/SSO.md))
+- **MCP Server** - Let an AI assistant author, run and debug workflows, acting as the person who asked ([MCP Documentation](./docs/MCP.md))
 - **Import/Export** - CSV, JSON, XML, and third-party API integrations
 - **Versioning** - Full version history for entities, definitions, and workflows
 - **Self-Hosted** - Your data stays on your infrastructure
@@ -81,6 +94,21 @@ The application will be available at `http://rdatacore.docker` if you setup ding
     ```
 
 If you are not on macOS, you should create an `compose.override.yaml` and re-assign ports to for the web service to your localhosts.
+
+### Single sign-on locally
+
+A working Keycloak with a realm, groups and test users is included:
+
+```bash
+docker compose -f compose.yaml -f compose.sso.yaml up -d
+```
+
+Migrations and the roles the realm maps onto are applied automatically by two
+one-shot services.
+
+Sign in at `http://rdatacore.docker/admin` as `ada` / `ada`. See
+[docs/SSO.md](./docs/SSO.md) for what to try, including the accounts that are
+meant to be refused.
 
 ### Using Pre-built Docker Images
 

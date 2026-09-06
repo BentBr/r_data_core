@@ -10,6 +10,58 @@ import { useVersionStore } from './versions'
 import { useCapabilitiesStore } from './capabilities'
 import type { LoginRequest, User } from '@/types/schemas'
 
+/** The token pair and identity a completed sign-in yields. */
+interface EstablishedSession {
+    access_token: string
+    refresh_token: string
+    access_expires_at: string
+    refresh_expires_at: string
+    user_uuid: string
+    username: string
+    using_default_password: boolean
+}
+
+/** What the single-sign-on callback puts in the URL fragment. */
+export interface SsoTokens {
+    access_token: string
+    refresh_token: string
+    access_expires_at: string
+    refresh_expires_at: string
+}
+
+/**
+ * Read one claim out of a JWT payload.
+ *
+ * Not verification — the server verifies, and this only reads back what it
+ * signed. It exists so the interface does not have to trust identity values
+ * that travelled beside the token rather than inside it.
+ */
+/** Drop the fragment, keeping path and query, without a navigation. */
+function clearFragment(): void {
+    if (typeof window === 'undefined') {
+        return
+    }
+    window.history.replaceState(null, '', window.location.pathname + window.location.search)
+}
+
+/** Unix seconds from the callback fragment as an ISO timestamp. */
+function isoFromUnix(seconds: string | null): string {
+    const parsed = Number(seconds)
+    return Number.isFinite(parsed) && parsed > 0
+        ? new Date(parsed * 1000).toISOString()
+        : new Date().toISOString()
+}
+
+function readClaim(token: string, claim: 'sub' | 'name'): string {
+    try {
+        const payload = JSON.parse(atob(token.split('.')[1])) as Record<string, unknown>
+        const value = payload[claim]
+        return typeof value === 'string' ? value : ''
+    } catch {
+        return ''
+    }
+}
+
 export const useAuthStore = defineStore('auth', () => {
     // Translation system
     const { t, translateError } = useTranslations()
@@ -26,6 +78,8 @@ export const useAuthStore = defineStore('auth', () => {
     const isSuperAdmin = ref(false)
     const allowedRoutes = ref<string[]>([])
     const usingDefaultPassword = ref(false)
+    /// Error code from a single-sign-on callback, if the last one failed.
+    const ssoError = ref<string | null>(null)
     const defaultPasswordBannerDismissed = ref(false)
     const mobileWarningDismissed = ref(false)
 
@@ -74,69 +128,154 @@ export const useAuthStore = defineStore('auth', () => {
     })
 
     // Actions
+    /**
+     * Everything that turns a freshly issued token pair into a live session.
+     *
+     * Shared by password login and single sign-on. The two differ only in how
+     * the tokens were obtained; from here on a session is a session, which is
+     * what lets refresh, logout and the router guard stay free of any notion
+     * of how someone signed in.
+     */
+    const establishSession = async (session: EstablishedSession): Promise<void> => {
+        access_token.value = session.access_token
+
+        // Store refresh token in secure cookie
+        const refreshExpiresAt = new Date(
+            session.refresh_expires_at || Date.now() + 30 * 24 * 60 * 60 * 1000
+        )
+        setRefreshToken(session.refresh_token, refreshExpiresAt)
+
+        user.value = {
+            uuid: session.user_uuid,
+            username: session.username,
+            role_uuids: [], // Will be loaded separately if needed
+            // Set default values for required User fields not in LoginResponse
+            email: '',
+            first_name: '',
+            last_name: '',
+            is_active: true,
+            is_admin: false, // Will be determined from permissions
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+        }
+
+        // Decode and store permissions from JWT
+        decodeAndStorePermissions(session.access_token)
+
+        // Load permissions and allowed routes from API
+        await loadUserPermissions()
+
+        // Set up automatic token refresh
+        setupTokenRefresh(session.access_expires_at)
+
+        // Store default password check result
+        usingDefaultPassword.value = session.using_default_password
+
+        // Load license status after login
+        const licenseStore = useLicenseStore()
+        void licenseStore.loadLicenseStatus()
+        // Reset banner dismissal on new login
+        licenseStore.resetBannerDismissal()
+
+        // Load system versions after login
+        const versionStore = useVersionStore()
+        void versionStore.loadVersions()
+
+        // Load system capabilities after login
+        const capabilitiesStore = useCapabilitiesStore()
+        void capabilitiesStore.fetchCapabilities()
+
+        if (env.enableApiLogging) {
+            console.log('[Auth] Session established:', {
+                username: session.username,
+                expires_at: session.access_expires_at,
+                using_default_password: usingDefaultPassword.value,
+            })
+        }
+    }
+
+    /**
+     * Adopt a session handed back by the single-sign-on callback.
+     *
+     * The callback returns the same token pair `login` does, in the URL
+     * fragment, so this is the identical session by a different route. The
+     * username is read from the access token rather than passed alongside it:
+     * the token is signed, and a value taken from the fragment is not.
+     */
+    const adoptSsoSession = async (tokens: SsoTokens): Promise<void> => {
+        isLoading.value = true
+        error.value = null
+        try {
+            await establishSession({
+                access_token: tokens.access_token,
+                refresh_token: tokens.refresh_token,
+                access_expires_at: tokens.access_expires_at,
+                refresh_expires_at: tokens.refresh_expires_at,
+                user_uuid: readClaim(tokens.access_token, 'sub'),
+                username: readClaim(tokens.access_token, 'name'),
+                using_default_password: false,
+            })
+        } catch (err) {
+            const rawErrorMessage = err instanceof Error ? err.message : 'Sign-in failed'
+            error.value = translateError(rawErrorMessage)
+            throw new Error(error.value)
+        } finally {
+            isLoading.value = false
+        }
+    }
+
+    /**
+     * Adopt a session the single-sign-on callback left in the URL fragment.
+     *
+     * Runs during startup, before `authReady` resolves, because the callback
+     * can land on **any** route — `return_to` may name a protected one. The
+     * router guard awaits `authReady` and then decides; if the fragment were
+     * only read by the login page, a callback to a protected route would be
+     * bounced to login before anything looked at it, and the tokens would be
+     * thrown away.
+     *
+     * The fragment is cleared either way, so tokens do not linger in the
+     * address bar or in history.
+     */
+    const adoptSsoFragment = async (): Promise<void> => {
+        if (typeof window === 'undefined' || !window.location.hash) {
+            return
+        }
+        const params = new URLSearchParams(window.location.hash.replace(/^#/, ''))
+
+        const failure = params.get('sso_error')
+        if (failure) {
+            ssoError.value = failure
+            clearFragment()
+            return
+        }
+
+        const access = params.get('access_token')
+        const refresh = params.get('refresh_token')
+        if (!access || !refresh) {
+            return
+        }
+        clearFragment()
+
+        try {
+            await adoptSsoSession({
+                access_token: access,
+                refresh_token: refresh,
+                access_expires_at: isoFromUnix(params.get('access_expires_at')),
+                refresh_expires_at: isoFromUnix(params.get('refresh_expires_at')),
+            })
+        } catch {
+            ssoError.value = 'generic'
+        }
+    }
+
     const login = async (credentials: LoginRequest): Promise<void> => {
         isLoading.value = true
         error.value = null
 
         try {
             const response = await typedHttpClient.login(credentials)
-
-            // Store tokens and user info
-            access_token.value = response.access_token
-
-            // Store refresh token in secure cookie
-            const refreshExpiresAt = new Date(
-                response.refresh_expires_at || Date.now() + 30 * 24 * 60 * 60 * 1000
-            )
-            setRefreshToken(response.refresh_token, refreshExpiresAt)
-
-            user.value = {
-                uuid: response.user_uuid,
-                username: response.username,
-                role_uuids: [], // Will be loaded separately if needed
-                // Set default values for required User fields not in LoginResponse
-                email: '',
-                first_name: '',
-                last_name: '',
-                is_active: true,
-                is_admin: false, // Will be determined from permissions
-                created_at: new Date().toISOString(),
-                updated_at: new Date().toISOString(),
-            }
-
-            // Decode and store permissions from JWT
-            decodeAndStorePermissions(response.access_token)
-
-            // Load permissions and allowed routes from API
-            await loadUserPermissions()
-
-            // Set up automatic token refresh
-            setupTokenRefresh(response.access_expires_at)
-
-            // Store default password check result
-            usingDefaultPassword.value = response.using_default_password
-
-            // Load license status after login
-            const licenseStore = useLicenseStore()
-            void licenseStore.loadLicenseStatus()
-            // Reset banner dismissal on new login
-            licenseStore.resetBannerDismissal()
-
-            // Load system versions after login
-            const versionStore = useVersionStore()
-            void versionStore.loadVersions()
-
-            // Load system capabilities after login
-            const capabilitiesStore = useCapabilitiesStore()
-            void capabilitiesStore.fetchCapabilities()
-
-            if (env.enableApiLogging) {
-                console.log('[Auth] Login successful:', {
-                    username: response.username,
-                    expires_at: response.access_expires_at,
-                    using_default_password: usingDefaultPassword.value,
-                })
-            }
+            await establishSession(response)
         } catch (err) {
             let translatedErrorMessage: string
             if (err instanceof HttpError && err.statusCode === 403) {
@@ -597,7 +736,16 @@ export const useAuthStore = defineStore('auth', () => {
         resolveAuthReady = resolve
     })
 
-    checkAuthStatus()
+    // Order matters: a single-sign-on callback carries its tokens in the
+    // fragment and may land on any route, so the session has to be adopted
+    // before `checkAuthStatus` concludes there is nobody signed in.
+    adoptSsoFragment()
+        .catch(err => {
+            if (env.enableApiLogging) {
+                console.error('[Auth] SSO fragment adoption failed:', err)
+            }
+        })
+        .then(() => checkAuthStatus())
         .catch(err => {
             if (env.enableApiLogging) {
                 console.error('[Auth] Initial auth check failed:', err)
@@ -623,8 +771,11 @@ export const useAuthStore = defineStore('auth', () => {
         isDefaultPasswordInUse,
         isMobileWarningDismissed,
 
+        ssoError: readonly(ssoError),
+
         // Actions
         login,
+        adoptSsoSession,
         logout,
         refreshTokens,
         checkAuthStatus,

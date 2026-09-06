@@ -178,15 +178,13 @@ async fn unprocessable_entity_returns_422_with_error_code() {
 #[actix_web::test]
 async fn unprocessable_entity_with_violations_returns_422() {
     let violations = vec![
-        ValidationViolation {
-            field: "email".to_string(),
-            message: "must not be blank".to_string(),
-            code: Some("NOT_BLANK".to_string()),
-        },
+        ValidationViolation::field("email", "must not be blank", "NOT_BLANK"),
         ValidationViolation {
             field: "name".to_string(),
             message: "too short".to_string(),
             code: None,
+            json_path: None,
+            legal_values: Vec::new(),
         },
     ];
     let resp =

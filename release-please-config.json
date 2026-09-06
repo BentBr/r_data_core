@@ -14,6 +14,7 @@
                 "crates/api/Cargo.toml",
                 "crates/core/Cargo.toml",
                 "crates/license/Cargo.toml",
+                "crates/mcp/Cargo.toml",
                 "crates/persistence/Cargo.toml",
                 "crates/services/Cargo.toml",
                 "crates/workflow/Cargo.toml",

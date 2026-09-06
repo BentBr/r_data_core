@@ -15,4 +15,19 @@ message: string,
 /**
  * Optional error code (e.g., `"NOT_BLANK"`, `"NOT_NULL"`)
  */
-code: string | null, };
+code: string | null, 
+/**
+ * JSON path to the offending value, e.g. `steps[0].to.type`.
+ *
+ * More precise than `field` where the producer can manage it; `None` when
+ * it cannot, which is honest rather than pointing somewhere wrong. Always
+ * serialized (as `null` when absent) so the wire format matches the
+ * generated TypeScript — ts-rs cannot read `skip_serializing_if`.
+ */
+json_path: string | null, 
+/**
+ * Alternatives the caller may use instead, where the failure is a closed
+ * set — an unknown enum variant, say. Empty means "not enumerable", never
+ * "nothing is legal".
+ */
+legal_values: Array<string>, };

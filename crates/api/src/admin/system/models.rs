@@ -221,6 +221,19 @@ pub struct CapabilitiesResponse {
     pub system_mail_configured: bool,
     /// Whether workflow mail is configured (enables email outputs in workflows)
     pub workflow_mail_configured: bool,
+    /// Whether a browser can sign in through an identity provider.
+    ///
+    /// True only when the *browser* flow is configured, not merely when
+    /// bearer-token validation is. An instance that accepts provider tokens
+    /// but has no client id has nowhere to send a person who clicks the
+    /// button, so showing one would be a dead end.
+    ///
+    /// Deliberately the only thing said about single sign-on here. This
+    /// endpoint is public and unauthenticated, and a test asserts every value
+    /// on it stays boolean — a provider's name would tell an anonymous caller
+    /// which identity provider the organisation uses, which is more than a
+    /// feature flag and not worth a nicer button label.
+    pub oidc_enabled: bool,
 }
 
 /// Query parameters for filtering system logs

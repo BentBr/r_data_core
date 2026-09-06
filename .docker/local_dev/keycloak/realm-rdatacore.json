@@ -1,0 +1,141 @@
+{
+    "realm": "rdatacore",
+    "enabled": true,
+    "displayName": "RDataCore (local development)",
+    "sslRequired": "none",
+    "registrationAllowed": false,
+    "loginWithEmailAllowed": true,
+    "accessTokenLifespan": 900,
+    "clients": [
+        {
+            "clientId": "r-data-core",
+            "name": "RDataCore admin interface",
+            "description": "Browser sign-in for the admin UI. Public client: PKCE is what protects the exchange, so there is no secret to keep out of version control.",
+            "enabled": true,
+            "publicClient": true,
+            "standardFlowEnabled": true,
+            "implicitFlowEnabled": false,
+            "directAccessGrantsEnabled": true,
+            "serviceAccountsEnabled": false,
+            "redirectUris": [
+                "http://rdatacore.docker/admin/api/v1/auth/oidc/callback",
+                "http://localhost/admin/api/v1/auth/oidc/callback"
+            ],
+            "webOrigins": ["http://rdatacore.docker", "http://localhost"],
+            "attributes": {
+                "pkce.code.challenge.method": "S256",
+                "post.logout.redirect.uris": "http://rdatacore.docker/*"
+            },
+            "protocolMappers": [
+                {
+                    "name": "groups",
+                    "protocol": "openid-connect",
+                    "protocolMapper": "oidc-group-membership-mapper",
+                    "consentRequired": false,
+                    "config": {
+                        "full.path": "false",
+                        "introspection.token.claim": "true",
+                        "id.token.claim": "true",
+                        "access.token.claim": "true",
+                        "userinfo.token.claim": "true",
+                        "claim.name": "groups"
+                    }
+                },
+                {
+                    "name": "audience-r-data-core",
+                    "protocol": "openid-connect",
+                    "protocolMapper": "oidc-audience-mapper",
+                    "consentRequired": false,
+                    "config": {
+                        "included.client.audience": "r-data-core",
+                        "introspection.token.claim": "true",
+                        "id.token.claim": "true",
+                        "access.token.claim": "true"
+                    }
+                }
+            ]
+        },
+        {
+            "clientId": "rdc-mcp",
+            "name": "RDataCore MCP server",
+            "description": "Audience for the hosted MCP server. A separate resource from the admin interface, so a token for one is not a token for the other.",
+            "enabled": true,
+            "publicClient": true,
+            "standardFlowEnabled": true,
+            "directAccessGrantsEnabled": true,
+            "redirectUris": ["http://localhost:*", "http://127.0.0.1:*"],
+            "attributes": {
+                "pkce.code.challenge.method": "S256"
+            },
+            "protocolMappers": [
+                {
+                    "name": "groups",
+                    "protocol": "openid-connect",
+                    "protocolMapper": "oidc-group-membership-mapper",
+                    "consentRequired": false,
+                    "config": {
+                        "full.path": "false",
+                        "id.token.claim": "true",
+                        "access.token.claim": "true",
+                        "userinfo.token.claim": "true",
+                        "claim.name": "groups"
+                    }
+                },
+                {
+                    "name": "audience-rdc-mcp",
+                    "protocol": "openid-connect",
+                    "protocolMapper": "oidc-audience-mapper",
+                    "consentRequired": false,
+                    "config": {
+                        "included.client.audience": "rdc-mcp",
+                        "id.token.claim": "true",
+                        "access.token.claim": "true"
+                    }
+                }
+            ]
+        }
+    ],
+    "groups": [
+        { "name": "rdc-admins" },
+        { "name": "rdc-editors" },
+        { "name": "rdc-nobodies" }
+    ],
+    "users": [
+        {
+            "username": "ada",
+            "enabled": true,
+            "emailVerified": true,
+            "email": "ada@example.com",
+            "firstName": "Ada",
+            "lastName": "Lovelace",
+            "credentials": [
+                { "type": "password", "value": "ada", "temporary": false }
+            ],
+            "groups": ["/rdc-admins"]
+        },
+        {
+            "username": "grace",
+            "enabled": true,
+            "emailVerified": true,
+            "email": "grace@example.com",
+            "firstName": "Grace",
+            "lastName": "Hopper",
+            "credentials": [
+                { "type": "password", "value": "grace", "temporary": false }
+            ],
+            "groups": ["/rdc-editors"]
+        },
+        {
+            "username": "mallory",
+            "enabled": true,
+            "emailVerified": true,
+            "email": "mallory@example.com",
+            "firstName": "Mallory",
+            "lastName": "Unmapped",
+            "credentials": [
+                { "type": "password", "value": "mallory", "temporary": false }
+            ],
+            "groups": ["/rdc-nobodies"]
+        }
+    ]
+}

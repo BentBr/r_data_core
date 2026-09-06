@@ -27,6 +27,7 @@ describe('useCapabilitiesStore', () => {
         vi.mocked(typedHttpClient.getCapabilities).mockResolvedValueOnce({
             system_mail_configured: true,
             workflow_mail_configured: false,
+            oidc_enabled: false,
         })
 
         const store = useCapabilitiesStore()
@@ -42,6 +43,7 @@ describe('useCapabilitiesStore', () => {
         vi.mocked(typedHttpClient.getCapabilities).mockResolvedValueOnce({
             system_mail_configured: false,
             workflow_mail_configured: true,
+            oidc_enabled: false,
         })
 
         const store = useCapabilitiesStore()
@@ -57,6 +59,7 @@ describe('useCapabilitiesStore', () => {
         vi.mocked(typedHttpClient.getCapabilities).mockResolvedValueOnce({
             system_mail_configured: true,
             workflow_mail_configured: true,
+            oidc_enabled: false,
         })
 
         const store = useCapabilitiesStore()
@@ -85,6 +88,7 @@ describe('useCapabilitiesStore', () => {
         vi.mocked(typedHttpClient.getCapabilities).mockResolvedValueOnce({
             system_mail_configured: false,
             workflow_mail_configured: false,
+            oidc_enabled: false,
         })
 
         const store = useCapabilitiesStore()
@@ -92,6 +96,33 @@ describe('useCapabilitiesStore', () => {
 
         await store.fetchCapabilities()
 
+        expect(store.isLoaded).toBe(true)
+    })
+
+    it('exposes single sign-on when the server reports it enabled', async () => {
+        const { typedHttpClient } = await import('@/api/typed-client')
+        vi.mocked(typedHttpClient.getCapabilities).mockResolvedValueOnce({
+            system_mail_configured: false,
+            workflow_mail_configured: false,
+            oidc_enabled: true,
+        })
+
+        const store = useCapabilitiesStore()
+        await store.fetchCapabilities()
+
+        expect(store.oidcEnabled).toBe(true)
+    })
+
+    it('keeps single sign-on off when the capabilities call fails', async () => {
+        const { typedHttpClient } = await import('@/api/typed-client')
+        vi.mocked(typedHttpClient.getCapabilities).mockRejectedValueOnce(new Error('offline'))
+
+        const store = useCapabilitiesStore()
+        await store.fetchCapabilities()
+
+        // Failing closed matters here: a button that appears when the server
+        // cannot confirm the feature exists leads straight to a dead end.
+        expect(store.oidcEnabled).toBe(false)
         expect(store.isLoaded).toBe(true)
     })
 })

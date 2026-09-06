@@ -160,6 +160,19 @@ pub(super) fn build_email_to_fields() -> Vec<DslFieldSpec> {
     ]
 }
 
+/// Build field specifications for `next_step` TO type
+///
+/// Passes this step's output to the next one. An empty mapping passes every
+/// normalized field through. Invalid in the last step.
+pub(super) fn build_next_step_to_fields() -> Vec<DslFieldSpec> {
+    vec![DslFieldSpec {
+        name: "mapping".into(),
+        r#type: "map<string,string>".into(),
+        required: true,
+        options: None,
+    }]
+}
+
 /// Build TO type specifications
 #[must_use]
 pub fn build_to_type_specs(workflow_mail_configured: bool) -> Vec<DslTypeSpec> {
@@ -171,6 +184,10 @@ pub fn build_to_type_specs(workflow_mail_configured: bool) -> Vec<DslTypeSpec> {
         DslTypeSpec {
             r#type: "entity".to_string(),
             fields: build_entity_to_fields(),
+        },
+        DslTypeSpec {
+            r#type: "next_step".to_string(),
+            fields: build_next_step_to_fields(),
         },
     ];
     if workflow_mail_configured {

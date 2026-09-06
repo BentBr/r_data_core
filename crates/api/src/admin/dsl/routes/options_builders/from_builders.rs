@@ -92,6 +92,31 @@ pub(super) fn build_entity_from_fields() -> Vec<DslFieldSpec> {
     ]
 }
 
+/// Build field specifications for `previous_step` FROM type
+///
+/// Reads the previous step's normalized data. Invalid in step 0.
+pub(super) fn build_previous_step_from_fields() -> Vec<DslFieldSpec> {
+    vec![DslFieldSpec {
+        name: "mapping".into(),
+        r#type: "map<string,string>".into(),
+        required: true,
+        options: None,
+    }]
+}
+
+/// Build field specifications for `trigger` FROM type
+///
+/// Accepts a GET at `/api/v1/workflows/{uuid}/trigger` with no payload, so the
+/// mapping is typically empty. Only valid in step 0.
+pub(super) fn build_trigger_from_fields() -> Vec<DslFieldSpec> {
+    vec![DslFieldSpec {
+        name: "mapping".into(),
+        r#type: "map<string,string>".into(),
+        required: true,
+        options: None,
+    }]
+}
+
 /// Build FROM type specifications
 #[must_use]
 pub fn build_from_type_specs() -> Vec<DslTypeSpec> {
@@ -103,6 +128,14 @@ pub fn build_from_type_specs() -> Vec<DslTypeSpec> {
         DslTypeSpec {
             r#type: "entity".to_string(),
             fields: build_entity_from_fields(),
+        },
+        DslTypeSpec {
+            r#type: "previous_step".to_string(),
+            fields: build_previous_step_from_fields(),
+        },
+        DslTypeSpec {
+            r#type: "trigger".to_string(),
+            fields: build_trigger_from_fields(),
         },
     ]
 }

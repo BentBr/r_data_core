@@ -14,3 +14,4 @@ pub mod push_to_remote_tests;
 pub mod route_conflict_tests;
 pub mod trigger_endpoint_tests;
 pub mod trigger_example_tests;
+mod version_restore_tests;

@@ -1,5 +1,9 @@
 #![deny(clippy::all, clippy::pedantic, clippy::nursery, warnings)]
 
+use super::path_transform_builders::{
+    build_build_path_transform_fields, build_get_or_create_entity_transform_fields,
+    build_resolve_entity_path_transform_fields,
+};
 use crate::admin::dsl::models::{DslFieldSpec, DslTypeSpec};
 
 /// Build field specifications for arithmetic transform type
@@ -223,6 +227,18 @@ pub fn build_transform_type_specs(workflow_mail_configured: bool) -> Vec<DslType
         DslTypeSpec {
             r#type: "concat".to_string(),
             fields: build_concat_transform_fields(),
+        },
+        DslTypeSpec {
+            r#type: "resolve_entity_path".to_string(),
+            fields: build_resolve_entity_path_transform_fields(),
+        },
+        DslTypeSpec {
+            r#type: "build_path".to_string(),
+            fields: build_build_path_transform_fields(),
+        },
+        DslTypeSpec {
+            r#type: "get_or_create_entity".to_string(),
+            fields: build_get_or_create_entity_transform_fields(),
         },
         DslTypeSpec {
             r#type: "authenticate".to_string(),

@@ -72,4 +72,14 @@ updated_at: string,
 /**
  * UUID of the user who created this user
  */
-created_by: string, };
+created_by: string, 
+/**
+ * Whether this account was created by single sign-on.
+ *
+ * The interface needs this to stop offering things that cannot work for
+ * such an account: it has no password to change, and its roles come from
+ * the identity provider's claims on each sign-in rather than from
+ * anything stored here, so an editable role control would silently
+ * discard the change.
+ */
+is_sso_provisioned: boolean, };

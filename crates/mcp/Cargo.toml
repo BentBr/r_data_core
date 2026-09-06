@@ -1,0 +1,60 @@
+[package]
+name = "r_data_core_mcp"
+version = "0.4.10"
+edition = "2021"
+description = "MCP server for RDataCore — lets AI assistants author, run and debug workflows"
+authors = ["Bent Brüggemann <mail@bent-brueggemann.de>"]
+license = "Business"
+publish = false  # proprietary — never published to a registry
+
+[[bin]]
+name = "r-data-core-mcp"
+path = "src/bin/stdio.rs"
+
+[dependencies]
+r_data_core_core = { path = "../core" }
+r_data_core_workflow = { path = "../workflow" }
+
+# Pinned exactly: the SDK moves fast and the macro/handler shapes differ
+# between majors. schemars comes from rmcp's default features rather than a
+# direct dependency, so the derive versions cannot diverge.
+rmcp = { version = "3.2.0", features = ["server", "macros", "transport-io", "transport-streamable-http-server"] }
+# Pinned to the same minor rmcp resolves: the JsonSchema derive expands to
+# `::schemars::` paths, so it must be a direct dependency, and two versions in
+# the graph produce derive errors that name neither of them.
+schemars = "1.2"
+reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls"] }
+tokio = { version = "1.35", features = ["rt-multi-thread", "macros", "signal", "time", "sync"] }
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+async-trait = "0.1"
+# The per-caller token cache is keyed on a digest of the caller's token. A
+# collision there would be impersonation, not a cache miss, so this needs a
+# real hash rather than a fast one.
+sha2 = "0.10"
+# The HTTP mode reuses RDataCore's own JWKS fetching rather than reimplementing
+# it: the rate limit that stops a stream of unknown key ids turning this server
+# into a load generator aimed at the identity provider is security-relevant, and
+# a second copy of it would be one refactor away from losing that. It lives in
+# its own crate precisely so reaching it does not drag the service and
+# persistence layers into an HTTP client of RDataCore.
+r_data_core_oidc_http = { path = "../oidc-http" }
+hyper = { version = "1", features = ["server", "http1", "http2"] }
+hyper-util = { version = "0.1", features = ["server", "server-auto", "tokio"] }
+http-body-util = "0.1"
+bytes = "1"
+time = { version = "0.3", features = ["macros"] }
+tokio-util = "0.7"
+thiserror = "1.0"
+url = "2"
+uuid = { version = "1.6", features = ["v7", "serde"] }
+log = "0.4"
+env_logger = "0.11"
+
+[[bin]]
+name = "r-data-core-mcp-serve"
+path = "src/bin/serve.rs"
+
+[dev-dependencies]
+wiremock = "0.6"
+tokio = { version = "1.35", features = ["full", "macros", "rt-multi-thread"] }

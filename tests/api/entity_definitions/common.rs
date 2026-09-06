@@ -117,6 +117,7 @@ pub async fn create_test_app(
         license_service,
         password_reset_service: None,
         system_log_service: None,
+        oidc: None,
     };
 
     test::init_service(
