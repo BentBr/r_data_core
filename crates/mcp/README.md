@@ -23,6 +23,31 @@ It also cannot exceed your own permissions. It holds no credential of its own
 and carries yours on every call, so RDataCore's answer is authoritative. Tools
 you lack permission for are not advertised, and calls to them are rejected.
 
+## What it exposes
+
+**18 tools**, filtered to what your key may actually do, in six groups:
+instance (`system_info`), discover, author, versions, execute, schedule.
+
+`system_info` is the one offered to every caller regardless of permissions.
+It reports which instance the server is pointed at, its version, its enabled
+features and what you may do — because an assistant that cannot tell which
+deployment it is connected to will write to the wrong one quite confidently.
+Deployed component versions inside that response need `system:read` and are
+omitted without it.
+
+**Two resources**, which a client can read like documents:
+
+| URI | Contents |
+|---|---|
+| `rdatacore://dsl/reference` | Every DSL type this instance accepts, with fields, enumerated values and worked examples |
+| `rdatacore://dsl/validation-rules` | Ordering and typing constraints the catalogue cannot express |
+
+The reference is generated per-instance from the live `/dsl/*/options`
+catalogue, not from `docs/DSL.md`. That matters: the markdown documents
+roughly a third of the language, so an assistant taught from it would believe
+most of the DSL does not exist. The catalogue is built from the same structs
+the executor consumes and therefore cannot drift.
+
 ## Setup
 
 ### 1. Create an API key
