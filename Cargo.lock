@@ -2804,7 +2804,7 @@ dependencies = [
 
 [[package]]
 name = "r_data_core_mcp"
-version = "0.4.10"
+version = "0.1.0"
 dependencies = [
  "async-trait",
  "bytes",
