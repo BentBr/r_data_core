@@ -1,6 +1,5 @@
 #![deny(clippy::all, clippy::pedantic, clippy::nursery, warnings)]
 
-use dotenvy::dotenv;
 use std::env;
 
 use crate::config::AppConfig;
@@ -17,7 +16,7 @@ use super::shared::{
 /// Returns an error if required environment variables are missing or invalid
 pub fn load_app_config() -> Result<AppConfig> {
     // Load .env file if present
-    dotenv().ok();
+    super::load_dotenv();
 
     let environment = env::var("APP_ENV").unwrap_or_else(|_| "development".to_string());
     let outbox = load_outbox_config(false)?;
