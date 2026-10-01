@@ -228,3 +228,50 @@ jobs:
                     ./.github/scripts/publish-to-pages.sh \
                         mcp-latest.json dist/mcp-latest.json "MCP manifest" \
                         "chore(mcp): publish the ${TAG} download manifest"
+
+    # Gated on `publish`, because postinstall downloads the binaries from the
+    # GitHub release: npm must never carry a version whose assets do not yet
+    # exist, or the first `npx` of it fails with "no published mcp-v* release".
+    npm:
+        name: Publish to npm
+        needs: publish
+        runs-on: ubuntu-latest
+        permissions:
+            contents: read
+            # Trusted publishing: npm mints a short-lived credential from this
+            # token, so no long-lived secret sits in the repository and the
+            # published version carries a provenance attestation. Register the
+            # publisher on the package's npm settings page first — until then
+            # this job cannot authenticate.
+            id-token: write
+        steps:
+            -   name: Checkout
+                uses: actions/checkout@v7
+                with:
+                    ref: ${{ inputs.tag || github.ref }}
+
+            -   name: Setup Node.js
+                uses: actions/setup-node@v7
+                with:
+                    node-version: '22'
+                    registry-url: 'https://registry.npmjs.org'
+
+            # The tag and the manifest are edited by different hands at
+            # different times. Publishing 0.1.0 under the tag mcp-v0.2.0 would
+            # ship an installer that downloads assets it does not name.
+            -   name: Refuse a version that disagrees with the tag
+                env:
+                    TAG: ${{ inputs.tag || github.ref_name }}
+                working-directory: mcp-npm-package
+                run: |
+                    set -euo pipefail
+                    manifest=$(node -p "require('./package.json').version")
+                    if [ "$manifest" != "${TAG#mcp-v}" ]; then
+                        echo "package.json is $manifest but the tag says ${TAG#mcp-v}" >&2
+                        exit 1
+                    fi
+                    echo "version $manifest matches $TAG"
+
+            -   name: Publish
+                working-directory: mcp-npm-package
+                run: npm publish

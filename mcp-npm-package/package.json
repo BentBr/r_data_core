@@ -22,5 +22,8 @@
         "url": "git+https://github.com/BentBr/r_data_core.git",
         "directory": "mcp-npm-package"
     },
-    "license": "SEE LICENSE IN LICENSE"
+    "license": "SEE LICENSE IN LICENSE",
+    "publishConfig": {
+        "access": "public"
+    }
 }
