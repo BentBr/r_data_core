@@ -1,0 +1,5 @@
+# The downloaded binaries are fetched at install time, never published: they
+# are per-platform and would make this package four times larger than any one
+# user needs.
+bin/
+*.tgz

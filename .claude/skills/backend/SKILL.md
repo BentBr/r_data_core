@@ -17,6 +17,7 @@ color: green
 | workflow | `crates/workflow/` | DSL engine, job queue | core, services |
 | worker | `crates/worker/` | background tasks, scheduler | core, services, workflow |
 | license | `crates/license/` | license verification | core |
+| oidc-http | `crates/oidc-http/` | OIDC discovery + JWKS fetching over HTTP | core |
 | test-support | `crates/test-support/` | shared test helpers, fixtures (dev-only) | — |
 
 **Layering rule:** `core` imports no other workspace crate. Repository
@@ -24,7 +25,7 @@ color: green
 
 ## Supporting docs (read on demand)
 
-- Per crate: `core.md`, `services.md`, `persistence.md`, `api.md`, `workflow.md`, `worker.md`, `license.md`
+- Per crate: `core.md`, `services.md`, `persistence.md`, `api.md`, `workflow.md`, `worker.md`, `license.md`, `mcp.md`
 - `database.md` — SQLx, migrations, compile-time verification, test DB
 - `api-reference.md` — public + admin endpoint tables
 - `conventions.md` — clippy policy, MSRV, file-length caps, allow policy

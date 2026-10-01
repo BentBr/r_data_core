@@ -1,90 +1,11 @@
 #![deny(clippy::all, clippy::pedantic, clippy::nursery, warnings)]
+//! DSL DTOs.
+//!
+//! The definitions live in `r_data_core_core::dto::dsl` so that API clients can
+//! share them without linking actix-web. They are re-exported here to keep call
+//! sites and the `OpenAPI` registration unchanged.
 
-use serde::{Deserialize, Serialize};
-#[allow(unused_imports)] // json! macro is used in attribute macro
-use serde_json::{json, Value};
-use ts_rs::TS;
-use utoipa::ToSchema;
-
-// Note: DslStep is imported from the main crate's workflow module
-// This is a temporary dependency until workflow is migrated to a crate
-// For now, we use serde_json::Value to represent the steps
-#[derive(Debug, Deserialize, ToSchema, TS)]
-#[ts(export)]
-pub struct DslValidateRequest {
-    /// The DSL steps array (JSON). Example: { "steps": [ { "from": { ... }, "transform": { ... }, "to": { ... } } ] }
-    #[schema(value_type = Vec<Value>, example = json!([
-        {
-            "from": {
-                "type": "format",
-                "source": {
-                    "source_type": "uri",
-                    "config": { "uri": "http://example.com/data.csv" },
-                    "auth": { "type": "none" }
-                },
-                "format": {
-                    "format_type": "csv",
-                    "options": { "has_header": true, "delimiter": "," }
-                },
-                "mapping": { "price": "price" }
-            },
-            "transform": {
-                "type": "arithmetic",
-                "target": "price",
-                "left": { "kind": "field", "field": "price" },
-                "op": "add",
-                "right": { "kind": "const", "value": 5.0 }
-            },
-            "to": {
-                "type": "format",
-                "output": { "mode": "api" },
-                "format": {
-                    "format_type": "json",
-                    "options": {}
-                },
-                "mapping": { "price": "entity.total" }
-            }
-        }
-    ]))]
-    #[ts(type = "unknown[]")]
-    pub steps: Vec<Value>, // Will be Vec<DslStep> once workflow is migrated
-}
-
-#[derive(Debug, Serialize, ToSchema, TS)]
-#[ts(export)]
-pub struct DslValidateResponse {
-    /// Whether the DSL is valid
-    pub valid: bool,
-}
-
-#[derive(Debug, Serialize, ToSchema, TS)]
-#[ts(export)]
-pub struct DslFieldSpec {
-    pub name: String,
-    #[schema(example = "string")]
-    pub r#type: String,
-    pub required: bool,
-    pub options: Option<Vec<String>>,
-}
-
-#[derive(Debug, Serialize, ToSchema, TS)]
-#[ts(export)]
-pub struct DslTypeSpec {
-    pub r#type: String,
-    pub fields: Vec<DslFieldSpec>,
-}
-
-#[derive(Debug, Serialize, ToSchema, TS)]
-#[ts(export)]
-pub struct DslOptionsResponse {
-    pub types: Vec<DslTypeSpec>,
-}
-
-#[derive(Debug, Serialize, ToSchema, TS)]
-#[ts(export)]
-pub struct DslOptionsAndExamplesResponse {
-    pub types: Vec<DslTypeSpec>,
-    /// Concrete serialized examples using the real DSL structs
-    #[ts(type = "unknown[]")]
-    pub examples: Vec<Value>,
-}
+pub use r_data_core_core::dto::dsl::{
+    DslFieldSpec, DslOptionsAndExamplesResponse, DslOptionsResponse, DslTypeSpec,
+    DslValidateRequest, DslValidateResponse,
+};

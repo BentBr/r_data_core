@@ -1,11 +1,13 @@
 #![deny(clippy::all, clippy::pedantic, clippy::nursery, warnings)]
 
-pub mod crud;
+pub mod read;
 pub mod roles;
+pub mod write;
 
 // Re-export everything including utoipa __path_* types needed by docs/mod.rs
-pub use crud::*;
+pub use read::*;
 pub use roles::*;
+pub use write::*;
 
 /// Register user routes
 pub fn register_routes(cfg: &mut actix_web::web::ServiceConfig) {

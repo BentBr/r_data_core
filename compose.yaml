@@ -116,6 +116,19 @@ services:
             OUTBOX_RETRY_BASE_DELAY_SECS: 1
             OUTBOX_RETRY_MULTIPLIER: 2
             OUTBOX_RETRY_MAX_DELAY_SECS: 300
+            # Single sign-on is off unless these are set. Both env readers
+            # filter empty strings (crates/core/src/oidc/config.rs:248), so an
+            # unset variable is genuinely absent rather than an empty issuer —
+            # which is what lets one compose file serve both cases. Setting
+            # them unconditionally would give every developer a login button
+            # leading to a provider that is not running.
+            RDC_OIDC_ISSUER: ${RDC_OIDC_ISSUER:-}
+            RDC_OIDC_AUDIENCE: ${RDC_OIDC_AUDIENCE:-}
+            RDC_OIDC_CLIENT_ID: ${RDC_OIDC_CLIENT_ID:-}
+            RDC_OIDC_REDIRECT_URI: ${RDC_OIDC_REDIRECT_URI:-}
+            RDC_OIDC_ROLE_MAP: ${RDC_OIDC_ROLE_MAP:-}
+            RDC_OIDC_POST_LOGIN_PATH: ${RDC_OIDC_POST_LOGIN_PATH:-/dashboard}
+            RDC_OIDC_RESOLUTION_CACHE_SECS: ${RDC_OIDC_RESOLUTION_CACHE_SECS:-60}
             # RDT key
             MAIN_SERVICE: app
         ports:
@@ -226,6 +239,179 @@ services:
             default:
                 aliases:
                     - maintenance.rdatacore.docker
+
+    # The MCP server's HTTP transport. stdio is not a service: a local MCP
+    # client runs that binary itself, over a pipe it holds open.
+    mcp:
+        profiles: [mcp]
+        container_name: rdata_mcp
+        build:
+            context: .
+            dockerfile: ./.docker/app/Dockerfile
+            target: r-data-core-mcp
+            args:
+                RUST_VERSION: "1.96.0"
+                BUILD_MODE: "debug"
+                PACKAGE_NAME: "r_data_core_mcp"
+                BINARY_NAME: "r-data-core-mcp-serve"
+                RUST_LOG_LEVEL: "info"
+        depends_on:
+            app:
+                condition: service_started
+            # Not merely started: the server fetches the realm's signing keys,
+            # and a Keycloak still importing answers 404 on the JWKS URL. The
+            # healthcheck already waits for the realm specifically.
+            keycloak:
+                condition: service_healthy
+        environment:
+            RDC_MCP_TRANSPORT: http
+            RDC_MCP_BIND: 0.0.0.0:80
+            # Reached over the compose network rather than through the proxy:
+            # one fewer hop to misconfigure, and it works before the proxy has
+            # picked up the new alias.
+            RDC_BASE_URL: http://rdatacore.docker
+            # Published on loopback rather than proxied at
+            # mcp.rdatacore.docker, because the resource URL must be https or
+            # loopback — `validate_resource_url` refuses anything else, and a
+            # plaintext .docker hostname would stop the container at startup.
+            # Bearer tokens must not cross plaintext; localhost is the one
+            # exemption, and it is the right one for a developer machine.
+            #
+            # Must equal RDC_OIDC_AUDIENCE, or a client that follows the
+            # protected-resource metadata asks its provider for the wrong
+            # audience and gets an unexplained 401. The server warns at
+            # startup when they differ; the realm's audience mapper is set to
+            # mint exactly this.
+            RDC_MCP_RESOURCE_URL: http://localhost:8931
+            RDC_OIDC_ISSUER: http://auth.rdatacore.docker:8081/realms/rdatacore
+            RDC_OIDC_AUDIENCE: http://localhost:8931
+            RUST_LOG: info
+            # RDT key
+            MAIN_SERVICE: app
+        ports:
+            # The port the stdio default already uses, so one number serves
+            # both transports in documentation and in muscle memory.
+            - '8931:80'
+        networks:
+            default:
+                aliases:
+                    - mcp.rdatacore.docker
+
+    # ── Single sign-on ──────────────────────────────────────────────────────
+    # Opt-in via COMPOSE_PROFILES. Previously a separate compose.sso.yaml,
+    # which every command then had to name with -f; that is a file people work
+    # around rather than with, and it was duly copied into private overrides.
+    #
+    # Why port 8081 rather than proxying through dinghy on :80. The issuer URL
+    # has to be byte-identical in two places that reach Keycloak by different
+    # routes: the browser, which goes through the host, and the `app`
+    # container, which fetches the signing keys over the compose network. A
+    # token whose `iss` does not match what the server expects is rejected,
+    # and a JWKS URL the server cannot reach fails every sign-in.
+    #
+    # Publishing 8081 on the host *and* listening on 8081 in the container
+    # makes http://auth.rdatacore.docker:8081 correct from both sides — dinghy's
+    # DNS points the host at 127.0.0.1, the compose alias points the app at the
+    # container. Port 80 would need root inside the image, which the Keycloak
+    # container deliberately does not have.
+
+    keycloak:
+        # Two profiles, not one: the MCP server's HTTP transport refuses to
+        # start without an issuer, so COMPOSE_PROFILES=mcp has to bring the
+        # provider up too or it starts a container that immediately exits.
+        profiles: [sso, mcp]
+        container_name: rdata_keycloak
+        image: quay.io/keycloak/keycloak:26.0
+        command:
+            - start-dev
+            - --import-realm
+            - --http-port=8081
+        environment:
+            # Dev-only credentials for the Keycloak admin console itself.
+            # Nothing in RDataCore uses these.
+            KC_BOOTSTRAP_ADMIN_USERNAME: admin
+            KC_BOOTSTRAP_ADMIN_PASSWORD: admin
+            # The URL Keycloak believes it is served at. This is what ends up in
+            # every token's `iss`, so it must match RDC_OIDC_ISSUER exactly.
+            KC_HOSTNAME: http://auth.rdatacore.docker:8081
+            KC_HOSTNAME_STRICT: 'false'
+            KC_HTTP_ENABLED: 'true'
+            VIRTUAL_HOST: .auth.rdatacore.docker
+            VIRTUAL_PORT: '8081'
+        ports:
+            - '8081:8081'
+        volumes:
+            - ./.docker/local_dev/keycloak:/opt/keycloak/data/import:ro
+        healthcheck:
+            # The Keycloak image ships no curl or wget, so this uses bash's own
+            # TCP redirection rather than adding a tool to the image.
+            test:
+                [
+                    'CMD-SHELL',
+                    'exec 3<>/dev/tcp/127.0.0.1/8081 && echo -e "GET /realms/rdatacore HTTP/1.1\nHost: localhost\nConnection: close\n\n" >&3 && cat <&3 | head -1 | grep -q "200 OK"',
+                ]
+            interval: 5s
+            timeout: 5s
+            retries: 30
+            start_period: 30s
+        networks:
+            default:
+                aliases:
+                    - auth.rdatacore.docker
+
+    # Apply migrations, then seed the roles the realm's groups map onto.
+    #
+    # Two one-shot services rather than one, because they need different
+    # images: the migration binary ships in the app image, and `psql` ships in
+    # the postgres one. Both exit when done and re-run harmlessly on the next
+    # `compose up` — migrations are tracked by SQLx, and the seed SQL is
+    # ON CONFLICT DO NOTHING.
+    #
+    # The app does not migrate at boot by design (`main.rs` says so), so
+    # without this a fresh volume gives you a login that fails at provisioning
+    # with no obvious cause.
+    sso-migrate:
+        # Two profiles, not one: the MCP server's HTTP transport refuses to
+        # start without an issuer, so COMPOSE_PROFILES=mcp has to bring the
+        # provider up too or it starts a container that immediately exits.
+        profiles: [sso, mcp]
+        container_name: rdata_sso_migrate
+        image: r_data_core-app
+        entrypoint: ['/usr/local/bin/run-migrations']
+        environment:
+            DATABASE_URL: postgres://postgres:postgres@postgres:5432/rdata
+            REDIS_URL: redis://redis:6379
+            RUST_LOG: info
+        depends_on:
+            postgres:
+                condition: service_healthy
+        restart: 'no'
+        networks:
+            - default
+
+    sso-seed:
+        # Two profiles, not one: the MCP server's HTTP transport refuses to
+        # start without an issuer, so COMPOSE_PROFILES=mcp has to bring the
+        # provider up too or it starts a container that immediately exits.
+        profiles: [sso, mcp]
+        container_name: rdata_sso_seed
+        image: postgres:18-alpine
+        environment:
+            PGHOST: postgres
+            PGUSER: postgres
+            PGPASSWORD: postgres
+            PGDATABASE: rdata
+        volumes:
+            - ./.docker/local_dev/keycloak:/seed:ro
+        entrypoint: ['/bin/sh', '/seed/seed.sh']
+        depends_on:
+            postgres:
+                condition: service_healthy
+            sso-migrate:
+                condition: service_completed_successfully
+        restart: 'no'
+        networks:
+            - default
 
     node:
         container_name: rdata_node

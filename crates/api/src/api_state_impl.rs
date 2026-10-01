@@ -7,8 +7,8 @@ use crate::api_state::ApiStateTrait;
 use r_data_core_core::cache::CacheManager;
 use r_data_core_services::{
     AdminUserService, ApiKeyService, DashboardStatsService, DynamicEntityService,
-    EntityDefinitionService, LicenseService, PasswordResetService, RoleService, SystemLogService,
-    WorkflowService,
+    EntityDefinitionService, LicenseService, OidcServices, PasswordResetService, RoleService,
+    SystemLogService, WorkflowService,
 };
 use r_data_core_workflow::data::job_queue::apalis_redis::ApalisRedisQueue;
 
@@ -58,6 +58,9 @@ pub struct ApiState {
 
     /// System log service for recording audit events
     pub system_log_service: Option<Arc<SystemLogService>>,
+
+    /// OIDC services, present only when single sign-on is configured
+    pub oidc: Option<Arc<OidcServices>>,
 }
 
 // Implement ApiStateTrait for ApiState to allow API crate routes to use it
@@ -130,5 +133,9 @@ impl ApiStateTrait for ApiState {
         self.system_log_service
             .as_ref()
             .map(|s| s as &dyn std::any::Any)
+    }
+
+    fn oidc_ref(&self) -> Option<&dyn std::any::Any> {
+        self.oidc.as_ref().map(|s| s as &dyn std::any::Any)
     }
 }

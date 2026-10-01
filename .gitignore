@@ -1,6 +1,12 @@
 /target
 .env
 *.key
+x-api-key
+
+# A contributor who pastes their key into the MCP client config rather than
+# exporting it should not be able to commit it by accident. The committed
+# .mcp.json holds a ${RDC_MCP_API_KEY} reference, never a literal key.
+.mcp.json.local
 server.log
 .idea
 logs

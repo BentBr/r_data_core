@@ -27,6 +27,8 @@ pub mod email_template_repository_trait;
 pub mod entity_definition_repository;
 pub mod entity_definition_versioning_repository;
 pub mod entity_definition_versioning_repository_trait;
+pub mod identity_repository;
+pub mod identity_repository_trait;
 pub mod migration_service;
 pub mod outbox_repository;
 pub mod outbox_repository_trait;
@@ -74,6 +76,8 @@ pub use entity_definition_versioning_repository::{
     EntityDefinitionVersioningRepository,
 };
 pub use entity_definition_versioning_repository_trait::EntityDefinitionVersioningRepositoryTrait;
+pub use identity_repository::IdentityRepository;
+pub use identity_repository_trait::IdentityRepositoryTrait;
 pub use migration_service::{AppliedMigration, MigrationService, MigrationStatus};
 pub use outbox_repository::{OutboxMessageRecord, OutboxRepository};
 pub use outbox_repository_trait::OutboxRepositoryTrait;

@@ -8,6 +8,8 @@ const mockGetEntityDefinitions = vi.fn()
 const mockCreateEntity = vi.fn()
 const mockDeleteEntity = vi.fn()
 const mockGetEntity = vi.fn()
+const mockUpdateEntity = vi.fn()
+const mockBrowseByPath = vi.fn()
 
 vi.mock('@/api/typed-client', () => ({
     typedHttpClient: {
@@ -15,15 +17,19 @@ vi.mock('@/api/typed-client', () => ({
             mockGetEntityDefinitions(page, itemsPerPage),
         createEntity: (entityType: string, data: Record<string, unknown>) =>
             mockCreateEntity(entityType, data),
-        deleteEntity: (uuid: string) => mockDeleteEntity(uuid),
-        getEntity: (uuid: string) => mockGetEntity(uuid),
-        browseByPath: vi.fn().mockResolvedValue({ data: [] }),
+        deleteEntity: (entityType: string, uuid: string) => mockDeleteEntity(entityType, uuid),
+        getEntity: (entityType: string, uuid: string, opts?: unknown) =>
+            mockGetEntity(entityType, uuid, opts),
+        updateEntity: (entityType: string, uuid: string, data: Record<string, unknown>) =>
+            mockUpdateEntity(entityType, uuid, data),
+        browseByPath: (path: string, limit?: number, offset?: number) =>
+            mockBrowseByPath(path, limit, offset),
     },
     ValidationError: class ValidationError extends Error {
         violations: Array<{ field: string; message: string }>
 
-        constructor(violations: Array<{ field: string; message: string }>) {
-            super('validation')
+        constructor(message: string, violations: Array<{ field: string; message: string }>) {
+            super(message)
             this.violations = violations
         }
     },
@@ -72,6 +78,8 @@ describe('EntitiesPage - Path Detection Logic', () => {
         })
         mockCreateEntity.mockResolvedValue({})
         mockDeleteEntity.mockResolvedValue({ message: 'Successfully deleted' })
+        mockUpdateEntity.mockResolvedValue({})
+        mockBrowseByPath.mockResolvedValue({ data: [] })
         // Default: user has create permission
         mockHasPermission.mockImplementation((namespace: string, permission: string) => {
             return namespace === 'Entities' && (permission === 'Create' || permission === 'Admin')
@@ -280,5 +288,344 @@ describe('EntitiesPage - Path Detection Logic', () => {
 
         // Check that canCreateEntity computed is false
         expect((wrapper.vm as any).canCreateEntity).toBe(false)
+    })
+})
+
+describe('EntitiesPage - CRUD methods', () => {
+    beforeEach(() => {
+        vi.clearAllMocks()
+        mockGetEntityDefinitions.mockResolvedValue({
+            data: [
+                {
+                    entity_type: 'Customer',
+                    display_name: 'Customer',
+                    allow_children: true,
+                    fields: [],
+                },
+            ],
+        })
+        mockCreateEntity.mockResolvedValue({})
+        mockDeleteEntity.mockResolvedValue({ message: 'Successfully deleted' })
+        mockUpdateEntity.mockResolvedValue({})
+        mockBrowseByPath.mockResolvedValue({ data: [] })
+        mockHasPermission.mockImplementation((namespace: string, permission: string) => {
+            return namespace === 'Entities' && (permission === 'Create' || permission === 'Admin')
+        })
+    })
+
+    const mountReady = async () => {
+        const wrapper = mount(EntitiesPage, { global: { plugins: [router] } })
+        await vi.waitUntil(() => mockGetEntityDefinitions.mock.calls.length > 0, { timeout: 1000 })
+        await wrapper.vm.$nextTick()
+        return wrapper
+    }
+
+    it('handleItemClick loads and selects the entity on success', async () => {
+        const wrapper = await mountReady()
+        mockGetEntity.mockResolvedValue({
+            entity_type: 'Customer',
+            field_data: { uuid: 'entity-1', path: '/entity-1' },
+        })
+
+        const vm = wrapper.vm as unknown as {
+            handleItemClick: (item: { uuid?: string; entity_type?: string }) => Promise<void>
+            selectedEntity: unknown
+        }
+        await vm.handleItemClick({ uuid: 'entity-1', entity_type: 'Customer' })
+
+        expect(mockGetEntity).toHaveBeenCalledWith('Customer', 'entity-1', {
+            includeChildrenCount: true,
+        })
+        expect(vm.selectedEntity).toEqual({
+            entity_type: 'Customer',
+            field_data: { uuid: 'entity-1', path: '/entity-1' },
+        })
+    })
+
+    it('handleItemClick does nothing when item has no uuid', async () => {
+        const wrapper = await mountReady()
+
+        const vm = wrapper.vm as unknown as {
+            handleItemClick: (item: { uuid?: string; entity_type?: string }) => Promise<void>
+        }
+        await vm.handleItemClick({ entity_type: 'Customer' })
+
+        expect(mockGetEntity).not.toHaveBeenCalled()
+    })
+
+    it('handleItemClick swallows errors from the API', async () => {
+        const wrapper = await mountReady()
+        mockGetEntity.mockRejectedValue(new Error('boom'))
+
+        const vm = wrapper.vm as unknown as {
+            handleItemClick: (item: { uuid?: string; entity_type?: string }) => Promise<void>
+            loading: boolean
+        }
+        await vm.handleItemClick({ uuid: 'entity-1', entity_type: 'Customer' })
+
+        expect(vm.loading).toBe(false)
+        expect(showError).toHaveBeenCalled()
+    })
+
+    it('editEntity opens the edit dialog', async () => {
+        const wrapper = await mountReady()
+
+        const vm = wrapper.vm as unknown as {
+            editEntity: () => void
+            showEditDialog: boolean
+        }
+        vm.editEntity()
+
+        expect(vm.showEditDialog).toBe(true)
+    })
+
+    it('createEntity reloads the tree path and shows a success message', async () => {
+        const wrapper = await mountReady()
+
+        const vm = wrapper.vm as unknown as {
+            createEntity: (data: {
+                entity_type: string
+                data: Record<string, unknown>
+                parent_uuid: string | null
+            }) => Promise<void>
+            showCreateDialog: boolean
+        }
+        vm.showCreateDialog = true
+        await wrapper.vm.$nextTick()
+
+        await vm.createEntity({
+            entity_type: 'Customer',
+            data: { path: '/test/entity-name', entity_key: 'entity-name', published: false },
+            parent_uuid: null,
+        })
+
+        expect(mockCreateEntity).toHaveBeenCalledWith('Customer', {
+            entity_type: 'Customer',
+            data: { path: '/test/entity-name', entity_key: 'entity-name', published: false },
+            parent_uuid: null,
+        })
+        expect(vm.showCreateDialog).toBe(false)
+        expect(showSuccess).toHaveBeenCalledWith('Entity created successfully')
+    })
+
+    it('createEntity sets field errors on validation failure and keeps dialog open', async () => {
+        const wrapper = await mountReady()
+        const { ValidationError } = await import('@/api/typed-client')
+        mockCreateEntity.mockRejectedValue(
+            new ValidationError('validation', [{ field: 'entity_key', message: 'already exists' }])
+        )
+
+        const vm = wrapper.vm as unknown as {
+            createEntity: (data: {
+                entity_type: string
+                data: Record<string, unknown>
+                parent_uuid: string | null
+            }) => Promise<void>
+            showCreateDialog: boolean
+            createDialogRef: { setFieldErrors: (errors: Record<string, string>) => void } | null
+        }
+        vm.showCreateDialog = true
+        await wrapper.vm.$nextTick()
+
+        const setFieldErrorsSpy = vi.spyOn(vm.createDialogRef!, 'setFieldErrors')
+
+        await vm.createEntity({
+            entity_type: 'Customer',
+            data: { path: '/test', entity_key: 'dup', published: false },
+            parent_uuid: null,
+        })
+
+        expect(setFieldErrorsSpy).toHaveBeenCalledWith({ entity_key: 'already exists' })
+        // Dialog stays open on validation failure.
+        expect(vm.showCreateDialog).toBe(true)
+        expect(showError).toHaveBeenCalled()
+    })
+
+    it('createEntity handles generic (non-validation) errors', async () => {
+        const wrapper = await mountReady()
+        mockCreateEntity.mockRejectedValue(new Error('server exploded'))
+
+        const vm = wrapper.vm as unknown as {
+            createEntity: (data: {
+                entity_type: string
+                data: Record<string, unknown>
+                parent_uuid: string | null
+            }) => Promise<void>
+        }
+
+        await vm.createEntity({
+            entity_type: 'Customer',
+            data: { path: '/test', entity_key: 'x', published: false },
+            parent_uuid: null,
+        })
+
+        expect(showError).toHaveBeenCalled()
+    })
+
+    it('updateEntity does nothing when no entity is selected', async () => {
+        const wrapper = await mountReady()
+
+        const vm = wrapper.vm as unknown as {
+            updateEntity: (data: {
+                data: Record<string, unknown>
+                parent_uuid: null
+            }) => Promise<void>
+        }
+        await vm.updateEntity({ data: {}, parent_uuid: null })
+
+        expect(mockUpdateEntity).not.toHaveBeenCalled()
+    })
+
+    it('updateEntity updates the selected entity and shows success on success', async () => {
+        const wrapper = await mountReady()
+
+        const vm = wrapper.vm as unknown as {
+            selectedEntity: { entity_type: string; field_data: Record<string, unknown> } | null
+            showEditDialog: boolean
+            updateEntity: (data: {
+                data: Record<string, unknown>
+                parent_uuid: string | null
+            }) => Promise<void>
+        }
+        vm.selectedEntity = {
+            entity_type: 'Customer',
+            field_data: { uuid: 'entity-1', path: '/entity-1' },
+        }
+        vm.showEditDialog = true
+        await wrapper.vm.$nextTick()
+
+        await vm.updateEntity({ data: { published: true }, parent_uuid: null })
+
+        expect(mockUpdateEntity).toHaveBeenCalledWith('Customer', 'entity-1', {
+            data: { published: true },
+            parent_uuid: null,
+        })
+        expect(vm.showEditDialog).toBe(false)
+        expect(showSuccess).toHaveBeenCalledWith('Entity updated successfully')
+    })
+
+    it('updateEntity sets field errors on validation failure', async () => {
+        const wrapper = await mountReady()
+        const { ValidationError } = await import('@/api/typed-client')
+        mockUpdateEntity.mockRejectedValue(
+            new ValidationError('validation', [{ field: 'path', message: 'invalid path' }])
+        )
+
+        const vm = wrapper.vm as unknown as {
+            selectedEntity: { entity_type: string; field_data: Record<string, unknown> } | null
+            updateEntity: (data: {
+                data: Record<string, unknown>
+                parent_uuid: string | null
+            }) => Promise<void>
+            editDialogRef: { setFieldErrors: (errors: Record<string, string>) => void } | null
+        }
+        vm.selectedEntity = {
+            entity_type: 'Customer',
+            field_data: { uuid: 'entity-1' },
+        }
+        await wrapper.vm.$nextTick()
+
+        const setFieldErrorsSpy = vi.spyOn(vm.editDialogRef!, 'setFieldErrors')
+
+        await vm.updateEntity({ data: { path: '??' }, parent_uuid: null })
+
+        expect(setFieldErrorsSpy).toHaveBeenCalledWith({ path: 'invalid path' })
+    })
+
+    it('deleteEntity does nothing when no entity is selected', async () => {
+        const wrapper = await mountReady()
+
+        const vm = wrapper.vm as unknown as { deleteEntity: () => Promise<void> }
+        await vm.deleteEntity()
+
+        expect(mockDeleteEntity).not.toHaveBeenCalled()
+    })
+
+    it('deleteEntity removes the entity, closes the dialog and shows success', async () => {
+        const wrapper = await mountReady()
+
+        const vm = wrapper.vm as unknown as {
+            selectedEntity: { entity_type: string; field_data: Record<string, unknown> } | null
+            showDeleteDialog: boolean
+            deleteEntity: () => Promise<void>
+        }
+        vm.selectedEntity = {
+            entity_type: 'Customer',
+            field_data: { uuid: 'entity-1', path: '/test/entity-1' },
+        }
+        vm.showDeleteDialog = true
+        await wrapper.vm.$nextTick()
+
+        await vm.deleteEntity()
+
+        expect(mockDeleteEntity).toHaveBeenCalledWith('Customer', 'entity-1')
+        expect(vm.selectedEntity).toBeNull()
+        expect(vm.showDeleteDialog).toBe(false)
+        expect(showSuccess).toHaveBeenCalledWith('success')
+    })
+
+    it('deleteEntity handles API errors', async () => {
+        const wrapper = await mountReady()
+        mockDeleteEntity.mockRejectedValue(new Error('cannot delete'))
+
+        const vm = wrapper.vm as unknown as {
+            selectedEntity: { entity_type: string; field_data: Record<string, unknown> } | null
+            deleteEntity: () => Promise<void>
+        }
+        vm.selectedEntity = {
+            entity_type: 'Customer',
+            field_data: { uuid: 'entity-1', path: '/entity-1' },
+        }
+        await wrapper.vm.$nextTick()
+
+        await vm.deleteEntity()
+
+        expect(showError).toHaveBeenCalled()
+    })
+
+    it('loadEntities increments the tree refresh key', async () => {
+        const wrapper = await mountReady()
+
+        const vm = wrapper.vm as unknown as {
+            treeRefreshKey: number
+            loadEntities: () => Promise<void>
+            loading: boolean
+        }
+        const before = vm.treeRefreshKey
+        await vm.loadEntities()
+
+        expect(vm.treeRefreshKey).toBe(before + 1)
+        expect(vm.loading).toBe(false)
+    })
+
+    it('updateExpandedItems and handleTreeSelection update local state', async () => {
+        const wrapper = await mountReady()
+
+        const vm = wrapper.vm as unknown as {
+            updateExpandedItems: (items: string[]) => void
+            handleTreeSelection: (items: string[]) => void
+            expandedItems: string[]
+            selectedItems: string[]
+        }
+        vm.updateExpandedItems(['a', 'b'])
+        vm.handleTreeSelection(['c'])
+
+        expect(vm.expandedItems).toEqual(['a', 'b'])
+        expect(vm.selectedItems).toEqual(['c'])
+    })
+
+    it('opens the create dialog on mount when the route has ?create=true', async () => {
+        await router.push('/entities?create=true')
+        await router.isReady()
+
+        const wrapper = mount(EntitiesPage, { global: { plugins: [router] } })
+        await vi.waitUntil(() => mockGetEntityDefinitions.mock.calls.length > 0, { timeout: 1000 })
+        await wrapper.vm.$nextTick()
+        await new Promise(resolve => setTimeout(resolve, 10))
+
+        const vm = wrapper.vm as unknown as { showCreateDialog: boolean }
+        expect(vm.showCreateDialog).toBe(true)
+
+        await router.push('/entities')
     })
 })

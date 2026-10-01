@@ -52,3 +52,4 @@ validator = { version = "0.21.0", features = ["derive"] }
 
 # TypeScript bindings
 ts-rs = { version = "10", features = ["serde-compat"] }
+serde_path_to_error = "0.1.20"

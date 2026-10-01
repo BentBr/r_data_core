@@ -1,0 +1,277 @@
+name: MCP Release
+
+# Tagged separately from the core release cycle: the MCP server is installed by
+# people who may never deploy RDataCore themselves, and tying its version to
+# the server's would force them to track releases that change nothing for them.
+on:
+    push:
+        tags:
+            - 'mcp-v*'
+    # So a release can be rehearsed without pushing a tag.
+    workflow_dispatch:
+        inputs:
+            tag:
+                description: 'Tag to build and attach assets to (e.g. mcp-v0.1.0)'
+                required: true
+
+permissions:
+    contents: write
+
+env:
+    # The MCP crate compiles without a database, but the workspace's SQLx
+    # queries are checked at build time and would otherwise need one.
+    SQLX_OFFLINE: 'true'
+    # Release builds never reuse incremental artefacts, and leaving this on
+    # grows the cache by tens of gigabytes for no benefit.
+    CARGO_INCREMENTAL: '0'
+
+jobs:
+    # A dispatched run can name any ref, and this workflow holds
+    # `contents: write`. Only someone with write access can dispatch it, so
+    # this is a guard rail rather than a boundary — but a typo that checks out
+    # an unexpected ref and publishes binaries from it is worth making
+    # impossible rather than unlikely.
+    guard:
+        name: Validate the tag
+        runs-on: ubuntu-latest
+        steps:
+            -   name: Check the tag looks like an MCP release tag
+                env:
+                    REQUESTED: ${{ inputs.tag || github.ref_name }}
+                run: |
+                    set -euo pipefail
+                    if ! printf '%s' "$REQUESTED" | grep -Eq '^mcp-v[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$'; then
+                        echo "Refusing to build '$REQUESTED': expected mcp-vX.Y.Z" >&2
+                        exit 1
+                    fi
+
+    build:
+        name: ${{ matrix.target }}
+        needs: guard
+        runs-on: ${{ matrix.runner }}
+        strategy:
+            # One target failing should not hide whether the others work.
+            fail-fast: false
+            matrix:
+                include:
+                    -   target: x86_64-unknown-linux-gnu
+                        runner: ubuntu-latest
+                    # Native rather than cross-compiled: a cross build would need
+                    # an aarch64 linker, and any *-sys crate in the graph would
+                    # otherwise pick up the host's C libraries. GitHub's arm
+                    # runners are free for public repositories, so the native
+                    # route costs nothing it saves.
+                    -   target: aarch64-unknown-linux-gnu
+                        runner: ubuntu-24.04-arm
+                    -   target: x86_64-apple-darwin
+                        runner: macos-latest
+                    -   target: aarch64-apple-darwin
+                        runner: macos-latest
+                    -   target: x86_64-pc-windows-msvc
+                        runner: windows-latest
+
+        steps:
+            -   name: Checkout
+                uses: actions/checkout@v7
+                with:
+                    ref: ${{ inputs.tag || github.ref }}
+
+            -   name: Install Rust (nightly)
+                uses: dtolnay/rust-toolchain@master
+                with:
+                    toolchain: nightly
+                    targets: ${{ matrix.target }}
+
+            -   name: Show rustc version
+                run: rustc -Vv
+
+            -   name: Cache cargo registry + build
+                uses: swatinem/rust-cache@v2
+                with:
+                    workspaces: .
+                    key: mcp-release-${{ matrix.target }}
+
+            -   name: Build
+                run: cargo build --release -p r_data_core_mcp --target ${{ matrix.target }}
+
+            # Renamed per target so all four can live in one release, and
+            # checksummed on the runner that built them — a checksum generated
+            # anywhere else would only attest to the upload, not the build.
+            -   name: Stage and checksum (unix)
+                if: runner.os != 'Windows'
+                shell: bash
+                run: |
+                    set -euo pipefail
+                    mkdir -p dist
+                    for bin in r-data-core-mcp r-data-core-mcp-serve; do
+                        cp "target/${{ matrix.target }}/release/${bin}" \
+                           "dist/${bin}-${{ matrix.target }}"
+                    done
+                    cd dist
+                    # Named explicitly rather than globbed: `./*` would also
+                    # match the checksum file being written, and whether it
+                    # does depends on expansion order.
+                    shasum -a 256 r-data-core-mcp-* > "SHA256SUMS-${{ matrix.target }}"
+                    cat "SHA256SUMS-${{ matrix.target }}"
+
+            -   name: Stage and checksum (windows)
+                if: runner.os == 'Windows'
+                shell: bash
+                run: |
+                    set -euo pipefail
+                    mkdir -p dist
+                    for bin in r-data-core-mcp r-data-core-mcp-serve; do
+                        cp "target/${{ matrix.target }}/release/${bin}.exe" \
+                           "dist/${bin}-${{ matrix.target }}.exe"
+                    done
+                    cd dist
+                    sha256sum r-data-core-mcp-* > "SHA256SUMS-${{ matrix.target }}"
+                    cat "SHA256SUMS-${{ matrix.target }}"
+
+            -   name: Upload artefacts
+                uses: actions/upload-artifact@v4
+                with:
+                    name: mcp-${{ matrix.target }}
+                    path: dist/
+                    if-no-files-found: error
+
+    publish:
+        name: Publish release
+        needs: build
+        runs-on: ubuntu-latest
+        steps:
+            # Needed for .github/scripts/publish-to-pages.sh; the build jobs
+            # check out for their own reasons, this job otherwise would not.
+            -   name: Checkout
+                uses: actions/checkout@v7
+                with:
+                    ref: ${{ inputs.tag || github.ref }}
+
+            -   name: Download every target's artefacts
+                uses: actions/download-artifact@v4
+                with:
+                    path: staged
+
+            # The per-target checksum files are concatenated rather than
+            # regenerated: regenerating here would checksum whatever arrived,
+            # which is precisely what the file is supposed to let someone
+            # verify independently.
+            -   name: Assemble release assets
+                shell: bash
+                run: |
+                    set -euo pipefail
+                    mkdir -p dist
+                    find staged -type f ! -name 'SHA256SUMS-*' -exec cp {} dist/ \;
+                    find staged -type f -name 'SHA256SUMS-*' -exec cat {} + \
+                        | sed 's#\./##' > dist/SHA256SUMS
+                    echo "── assets ──"
+                    ls -l dist
+                    echo "── SHA256SUMS ──"
+                    cat dist/SHA256SUMS
+
+            # rdatacore.eu links download URLs and cannot resolve "the newest
+            # mcp-v* release" itself: GitHub's `releases/latest` is the newest
+            # release of *any* series in this repository, which is usually a
+            # core release carrying none of these assets. A manifest at a fixed
+            # address means the website never has to be redeployed for a
+            # release.
+            -   name: Build the download manifest
+                env:
+                    TAG: ${{ inputs.tag || github.ref_name }}
+                shell: bash
+                run: |
+                    set -euo pipefail
+                    base="https://github.com/${GITHUB_REPOSITORY}/releases/download/${TAG}"
+                    {
+                        echo '{'
+                        printf '  "version": "%s",\n' "${TAG#mcp-v}"
+                        printf '  "tag": "%s",\n' "$TAG"
+                        printf '  "published_at": "%s",\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+                        printf '  "npm": "@rdatacore/mcp-server",\n'
+                        echo '  "downloads": ['
+                        first=1
+                        while read -r sum name; do
+                            [ -n "${name:-}" ] || continue
+                            case "$name" in SHA256SUMS*|mcp-latest.json) continue ;; esac
+                            [ $first -eq 1 ] || echo ','
+                            first=0
+                            printf '    {"asset": "%s", "sha256": "%s", "url": "%s/%s"}' \
+                                   "$name" "$sum" "$base" "$name"
+                        done < dist/SHA256SUMS
+                        echo
+                        echo '  ]'
+                        echo '}'
+                    } > dist/mcp-latest.json
+                    # Fail the release rather than publish a manifest no
+                    # consumer can parse.
+                    python3 -m json.tool dist/mcp-latest.json > /dev/null
+                    cat dist/mcp-latest.json
+
+            -   name: Attach to the release
+                uses: softprops/action-gh-release@v2
+                with:
+                    tag_name: ${{ inputs.tag || github.ref_name }}
+                    files: dist/*
+                    fail_on_unmatched_files: true
+
+            # A release asset URL contains the tag, so it is not a fixed
+            # address. This one is:
+            #   https://bentbr.github.io/r_data_core/mcp-latest.json
+            # Uses the same script as the coverage badges rather than a second
+            # mechanism for writing the same branch.
+            -   name: Publish the manifest to gh-pages
+                env:
+                    GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+                    REPO: ${{ github.repository }}
+                    TAG: ${{ inputs.tag || github.ref_name }}
+                run: |
+                    ./.github/scripts/publish-to-pages.sh \
+                        mcp-latest.json dist/mcp-latest.json "MCP manifest" \
+                        "chore(mcp): publish the ${TAG} download manifest"
+
+    # Gated on `publish`, because postinstall downloads the binaries from the
+    # GitHub release: npm must never carry a version whose assets do not yet
+    # exist, or the first `npx` of it fails with "no published mcp-v* release".
+    npm:
+        name: Publish to npm
+        needs: publish
+        runs-on: ubuntu-latest
+        permissions:
+            contents: read
+            # Trusted publishing: npm mints a short-lived credential from this
+            # token, so no long-lived secret sits in the repository and the
+            # published version carries a provenance attestation. Register the
+            # publisher on the package's npm settings page first — until then
+            # this job cannot authenticate.
+            id-token: write
+        steps:
+            -   name: Checkout
+                uses: actions/checkout@v7
+                with:
+                    ref: ${{ inputs.tag || github.ref }}
+
+            -   name: Setup Node.js
+                uses: actions/setup-node@v7
+                with:
+                    node-version: '22'
+                    registry-url: 'https://registry.npmjs.org'
+
+            # The tag and the manifest are edited by different hands at
+            # different times. Publishing 0.1.0 under the tag mcp-v0.2.0 would
+            # ship an installer that downloads assets it does not name.
+            -   name: Refuse a version that disagrees with the tag
+                env:
+                    TAG: ${{ inputs.tag || github.ref_name }}
+                working-directory: mcp-npm-package
+                run: |
+                    set -euo pipefail
+                    manifest=$(node -p "require('./package.json').version")
+                    if [ "$manifest" != "${TAG#mcp-v}" ]; then
+                        echo "package.json is $manifest but the tag says ${TAG#mcp-v}" >&2
+                        exit 1
+                    fi
+                    echo "version $manifest matches $TAG"
+
+            -   name: Publish
+                working-directory: mcp-npm-package
+                run: npm publish

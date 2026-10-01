@@ -48,6 +48,11 @@ export const ValidationViolationSchema = z.object({
     field: z.string(),
     message: z.string(),
     code: z.string().optional(),
+    // Precise location and enumerable alternatives, supplied where the
+    // producer can manage them (the DSL validator does). Optional so a client
+    // keeps parsing responses from a server that predates them.
+    json_path: z.string().nullish(),
+    legal_values: z.array(z.string()).optional(),
 })
 
 export const ValidationErrorResponseSchema = z.object({

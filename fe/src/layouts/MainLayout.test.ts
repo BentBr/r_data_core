@@ -1,36 +1,72 @@
-import { describe, it, expect, beforeEach } from 'vitest'
+import { describe, it, expect, beforeEach, vi, type Mock } from 'vitest'
 import { mount } from '@vue/test-utils'
-import { createPinia, setActivePinia } from 'pinia'
-import { createRouter, createMemoryHistory } from 'vue-router'
-import MobileWarningBanner from '@/components/common/MobileWarningBanner.vue'
-import { createVuetify } from 'vuetify'
-import * as components from 'vuetify/components'
-import * as directives from 'vuetify/directives'
+import { createRouter, createWebHistory } from 'vue-router'
+import MainLayout from './MainLayout.vue'
 
-// Create Vuetify instance for testing
-const vuetify = createVuetify({
-    components,
-    directives,
-})
+const mockCanAccessRoute: Mock = vi.fn(() => true)
+let mockUser: { username: string } | null = { username: 'alice' }
 
-// Create a simple router for testing
-const createTestRouter = () => {
-    return createRouter({
-        history: createMemoryHistory(),
-        routes: [
-            {
-                path: '/dashboard',
-                component: { template: '<div>Dashboard</div>' },
-            },
-        ],
-    })
+vi.mock('@/stores/auth', () => ({
+    useAuthStore: () => ({
+        get user() {
+            return mockUser
+        },
+        canAccessRoute: mockCanAccessRoute,
+    }),
+}))
+
+vi.mock('@/stores/versions', () => ({
+    useVersionStore: () => ({
+        feVersion: '1.2.3',
+        coreVersion: '4.5.6',
+        workerVersion: { version: '7.8.9' },
+        maintenanceVersion: null,
+    }),
+}))
+
+const stubs = {
+    LanguageSwitch: { template: '<div data-testid="language-switch-stub" />' },
+    UserProfileMenu: { template: '<div data-testid="user-profile-menu-stub" />' },
+    DefaultPasswordBanner: { template: '<div />' },
+    LicenseBanner: { template: '<div />' },
+    MobileWarningBanner: { template: '<div />' },
 }
 
-describe('MainLayout - Banner Integration', () => {
+const router = createRouter({
+    history: createWebHistory(),
+    routes: [
+        { path: '/dashboard', component: { template: '<div>Dashboard</div>' } },
+        { path: '/entity-definitions', component: { template: '<div>Entity Defs</div>' } },
+        { path: '/entities', component: { template: '<div>Entities</div>' } },
+        { path: '/api-keys', component: { template: '<div>API Keys</div>' } },
+        { path: '/workflows', component: { template: '<div>Workflows</div>' } },
+        { path: '/permissions', component: { template: '<div>Permissions</div>' } },
+        { path: '/system', component: { template: '<div>System</div>' } },
+    ],
+})
+
+// VNavigationDrawer/VAppBar need an injected Vuetify layout, which only a
+// `v-app` ancestor provides — mount through a thin wrapper that supplies one.
+const AppWrapper = {
+    components: { MainLayout },
+    template: '<v-app><MainLayout /></v-app>',
+}
+
+const mountLayout = async (path = '/dashboard') => {
+    await router.push(path)
+    await router.isReady()
+    const wrapper = mount(AppWrapper, {
+        global: { plugins: [router], stubs },
+    })
+    await wrapper.vm.$nextTick()
+    return wrapper.findComponent(MainLayout)
+}
+
+describe('MainLayout', () => {
     beforeEach(() => {
-        setActivePinia(createPinia())
-        localStorage.clear()
-        // Reset window.innerWidth
+        vi.clearAllMocks()
+        mockUser = { username: 'alice' }
+        mockCanAccessRoute.mockReturnValue(true)
         Object.defineProperty(window, 'innerWidth', {
             writable: true,
             configurable: true,
@@ -38,105 +74,118 @@ describe('MainLayout - Banner Integration', () => {
         })
     })
 
-    it('should use separate localStorage keys for each banner', () => {
-        // Set dismissed state for mobile banner
-        localStorage.setItem('mobile_warning_banner_dismissed', 'true')
+    it('renders a navigation item for every route the user can access', async () => {
+        const wrapper = await mountLayout()
 
-        // Set dismissed state for password banner
-        localStorage.setItem('default_password_banner_dismissed', 'true')
-
-        // Verify they are separate
-        expect(localStorage.getItem('mobile_warning_banner_dismissed')).toBe('true')
-        expect(localStorage.getItem('default_password_banner_dismissed')).toBe('true')
-
-        // Clear one should not affect the other
-        localStorage.removeItem('mobile_warning_banner_dismissed')
-        expect(localStorage.getItem('mobile_warning_banner_dismissed')).toBeNull()
-        expect(localStorage.getItem('default_password_banner_dismissed')).toBe('true')
+        expect(wrapper.find('[data-testid="nav-item-/dashboard"]').exists()).toBe(true)
+        expect(wrapper.find('[data-testid="nav-item-/system"]').exists()).toBe(true)
+        expect(mockCanAccessRoute).toHaveBeenCalledWith('/dashboard')
     })
 
-    it('should allow both banners to be dismissed independently via X icon', async () => {
-        const router = createTestRouter()
+    it('filters out navigation items the user cannot access', async () => {
+        mockCanAccessRoute.mockImplementation((path: string) => path === '/dashboard')
+
+        const wrapper = await mountLayout()
+
+        expect(wrapper.find('[data-testid="nav-item-/dashboard"]').exists()).toBe(true)
+        expect(wrapper.find('[data-testid="nav-item-/system"]').exists()).toBe(false)
+        expect(wrapper.find('[data-testid="nav-item-/permissions"]').exists()).toBe(false)
+    })
+
+    it('shows the user profile menu when a user is signed in', async () => {
+        mockUser = { username: 'alice' }
+        const wrapper = await mountLayout()
+
+        expect(wrapper.find('[data-testid="user-profile-menu-stub"]').exists()).toBe(true)
+    })
+
+    it('hides the user profile menu when no user is signed in', async () => {
+        mockUser = null
+        const wrapper = await mountLayout()
+
+        expect(wrapper.find('[data-testid="user-profile-menu-stub"]').exists()).toBe(false)
+    })
+
+    it('shows the matching navigation title as the page title', async () => {
+        const wrapper = await mountLayout('/system')
+
+        expect(wrapper.text()).toContain('system')
+    })
+
+    it('falls back to the default title when the route has no matching navigation item', async () => {
+        const wrapper = await mountLayout('/unknown-route-outside-nav')
+
+        expect((wrapper.vm as any).currentPageTitle).toBe('R Data Core')
         await router.push('/dashboard')
-
-        Object.defineProperty(window, 'innerWidth', {
-            writable: true,
-            configurable: true,
-            value: 800, // Mobile size
-        })
-
-        const pinia = createPinia()
-
-        // Mock the login response to set usingDefaultPassword
-        // We'll simulate this by directly accessing the store's internal state
-        // Since usingDefaultPassword is not exported, we'll use a workaround
-        // by setting localStorage and checking the computed property works
-
-        // First, ensure mobile banner is not dismissed
-        localStorage.removeItem('mobile_warning_banner_dismissed')
-
-        // Mount both banner components separately to test their interaction
-        const mobileWrapper = mount(MobileWarningBanner, {
-            global: {
-                plugins: [vuetify, pinia],
-            },
-        })
-
-        await mobileWrapper.vm.$nextTick()
-        await new Promise(resolve => setTimeout(resolve, 100))
-
-        // Mobile banner should be visible
-        const mobileAlert = mobileWrapper.findComponent({ name: 'VAlert' })
-        expect(mobileAlert.exists()).toBe(true)
-
-        // Dismiss mobile banner via X icon
-        await mobileAlert.vm.$emit('click:close')
-        await mobileWrapper.vm.$nextTick()
-        await new Promise(resolve => setTimeout(resolve, 50))
-
-        // Mobile banner should be gone
-        const mobileAlertAfter = mobileWrapper.findComponent({ name: 'VAlert' })
-        expect(mobileAlertAfter.exists()).toBe(false)
-
-        // Check localStorage
-        expect(localStorage.getItem('mobile_warning_banner_dismissed')).toBe('true')
-        // Password banner localStorage should not be affected
-        expect(localStorage.getItem('default_password_banner_dismissed')).not.toBe('true')
     })
 
-    it('should allow both banners to be dismissed independently via dismiss button', async () => {
+    it('renders the version numbers from the version store', async () => {
+        const wrapper = await mountLayout()
+
+        expect(wrapper.text()).toContain('1.2.3')
+        expect(wrapper.text()).toContain('4.5.6')
+        expect(wrapper.text()).toContain('7.8.9')
+    })
+
+    it('toggles the navigation drawer open state', async () => {
+        const wrapper = await mountLayout()
+        const initial = (wrapper.vm as any).drawer
+
+        ;(wrapper.vm as any).toggleNav()
+
+        expect((wrapper.vm as any).drawer).toBe(!initial)
+    })
+
+    it('opens the drawer by default on desktop widths', async () => {
         Object.defineProperty(window, 'innerWidth', {
             writable: true,
             configurable: true,
-            value: 800, // Mobile size
+            value: 1400,
         })
+        const wrapper = await mountLayout()
 
-        localStorage.clear()
+        expect((wrapper.vm as any).drawer).toBe(true)
+        expect((wrapper.vm as any).isMobile).toBe(false)
+    })
 
-        const pinia = createPinia()
-        const mobileWrapper = mount(MobileWarningBanner, {
-            global: {
-                plugins: [vuetify, pinia],
-            },
+    it('closes the drawer by default on mobile widths', async () => {
+        Object.defineProperty(window, 'innerWidth', {
+            writable: true,
+            configurable: true,
+            value: 800,
         })
+        const wrapper = await mountLayout()
 
-        await mobileWrapper.vm.$nextTick()
-        await new Promise(resolve => setTimeout(resolve, 100))
+        expect((wrapper.vm as any).drawer).toBe(false)
+        expect((wrapper.vm as any).isMobile).toBe(true)
+    })
 
-        // Test dismiss functionality by calling handleDismiss directly
-        const component = mobileWrapper.vm as any
-        expect(component.handleDismiss).toBeDefined()
+    it('reacts to window resize events while mounted', async () => {
+        const wrapper = await mountLayout()
+        expect((wrapper.vm as any).isMobile).toBe(false)
 
-        // Call handleDismiss to simulate button click
-        component.handleDismiss()
-        await mobileWrapper.vm.$nextTick()
-        await new Promise(resolve => setTimeout(resolve, 50))
+        Object.defineProperty(window, 'innerWidth', {
+            writable: true,
+            configurable: true,
+            value: 500,
+        })
+        window.dispatchEvent(new Event('resize'))
+        await wrapper.vm.$nextTick()
 
-        // Banner should be dismissed
-        const alertAfter = mobileWrapper.findComponent({ name: 'VAlert' })
-        expect(alertAfter.exists()).toBe(false)
+        expect((wrapper.vm as any).isMobile).toBe(true)
+        expect((wrapper.vm as any).drawer).toBe(false)
+    })
 
-        // Check localStorage
-        expect(localStorage.getItem('mobile_warning_banner_dismissed')).toBe('true')
+    it('removes the resize listener on unmount', async () => {
+        await router.push('/dashboard')
+        await router.isReady()
+        const removeSpy = vi.spyOn(window, 'removeEventListener')
+        const root = mount(AppWrapper, { global: { plugins: [router], stubs } })
+        await root.vm.$nextTick()
+
+        root.unmount()
+
+        expect(removeSpy).toHaveBeenCalledWith('resize', expect.any(Function))
+        removeSpy.mockRestore()
     })
 })

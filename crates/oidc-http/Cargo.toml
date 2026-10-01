@@ -1,0 +1,25 @@
+[package]
+name = "r_data_core_oidc_http"
+version = "0.4.10"
+edition = "2021"
+description = "Fetching an OIDC provider's discovery document and signing keys over HTTP"
+authors = ["Bent Brüggemann <mail@bent-brueggemann.de>"]
+license = "Business"
+publish = false  # proprietary — never published to a registry
+
+[dependencies]
+# Only core. This crate exists so that talking to an identity provider over
+# HTTP does not force a consumer to depend on the service or persistence
+# layers — the MCP server in particular is an HTTP client of RDataCore and has
+# no business linking its database code.
+r_data_core_core = { path = "../core" }
+
+async-trait = "0.1"
+reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls"] }
+serde = { version = "1.0", features = ["derive"] }
+tokio = { version = "1.35", features = ["sync"] }
+
+[dev-dependencies]
+wiremock = "0.6"
+tokio = { version = "1.35", features = ["full", "macros", "rt-multi-thread"] }
+serde_json = "1.0"

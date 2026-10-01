@@ -98,6 +98,7 @@ mod tests {
             failed_login_attempts: 0,
             locked_until: None,
             super_admin: true,
+            is_sso_provisioned: false,
             first_name: Some("Token".to_string()),
             last_name: Some("Test".to_string()),
             is_active: true,

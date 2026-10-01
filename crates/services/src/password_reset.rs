@@ -65,6 +65,16 @@ impl PasswordResetService {
             return Ok(None);
         };
 
+        // An SSO-provisioned account has no password to recover. Issuing a
+        // reset token for one would turn forgot-password into a way to *set*
+        // a password on it, making single sign-on a local-account factory.
+        // Silent, like the unknown-address case: answering differently here
+        // would tell a stranger which accounts are federated.
+        if user.is_sso_provisioned {
+            log::debug!("Ignoring a password-reset request for an SSO-provisioned account");
+            return Ok(None);
+        }
+
         // Throttle: if the most recent token was created within `throttle_seconds`, bail out.
         if let Some(latest) = self.repo.find_latest_for_user(user.uuid).await? {
             let age = OffsetDateTime::now_utc() - latest.created_at;
@@ -185,6 +195,15 @@ impl PasswordResetService {
             .await?
             .ok_or_else(|| Error::Validation("User not found".to_string()))?;
 
+        // The same guard as `request_reset`, and not redundant with it: a token
+        // issued before an account was federated would otherwise still work.
+        if user.is_sso_provisioned {
+            return Err(Error::Validation(
+                "This account signs in through single sign-on and has no password to reset"
+                    .to_string(),
+            ));
+        }
+
         user.password_hash = new_hash;
 
         self.user_repo.update_admin_user(&user).await?;
@@ -208,3 +227,6 @@ impl PasswordResetService {
         Ok(user.uuid)
     }
 }
+
+#[cfg(test)]
+mod password_reset_tests;

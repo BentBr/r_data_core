@@ -50,6 +50,35 @@
                                 {{ t('auth.mobile_warning') }}
                             </v-alert>
 
+                            <!-- Single sign-on, when the server reports it configured -->
+                            <template v-if="capabilitiesStore.oidcEnabled">
+                                <v-btn
+                                    block
+                                    size="large"
+                                    variant="outlined"
+                                    color="primary"
+                                    class="mb-4"
+                                    data-testid="sso-signin"
+                                    @click="startSso"
+                                >
+                                    <template #prepend>
+                                        <SmartIcon
+                                            icon="shield-check"
+                                            size="sm"
+                                        />
+                                    </template>
+                                    {{ t('auth.sso.sign_in') }}
+                                </v-btn>
+
+                                <div class="d-flex align-center mb-4">
+                                    <v-divider />
+                                    <span class="mx-3 text-caption text-medium-emphasis">
+                                        {{ t('auth.sso.or') }}
+                                    </span>
+                                    <v-divider />
+                                </div>
+                            </template>
+
                             <v-form
                                 ref="loginForm"
                                 v-model="formValid"
@@ -354,6 +383,23 @@
         }
     }
 
+    /**
+     * Hand the browser to the start endpoint.
+     *
+     * A full navigation, not an XHR: `start` answers with a 302 to the
+     * identity provider, and the API client would follow that in the
+     * background and fail on CORS instead of taking the person to their
+     * provider.
+     */
+    const startSso = () => {
+        const redirectParam = router.currentRoute.value.query.redirect
+        const returnTo = Array.isArray(redirectParam) ? redirectParam[0] : redirectParam
+        const url = returnTo
+            ? `/admin/api/v1/auth/oidc/start?return_to=${encodeURIComponent(returnTo)}`
+            : '/admin/api/v1/auth/oidc/start'
+        window.location.assign(url)
+    }
+
     const clearFieldError = (field: 'username' | 'password') => {
         fieldErrors[field] = []
         authStore.clearError()
@@ -406,6 +452,19 @@
         // Fetch capabilities (public endpoint, no auth needed) to know if password reset is available
         if (!capabilitiesStore.isLoaded) {
             void capabilitiesStore.fetchCapabilities()
+        }
+
+        // A failed single-sign-on attempt is reported by the auth store, which
+        // reads the callback's fragment during startup — before the router
+        // guard runs, so a callback to a protected route is not bounced here
+        // with its tokens discarded.
+        if (authStore.ssoError) {
+            snackbar.message = t(
+                `auth.sso.errors.${authStore.ssoError}`,
+                t('auth.sso.errors.generic')
+            )
+            snackbar.color = 'error'
+            snackbar.visible = true
         }
 
         // If user is already authenticated, redirect to appropriate page

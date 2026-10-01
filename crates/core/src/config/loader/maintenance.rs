@@ -1,6 +1,5 @@
 #![deny(clippy::all, clippy::pedantic, clippy::nursery, warnings)]
 
-use dotenvy::dotenv;
 use std::env;
 
 use crate::config::{ApiConfig, DatabaseConfig, MaintenanceConfig};
@@ -16,7 +15,7 @@ use super::shared::{
 /// Returns an error if required environment variables are missing or invalid
 pub fn load_maintenance_config() -> Result<MaintenanceConfig> {
     // Ensure .env is loaded for binaries that only use MaintenanceConfig
-    dotenv().ok();
+    super::load_dotenv();
     let outbox_enabled = env::var("OUTBOX_ENABLED")
         .unwrap_or_else(|_| "false".to_string())
         .parse()
