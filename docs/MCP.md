@@ -33,6 +33,55 @@ authenticate every caller as the same account and collapse the whole model.
 
 ---
 
+## Installing
+
+Prebuilt binaries are published for five platforms:
+
+| Platform | Target |
+|---|---|
+| Linux x86-64 | `x86_64-unknown-linux-gnu` |
+| Linux arm64 | `aarch64-unknown-linux-gnu` |
+| macOS Intel | `x86_64-apple-darwin` |
+| macOS Apple silicon | `aarch64-apple-darwin` |
+| Windows x86-64 | `x86_64-pc-windows-msvc` |
+
+Anything else builds from source:
+
+```bash
+cargo build --release -p r_data_core_mcp
+```
+
+The installer refuses an unsupported platform rather than downloading a
+binary that cannot run, and names the triple it looked for.
+
+### Linking a download
+
+Every release publishes a manifest describing itself, at a fixed address:
+
+```
+https://bentbr.github.io/r_data_core/mcp-latest.json
+```
+
+```json
+{
+  "version": "0.1.0",
+  "tag": "mcp-v0.1.0",
+  "published_at": "...",
+  "npm": "@rdatacore/mcp-server",
+  "downloads": [
+    { "asset": "...", "sha256": "...", "url": "..." }
+  ]
+}
+```
+
+Link that from a download page rather than a release URL. Release URLs carry
+the tag, so they go stale at the next release — and `releases/latest` in this
+repository resolves to the *core* release, which carries none of these
+assets. The same manifest is attached to each release as `mcp-latest.json`,
+so a given version's asset list stays verifiable after it is superseded.
+
+---
+
 ## Local (stdio)
 
 1. Create an API key in RDataCore: **Settings → API keys**.
@@ -125,6 +174,88 @@ Terminate TLS at your proxy and forward to `RDC_MCP_BIND`. Endpoints:
 ### 5. Point the assistant at the URL
 
 `https://mcp.example.com/mcp`. It should discover everything else.
+
+---
+
+## Running the HTTP transport locally
+
+Set `COMPOSE_PROFILES=mcp` in `.env` and bring the stack up:
+
+```bash
+docker compose up -d
+```
+
+That adds Keycloak, the two seed jobs and the MCP server. The server is
+published on `http://localhost:8931` — loopback rather than a
+`.docker` hostname behind the proxy, because the resource URL must be https
+or loopback and the server refuses to start otherwise. Bearer tokens must not
+cross plaintext; localhost is the one exemption, and it is the right one for
+a developer machine.
+
+Check it answers:
+
+```bash
+curl -fsS http://localhost:8931/.well-known/oauth-protected-resource
+```
+
+You should see `"resource": "http://localhost:8931"` and an
+`authorization_servers` entry naming the local realm. An unauthenticated call
+to the endpoint itself should be refused with a challenge, not a 500:
+
+```bash
+curl -sS -i -X POST http://localhost:8931/mcp \
+  -H 'content-type: application/json' \
+  -d '{"jsonrpc":"2.0","id":1,"method":"tools/list"}' | head -20
+```
+
+The realm's `rdc-mcp` client mints `http://localhost:8931` as the audience,
+matching the resource URL. If you change the published port, change both or
+every token is refused with a 401 that says nothing useful.
+
+This is the hosted transport only. A local MCP client uses stdio, runs the
+binary itself, and needs none of this.
+
+---
+
+## What the assistant gets
+
+### Tools
+
+Eighteen, filtered by what the caller may actually do. There is no delete
+tool — the capability does not exist in this binary, so no amount of
+prompting reaches it.
+
+| Group | Tools |
+|---|---|
+| Instance | `system_info` |
+| Discover | `list_workflows`, `get_workflow`, `list_entity_definitions`, `get_entity_definition`, `query_entities`, `dsl_options` |
+| Author | `validate_dsl`, `create_workflow`, `update_workflow` |
+| Versions | `list_workflow_versions`, `get_workflow_version`, `restore_workflow_version` |
+| Execute | `test_workflow`, `run_workflow`, `list_runs`, `get_run_logs` |
+| Schedule | `preview_cron` |
+
+`system_info` reports which instance the server is pointed at, its version,
+its enabled features, and what the current caller may do. It is the one tool
+offered to every caller regardless of permissions: an assistant that cannot
+tell which deployment it is connected to will write to the wrong one quite
+confidently. The deployed component versions inside its response need
+`system:read` and are omitted without it.
+
+### Resources
+
+| URI | Contents |
+|---|---|
+| `rdatacore://dsl/reference` | Every DSL type this instance accepts, with fields, enumerated values and worked examples |
+| `rdatacore://dsl/validation-rules` | Ordering and typing constraints the catalogue cannot express |
+
+The reference is generated per-instance from the live `/dsl/*/options`
+catalogue, **not** from `docs/DSL.md`. That distinction is the point: the
+markdown documents roughly a third of the language, so an assistant taught
+from it would believe most of the DSL does not exist. The catalogue is built
+from the same structs the executor consumes and therefore cannot drift.
+
+Because it is generated on read, it costs three requests to the instance. A
+client typically fetches it once per session.
 
 ---
 
