@@ -56,6 +56,13 @@ jobs:
                 include:
                     -   target: x86_64-unknown-linux-gnu
                         runner: ubuntu-latest
+                    # Native rather than cross-compiled: a cross build would need
+                    # an aarch64 linker, and any *-sys crate in the graph would
+                    # otherwise pick up the host's C libraries. GitHub's arm
+                    # runners are free for public repositories, so the native
+                    # route costs nothing it saves.
+                    -   target: aarch64-unknown-linux-gnu
+                        runner: ubuntu-24.04-arm
                     -   target: x86_64-apple-darwin
                         runner: macos-latest
                     -   target: aarch64-apple-darwin
@@ -133,6 +140,13 @@ jobs:
         needs: build
         runs-on: ubuntu-latest
         steps:
+            # Needed for .github/scripts/publish-to-pages.sh; the build jobs
+            # check out for their own reasons, this job otherwise would not.
+            -   name: Checkout
+                uses: actions/checkout@v7
+                with:
+                    ref: ${{ inputs.tag || github.ref }}
+
             -   name: Download every target's artefacts
                 uses: actions/download-artifact@v4
                 with:
@@ -155,9 +169,62 @@ jobs:
                     echo "── SHA256SUMS ──"
                     cat dist/SHA256SUMS
 
+            # rdatacore.eu links download URLs and cannot resolve "the newest
+            # mcp-v* release" itself: GitHub's `releases/latest` is the newest
+            # release of *any* series in this repository, which is usually a
+            # core release carrying none of these assets. A manifest at a fixed
+            # address means the website never has to be redeployed for a
+            # release.
+            -   name: Build the download manifest
+                env:
+                    TAG: ${{ inputs.tag || github.ref_name }}
+                shell: bash
+                run: |
+                    set -euo pipefail
+                    base="https://github.com/${GITHUB_REPOSITORY}/releases/download/${TAG}"
+                    {
+                        echo '{'
+                        printf '  "version": "%s",\n' "${TAG#mcp-v}"
+                        printf '  "tag": "%s",\n' "$TAG"
+                        printf '  "published_at": "%s",\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+                        printf '  "npm": "@rdatacore/mcp-server",\n'
+                        echo '  "downloads": ['
+                        first=1
+                        while read -r sum name; do
+                            [ -n "${name:-}" ] || continue
+                            case "$name" in SHA256SUMS*|mcp-latest.json) continue ;; esac
+                            [ $first -eq 1 ] || echo ','
+                            first=0
+                            printf '    {"asset": "%s", "sha256": "%s", "url": "%s/%s"}' \
+                                   "$name" "$sum" "$base" "$name"
+                        done < dist/SHA256SUMS
+                        echo
+                        echo '  ]'
+                        echo '}'
+                    } > dist/mcp-latest.json
+                    # Fail the release rather than publish a manifest no
+                    # consumer can parse.
+                    python3 -m json.tool dist/mcp-latest.json > /dev/null
+                    cat dist/mcp-latest.json
+
             -   name: Attach to the release
                 uses: softprops/action-gh-release@v2
                 with:
                     tag_name: ${{ inputs.tag || github.ref_name }}
                     files: dist/*
                     fail_on_unmatched_files: true
+
+            # A release asset URL contains the tag, so it is not a fixed
+            # address. This one is:
+            #   https://bentbr.github.io/r_data_core/mcp-latest.json
+            # Uses the same script as the coverage badges rather than a second
+            # mechanism for writing the same branch.
+            -   name: Publish the manifest to gh-pages
+                env:
+                    GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+                    REPO: ${{ github.repository }}
+                    TAG: ${{ inputs.tag || github.ref_name }}
+                run: |
+                    ./.github/scripts/publish-to-pages.sh \
+                        mcp-latest.json dist/mcp-latest.json "MCP manifest" \
+                        "chore(mcp): publish the ${TAG} download manifest"
