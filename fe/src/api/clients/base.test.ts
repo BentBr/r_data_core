@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach, afterEach, type Mock } from 'vitest'
 import { BaseTypedHttpClient } from './base'
 import { ValidationError } from '../http-client'
 import { HttpError } from '../errors'
@@ -44,7 +44,11 @@ class TestClient extends BaseTypedHttpClient {
 
 describe('BaseTypedHttpClient', () => {
     let client: TestClient
-    let fetchSpy: ReturnType<typeof vi.fn>
+    // `Mock`, not `ReturnType<typeof vi.fn>`: vitest 4 widened the latter to
+    // Mock<Procedure | Constructable>, which no longer satisfies fetch's
+    // signature. The sibling client tests get the same effective type by
+    // inference from `const x = vi.fn()`.
+    let fetchSpy: Mock
 
     beforeEach(() => {
         client = new TestClient()
