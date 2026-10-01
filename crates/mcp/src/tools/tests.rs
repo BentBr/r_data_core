@@ -16,7 +16,11 @@ fn every_tool_has_a_deliberate_permission_decision() {
     // A tool absent from the map is silently ungated. That is sometimes right
     // and sometimes an oversight, so the decision is recorded per tool rather
     // than left to whether anyone remembered.
-    const INTENTIONALLY_UNGATED: &[&str] = &[];
+    // system_info: everything it reports is either already known to an
+    // authenticated caller or readable from a public endpoint. The one
+    // part that is not — deployed component versions — is gated inline
+    // on system:read inside the tool.
+    const INTENTIONALLY_UNGATED: &[&str] = &["system_info"];
 
     for tool in ALL_TOOLS {
         let gated = required_permission(tool).is_some();
@@ -27,6 +31,20 @@ fn every_tool_has_a_deliberate_permission_decision() {
              INTENTIONALLY_UNGATED with a reason."
         );
     }
+}
+
+#[test]
+fn system_info_is_offered_to_every_caller() {
+    // Metadata about an instance the caller is already authenticated against
+    // tells them nothing an error message would not, and a caller who cannot
+    // see the server's version cannot report a bug against it. The component
+    // versions inside the response are gated separately, on system:read, at
+    // the point of fetching them.
+    assert!(
+        ALL_TOOLS.contains(&"system_info"),
+        "system_info must be advertised"
+    );
+    assert_eq!(required_permission("system_info"), None);
 }
 
 #[test]

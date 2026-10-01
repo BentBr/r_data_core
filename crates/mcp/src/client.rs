@@ -66,6 +66,15 @@ impl RdcClient {
         })
     }
 
+    /// The instance this client is pointed at.
+    ///
+    /// Reported by `system_info` so a caller can tell which deployment they
+    /// are about to change.
+    #[must_use]
+    pub fn base_url(&self) -> &str {
+        self.base_url.as_str()
+    }
+
     /// # Errors
     /// Returns `ClientError` on transport failure or a non-2xx response.
     pub async fn get_json<T: DeserializeOwned>(

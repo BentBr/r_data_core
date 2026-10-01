@@ -17,6 +17,7 @@
 use std::fmt::Write as _;
 
 use r_data_core_core::dto::dsl::{DslFieldSpec, DslOptionsAndExamplesResponse, DslTypeSpec};
+use rmcp::model::Resource;
 
 /// URI of the generated DSL reference.
 pub const DSL_REFERENCE_URI: &str = "rdatacore://dsl/reference";
@@ -119,6 +120,35 @@ pub const fn validation_rules() -> &'static str {
 3. Call `validate_dsl`, then `test_workflow`. The dry-run catches mapping and
    type errors that validation cannot see.
 "
+}
+
+/// The resources this server advertises.
+///
+/// Descriptors only — the bodies are rendered on read, because the reference
+/// is generated from the live catalogue and caching it here would reintroduce
+/// exactly the drift this module exists to avoid.
+#[must_use]
+pub fn descriptors() -> Vec<Resource> {
+    vec![
+        markdown_resource(
+            DSL_REFERENCE_URI,
+            "DSL reference",
+            "Every DSL type this instance accepts, with fields and worked examples. \
+             Generated from the running engine, so it describes this deployment \
+             rather than the documentation's view of the language.",
+        ),
+        markdown_resource(
+            DSL_RULES_URI,
+            "DSL validation rules",
+            "Ordering and typing constraints the option catalogue cannot express.",
+        ),
+    ]
+}
+
+fn markdown_resource(uri: &str, name: &str, description: &str) -> Resource {
+    Resource::new(uri, name)
+        .with_description(description)
+        .with_mime_type("text/markdown")
 }
 
 #[cfg(test)]

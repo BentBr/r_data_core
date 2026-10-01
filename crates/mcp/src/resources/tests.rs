@@ -121,3 +121,26 @@ fn the_rules_point_at_the_dry_run() {
     // or a model will stop at a green validate.
     assert!(validation_rules().contains("test_workflow"));
 }
+
+// ── the advertised descriptors ──────────────────────────────────────────────
+
+#[test]
+fn descriptors_cover_both_documents_and_nothing_else() {
+    let uris: Vec<String> = descriptors().into_iter().map(|r| r.uri).collect();
+    assert_eq!(uris, vec![DSL_REFERENCE_URI, DSL_RULES_URI]);
+}
+
+#[test]
+fn descriptors_are_markdown_and_named_for_a_reader() {
+    // A client renders these in a picker. A resource with no name or no
+    // description is one a person cannot choose between.
+    for resource in descriptors() {
+        assert_eq!(resource.mime_type.as_deref(), Some("text/markdown"));
+        assert!(!resource.name.is_empty(), "{} has no name", resource.uri);
+        assert!(
+            resource.description.is_some(),
+            "{} has no description",
+            resource.uri
+        );
+    }
+}
