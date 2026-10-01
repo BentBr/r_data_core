@@ -108,6 +108,28 @@ led into a wall of 403s.
 
 ---
 
+## Using it from Claude Code
+
+`.mcp.json` is committed, so there is nothing to write. It points at a
+locally built binary and reads the key from your environment — the file holds
+a `${RDC_MCP_API_KEY}` reference, never a literal key, because it is in git.
+
+```bash
+cargo build --release -p r_data_core_mcp
+export RDC_MCP_API_KEY=<a key from Settings → API keys>
+```
+
+Then restart Claude Code in this directory and run `/mcp`; `rdatacore` should
+be listed as connected.
+
+This is the stdio transport, so it needs neither Keycloak nor the `mcp`
+compose profile — only the API reachable at `RDC_BASE_URL`. The key is
+exchanged for a short-lived admin token at `/admin/api/v1/auth/api-key/token`,
+so the key's owner needs the workflow permissions you expect the assistant to
+use; the server resolves them at startup and offers only those tools.
+
+---
+
 ## Hosted (HTTP + OAuth)
 
 The server is an OAuth 2.1 **resource server**. A client that knows only its
