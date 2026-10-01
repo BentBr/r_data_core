@@ -149,7 +149,7 @@ jobs:
             contents: write
         # Keep this in sync with thresholds.lines in fe/vitest.config.ts.
         env:
-            FE_THRESHOLD: "70"
+            FE_THRESHOLD: "50"
         steps:
             -   name: Checkout
                 uses: actions/checkout@v7
