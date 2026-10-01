@@ -49,4 +49,8 @@ fn main() {
         "export const DSL_STEPS_MIN_COUNT = {};",
         constraints::DSL_STEPS_MIN_COUNT
     );
+    println!(
+        "export const MIN_PRE_SHARED_KEY_LEN = {};",
+        constraints::MIN_PRE_SHARED_KEY_LEN
+    );
 }

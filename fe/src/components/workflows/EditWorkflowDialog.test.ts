@@ -3,6 +3,7 @@ import { mount } from '@vue/test-utils'
 import { nextTick } from 'vue'
 import EditWorkflowDialog from './EditWorkflowDialog.vue'
 import type { DslStep } from './dsl/dsl-utils'
+import type { WorkflowRateLimit } from '@/types/schemas/workflow'
 
 vi.mock('@/api/typed-client', () => ({
     typedHttpClient: {
@@ -460,6 +461,152 @@ describe('EditWorkflowDialog', () => {
             // Should have error
             expect(vm.configError).toBeTruthy()
             expect(vm.configError).toContain('Invalid JSON')
+        })
+    })
+
+    describe('config key preservation', () => {
+        // Pre-existing data-loss bug: the steps watcher used to rebuild the
+        // config object from scratch, so an admin who had provider_auth set
+        // lost their public endpoint credential by editing a step.
+        it('preserves unknown top-level config keys when steps change', async () => {
+            const wrapper = mount(EditWorkflowDialog, {
+                props: { modelValue: true, workflowUuid: 'test-uuid' },
+            })
+            await nextTick()
+            await new Promise(resolve => setTimeout(resolve, 200))
+
+            const vm = wrapper.vm as { steps: DslStep[]; configJson: string }
+
+            vm.configJson = JSON.stringify({
+                steps: [],
+                provider_auth: {
+                    type: 'pre_shared_key',
+                    key: 'k'.repeat(32),
+                    location: 'header',
+                    field_name: 'X-Pre-Shared-Key',
+                },
+                rate_limit: { enabled: true, max_requests: 10, window_minutes: 60 },
+            })
+            await nextTick()
+            await new Promise(resolve => setTimeout(resolve, 100))
+
+            vm.steps = [
+                {
+                    from: {
+                        type: 'format',
+                        source: { source_type: 'uri', config: { uri: 'http://example.com/a.csv' } },
+                        format: { format_type: 'csv', options: { has_header: true } },
+                        mapping: {},
+                    },
+                    transform: { type: 'none' },
+                    to: {
+                        type: 'format',
+                        output: { mode: 'api' },
+                        format: { format_type: 'json' },
+                        mapping: {},
+                    },
+                },
+            ] as unknown as DslStep[]
+            await nextTick()
+            await new Promise(resolve => setTimeout(resolve, 100))
+
+            const config = JSON.parse(vm.configJson)
+            expect(config.provider_auth, 'editing steps must not drop the credential').toBeDefined()
+            expect(config.rate_limit).toEqual({
+                enabled: true,
+                max_requests: 10,
+                window_minutes: 60,
+            })
+        })
+    })
+
+    // The DOM behaviour of the controls lives in RateLimitFields.test.ts; these
+    // cover the dialog's half - loading an existing limit and writing changes
+    // back into configJson without disturbing the rest of it.
+    describe('rate limit fields', () => {
+        type Vm = { configJson: string; rateLimit: WorkflowRateLimit }
+
+        // The load watcher is not immediate: the dialog only fetches on the
+        // false -> true transition, so mounting with modelValue already true
+        // would leave the config empty.
+        const openDialog = async () => {
+            const wrapper = mount(EditWorkflowDialog, {
+                props: { modelValue: false, workflowUuid: 'test-uuid' },
+            })
+            await wrapper.setProps({ modelValue: true })
+            await nextTick()
+            await new Promise(resolve => setTimeout(resolve, 200))
+            return wrapper
+        }
+        const settle = async () => {
+            await nextTick()
+            await new Promise(resolve => setTimeout(resolve, 100))
+        }
+
+        it('defaults to disabled for a workflow that has no limit', async () => {
+            const wrapper = await openDialog()
+
+            expect((wrapper.vm as Vm).rateLimit).toEqual({
+                enabled: false,
+                max_requests: 10,
+                window_minutes: 60,
+            })
+        })
+
+        it('loads an existing limit from the workflow config', async () => {
+            const { typedHttpClient } = (await import('@/api/typed-client')) as unknown as {
+                typedHttpClient: { getWorkflow: { mockResolvedValueOnce: (v: unknown) => void } }
+            }
+            typedHttpClient.getWorkflow.mockResolvedValueOnce({
+                name: 'Limited',
+                description: '',
+                kind: 'provider',
+                enabled: true,
+                schedule_cron: null,
+                versioning_disabled: false,
+                config: {
+                    steps: [],
+                    rate_limit: { enabled: true, max_requests: 5, window_minutes: 15 },
+                },
+            })
+
+            const wrapper = await openDialog()
+            expect((wrapper.vm as Vm).rateLimit).toEqual({
+                enabled: true,
+                max_requests: 5,
+                window_minutes: 15,
+            })
+        })
+
+        it('can change an existing limit and write it back', async () => {
+            const wrapper = await openDialog()
+            const vm = wrapper.vm as Vm
+
+            vm.rateLimit = { enabled: true, max_requests: 50, window_minutes: 30 }
+            await settle()
+
+            expect(JSON.parse(vm.configJson).rate_limit).toEqual({
+                enabled: true,
+                max_requests: 50,
+                window_minutes: 30,
+            })
+        })
+
+        it('keeps the numbers when the switch is turned off', async () => {
+            const wrapper = await openDialog()
+            const vm = wrapper.vm as Vm
+
+            vm.rateLimit = { enabled: true, max_requests: 7, window_minutes: 60 }
+            await settle()
+            vm.rateLimit = { ...vm.rateLimit, enabled: false }
+            await settle()
+
+            // Disabled, not deleted - re-enabling must not mean retyping.
+            expect(JSON.parse(vm.configJson).rate_limit).toEqual({
+                enabled: false,
+                max_requests: 7,
+                window_minutes: 60,
+            })
         })
     })
 })

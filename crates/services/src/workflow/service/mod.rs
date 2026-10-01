@@ -1,3 +1,4 @@
+mod cache;
 mod crud;
 mod execution;
 mod runs;
@@ -6,6 +7,7 @@ mod staging;
 use crate::dynamic_entity::DynamicEntityService;
 use crate::workflow::outbox::{FetchDispatchMode, OutboxRetryPolicy};
 use crate::{SettingsService, SystemLogService};
+use r_data_core_core::cache::CacheManager;
 use r_data_core_persistence::{OutboxRepositoryTrait, WorkflowRepositoryTrait};
 use std::sync::Arc;
 
@@ -27,6 +29,8 @@ pub struct WorkflowService {
     pub queue: Option<Arc<dyn r_data_core_workflow::data::job_queue::JobQueue>>,
     /// System log service for audit logging
     pub system_log: Option<Arc<SystemLogService>>,
+    /// Optional cache for workflow reads. `None` leaves behaviour unchanged.
+    pub(super) cache_manager: Option<Arc<CacheManager>>,
 }
 
 /// Default JWT expiration: 24 hours
@@ -47,6 +51,7 @@ impl WorkflowService {
             mail_service: None,
             queue: None,
             system_log: None,
+            cache_manager: None,
         }
     }
 
@@ -67,6 +72,7 @@ impl WorkflowService {
             mail_service: None,
             queue: None,
             system_log: None,
+            cache_manager: None,
         }
     }
 
@@ -92,6 +98,14 @@ impl WorkflowService {
         queue: Option<Arc<dyn r_data_core_workflow::data::job_queue::JobQueue>>,
     ) -> Self {
         self.queue = queue;
+        self
+    }
+
+    /// Attach a cache so `get` does not hit the database on every public
+    /// request.
+    #[must_use]
+    pub fn with_cache(mut self, cache: Arc<CacheManager>) -> Self {
+        self.cache_manager = Some(cache);
         self
     }
 

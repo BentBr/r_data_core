@@ -14,3 +14,9 @@ pub const API_KEY_NAME_MIN_LENGTH: u64 = 1;
 pub const CSV_DELIMITER_LENGTH: u64 = 1;
 /// DSL steps array minimum count
 pub const DSL_STEPS_MIN_COUNT: u64 = 1;
+/// Minimum length of a workflow pre-shared key.
+///
+/// The public workflow endpoints authenticate on this value alone. 32
+/// characters from a CSPRNG is far out of brute-force range; anything shorter
+/// is a guessable password guarding a machine-to-machine endpoint.
+pub const MIN_PRE_SHARED_KEY_LEN: usize = 32;

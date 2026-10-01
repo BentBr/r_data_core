@@ -33,3 +33,22 @@ export interface WorkflowConfig extends Record<string, unknown> {
 
     [key: string]: unknown
 }
+
+/**
+ * Opt-in throttling for a workflow's public endpoint.
+ *
+ * The backend treats a missing block, `enabled: false`, or a zero in either
+ * number as "no limit at all" (`WorkflowRateLimit::from_config`), so the form
+ * must not let a zero through while showing the switch as on.
+ */
+export interface WorkflowRateLimit {
+    enabled: boolean
+    max_requests: number
+    window_minutes: number
+}
+
+export const DEFAULT_RATE_LIMIT: WorkflowRateLimit = {
+    enabled: false,
+    max_requests: 10,
+    window_minutes: 60,
+}
