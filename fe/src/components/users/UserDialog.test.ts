@@ -23,15 +23,27 @@ interface DialogProps {
     loading: boolean
 }
 
-// v-dialog content is teleported to document.body under real teleport
-// behaviour, so DOM assertions need to query the body, not the wrapper —
-// and mounts are unmounted afterwards so dialogs don't leak across tests.
 let mountedWrappers: VueWrapper[] = []
+
+// Default mount. The global <teleport> stub keeps v-dialog's content out of
+// the DOM, which is wrong for DOM assertions but much cheaper — and most of
+// these tests only read `vm`. Rendering the full dialog for those was enough
+// to push one of them past the 5s timeout on CI.
 const mountDialog = (props: DialogProps) => {
+    const wrapper = mount(UserDialog, { props })
+    mountedWrappers.push(wrapper)
+    return wrapper
+}
+
+// For DOM assertions only. Real teleport puts v-dialog's content on
+// document.body, so queries go through body() rather than the wrapper, and
+// the mount must be unmounted afterwards or it leaks into later tests.
+const mountDialogWithDom = (props: DialogProps) => {
     const wrapper = mount(UserDialog, { props, global: { stubs: { teleport: false } } })
     mountedWrappers.push(wrapper)
     return wrapper
 }
+
 const body = () => new DOMWrapper(document.body)
 
 const makeUser = (overrides: Partial<UserResponse> = {}): UserResponse =>
@@ -103,7 +115,7 @@ describe('UserDialog', () => {
 
     it('treats a federated account as an SSO user', () => {
         const user = makeUser({ is_sso_provisioned: true })
-        const wrapper = mountDialog({ modelValue: true, editingUser: user, loading: false })
+        const wrapper = mountDialogWithDom({ modelValue: true, editingUser: user, loading: false })
 
         expect((wrapper.vm as any).isSsoUser).toBe(true)
         expect(body().find('[data-testid="sso-roles-readonly"]').exists()).toBe(true)
@@ -111,7 +123,7 @@ describe('UserDialog', () => {
 
     it('does not treat a local account as an SSO user', () => {
         const user = makeUser({ is_sso_provisioned: false })
-        const wrapper = mountDialog({ modelValue: true, editingUser: user, loading: false })
+        const wrapper = mountDialogWithDom({ modelValue: true, editingUser: user, loading: false })
 
         expect((wrapper.vm as any).isSsoUser).toBe(false)
         expect(body().find('[data-testid="sso-roles-readonly"]').exists()).toBe(false)
@@ -128,7 +140,7 @@ describe('UserDialog', () => {
 
     it('shows no roles message when an SSO user has none assigned', () => {
         const user = makeUser({ is_sso_provisioned: true, role_uuids: [] })
-        const wrapper = mountDialog({ modelValue: true, editingUser: user, loading: false })
+        const wrapper = mountDialogWithDom({ modelValue: true, editingUser: user, loading: false })
 
         expect((wrapper.vm as any).assignedRoleNames).toEqual([])
         expect(body().find('[data-testid="sso-roles-readonly"]').text()).toContain('sso_roles_none')
