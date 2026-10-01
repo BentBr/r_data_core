@@ -99,14 +99,25 @@ If you are not on macOS, you should create an `compose.override.yaml` and re-ass
 
 A working Keycloak with a realm, groups and test users is included:
 
-```bash
-docker compose -f compose.yaml -f compose.sso.yaml up -d
+Add this to `.env`:
+
+```dotenv
+COMPOSE_PROFILES=sso
+
+RDC_OIDC_ISSUER=http://auth.rdatacore.docker:8081/realms/rdatacore
+RDC_OIDC_AUDIENCE=r-data-core
+RDC_OIDC_CLIENT_ID=r-data-core
+RDC_OIDC_REDIRECT_URI=http://rdatacore.docker/admin/api/v1/auth/oidc/callback
+RDC_OIDC_ROLE_MAP=rdc-admins:sso-admin,rdc-editors:sso-editor
+RDC_OIDC_RESOLUTION_CACHE_SECS=10
 ```
+
+Then `docker compose up -d`.
 
 Migrations and the roles the realm maps onto are applied automatically by two
 one-shot services.
 
-Sign in at `http://rdatacore.docker/admin` as `ada` / `ada`. See
+Sign in at `http://admin.rdatacore.docker` as `ada` / `ada`. See
 [docs/SSO.md](./docs/SSO.md) for what to try, including the accounts that are
 meant to be refused.
 

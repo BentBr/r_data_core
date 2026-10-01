@@ -1,6 +1,7 @@
 /target
 .env
 *.key
+x-api-key
 server.log
 .idea
 logs

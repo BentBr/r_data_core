@@ -19,9 +19,16 @@ rdt test | test-unit | test-fe | clippy | lint | test-e2e | test-e2e-report | cl
 `postgres`, `pg-test`, `redis`, `node` (frontend). All frontend commands run via
 `docker compose exec -T node …` — never `npm`/`pnpm`/`node` on the host.
 
-**Local single sign-on**: `docker compose -f compose.yaml -f compose.sso.yaml up -d`
-adds Keycloak on `auth.rdatacore.docker:8081` with a realm, groups and three
-users imported, and points the `app` service at it. Seed the roles it maps to
+**Compose profiles**: `COMPOSE_PROFILES` in `.env` selects optional services.
+`sso` adds Keycloak and its two one-shot seed jobs; `mcp` adds those *and* the
+MCP server (its HTTP transport refuses to start without an issuer); `e2e` adds
+Playwright. Unset, `docker compose up -d` brings up only the core stack.
+
+**Local single sign-on**: set `COMPOSE_PROFILES=sso` plus the `RDC_OIDC_*`
+block in `.env`, then `docker compose up -d`. That adds Keycloak on
+`auth.rdatacore.docker:8081` with a realm, groups and three users imported,
+and points the `app` service at it. The `app` service reads those variables
+as `${RDC_OIDC_*:-}`, so leaving them unset genuinely disables the feature. Seed the roles it maps to
 with `.docker/local_dev/keycloak/seed-roles.sql` — nothing seeds roles, and an
 unmatched role map denies every sign-in. Details in `docs/SSO.md`.
 

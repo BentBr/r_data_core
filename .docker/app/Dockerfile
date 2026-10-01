@@ -197,3 +197,39 @@ ENTRYPOINT ["/usr/local/bin/r-data-core-maintenance"]
 
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
     CMD ["true"]
+
+# ==============================================================================
+# MCP server image (HTTP transport)
+#
+# Only the serve binary ships. The stdio binary is run on a developer's own
+# machine by their MCP client, over a pipe it holds open — putting it in a
+# container nothing can speak to would only invite confusion.
+# ==============================================================================
+FROM debian:${DEBIAN_VERSION}-slim AS r-data-core-mcp
+
+ARG OCI_SOURCE
+ARG OCI_REVISION
+ARG OCI_CREATED
+
+LABEL org.opencontainers.image.title="r-data-core-mcp" \
+      org.opencontainers.image.description="r_data_core MCP server (HTTP transport) for AI assistants." \
+      org.opencontainers.image.source="${OCI_SOURCE}" \
+      org.opencontainers.image.revision="${OCI_REVISION}" \
+      org.opencontainers.image.created="${OCI_CREATED}"
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    ca-certificates \
+    libssl3 \
+    && rm -rf /var/lib/apt/lists/*
+
+RUN useradd --create-home --user-group appuser
+USER appuser
+WORKDIR /usr/local/bin
+
+COPY --from=builder --chown=appuser:appuser /app/target/release/r-data-core-mcp-serve /usr/local/bin/r-data-core-mcp-serve
+
+ENTRYPOINT ["/usr/local/bin/r-data-core-mcp-serve"]
+
+
+HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+    CMD ["true"]

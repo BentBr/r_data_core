@@ -51,9 +51,20 @@ feature flag and more than a button label is worth.
 
 A working Keycloak, realm and users ship with the repo. Nothing to configure:
 
-```bash
-docker compose -f compose.yaml -f compose.sso.yaml up -d
+Add this to `.env`:
+
+```dotenv
+COMPOSE_PROFILES=sso
+
+RDC_OIDC_ISSUER=http://auth.rdatacore.docker:8081/realms/rdatacore
+RDC_OIDC_AUDIENCE=r-data-core
+RDC_OIDC_CLIENT_ID=r-data-core
+RDC_OIDC_REDIRECT_URI=http://rdatacore.docker/admin/api/v1/auth/oidc/callback
+RDC_OIDC_ROLE_MAP=rdc-admins:sso-admin,rdc-editors:sso-editor
+RDC_OIDC_RESOLUTION_CACHE_SECS=10
 ```
+
+Then `docker compose up -d`.
 
 That is the whole setup. Two one-shot services run as part of it: `sso-migrate`
 applies migrations, and `sso-seed` creates the roles the realm's groups map
