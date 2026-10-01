@@ -918,11 +918,11 @@ describe('EntityCreateDialog', () => {
             expect(vm.getFieldErrorMessages('meta').length).toBeGreaterThan(0)
         })
 
-        it('never blocks submission on an invalid form (missing await on validate())', async () => {
-            // Production bug: form.value.validate() returns a Promise, and
-            // `!promise` is always false, so an invalid form never
-            // short-circuits createEntity. Simulate Vuetify reporting the
-            // form as invalid and show that it still emits.
+        it('blocks submission when the form reports invalid', async () => {
+            // Regression guard. validate() returns a Promise, so the
+            // un-awaited `!form.value?.validate()` was always false and every
+            // invalid form reached the API. Vuetify reports invalid here; the
+            // dialog must not emit.
             wrapper = mountComponent()
             withFakeForm(wrapper, { valid: false, errors: [{ id: 'entity_type' }] })
 
@@ -935,7 +935,7 @@ describe('EntityCreateDialog', () => {
 
             await vm.createEntity()
 
-            expect(wrapper.emitted('create')).toBeTruthy()
+            expect(wrapper.emitted('create')).toBeFalsy()
         })
     })
 })

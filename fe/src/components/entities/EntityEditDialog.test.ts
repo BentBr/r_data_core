@@ -264,11 +264,11 @@ describe('EntityEditDialog', () => {
             expect(vm.getFieldErrorMessages('meta')).toEqual([])
         })
 
-        it('never blocks submission on an invalid form (missing await on validate())', async () => {
-            // Production bug: `if (!form.value?.validate())` never awaits the
-            // Promise VForm.validate() returns, so the Promise object (always
-            // truthy) defeats the negation and the guard never short-circuits.
-            // A required field left empty should block submission but does not.
+        it('blocks submission when a required field is empty', async () => {
+            // Regression guard. validate() returns a Promise, so the
+            // un-awaited `!form.value?.validate()` was always false and the
+            // guard never fired. An empty required field must block the
+            // update rather than reach the API.
             wrapper = await mountOpenWithRealForm({
                 entityDefinition: makeDefinition({
                     fields: [
@@ -286,9 +286,7 @@ describe('EntityEditDialog', () => {
             const vm = wrapper.vm as unknown as { updateEntity: () => Promise<void> }
             await vm.updateEntity()
 
-            // Documents current (buggy) behaviour: emits despite the empty
-            // required field, because the validate() guard is a no-op.
-            expect(wrapper.emitted('update')).toBeTruthy()
+            expect(wrapper.emitted('update')).toBeFalsy()
         })
     })
 
