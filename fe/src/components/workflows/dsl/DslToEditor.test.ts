@@ -30,15 +30,20 @@ vi.mock('@/composables/useEntityDefinitions', () => ({
     }),
 }))
 
+const mockWorkflowMailConfigured = { value: false }
+
 vi.mock('@/stores/capabilities', () => ({
     useCapabilitiesStore: () => ({
-        workflowMailConfigured: false,
+        get workflowMailConfigured() {
+            return mockWorkflowMailConfigured.value
+        },
     }),
 }))
 
 describe('DslToEditor', () => {
     beforeEach(() => {
         vi.clearAllMocks()
+        mockWorkflowMailConfigured.value = false
         mockGetEntityFields.mockResolvedValue([
             { name: 'field1', type: 'string' },
             { name: 'field2', type: 'number' },
@@ -185,6 +190,57 @@ describe('DslToEditor', () => {
         })
 
         expect(hasOutputSelect).toBe(false)
+    })
+
+    it('loads entity fields via onEntityDefChange when the entity definition select changes', async () => {
+        const toDef: ToDef = {
+            type: 'entity',
+            entity_definition: '',
+            path: '',
+            mode: 'create',
+            mapping: {},
+        }
+        const wrapper = mount(DslToEditor, {
+            props: { modelValue: toDef },
+        })
+        await nextTick()
+        mockGetEntityFields.mockClear()
+
+        const selects = wrapper.findAllComponents({ name: 'VSelect' })
+        const entityDefSelect = selects.find(s => {
+            const label = s.props('label') as string
+            return label.includes('entity_definition')
+        })
+        await entityDefSelect!.vm.$emit('update:modelValue', 'another_entity')
+        await nextTick()
+        await new Promise(resolve => setTimeout(resolve, 50))
+
+        expect(mockGetEntityFields).toHaveBeenCalledWith('another_entity')
+
+        const emitted = wrapper.emitted('update:modelValue') as Array<[ToDef]>
+        const updated = emitted[emitted.length - 1][0]
+        if (updated.type === 'entity') {
+            expect(updated.entity_definition).toBe('another_entity')
+        }
+    })
+
+    it('clears entity target fields when getEntityFields rejects', async () => {
+        mockGetEntityFields.mockRejectedValueOnce(new Error('network error'))
+        const toDef: ToDef = {
+            type: 'entity',
+            entity_definition: 'test_entity',
+            path: '/test',
+            mode: 'create',
+            mapping: {},
+        }
+        const wrapper = mount(DslToEditor, {
+            props: { modelValue: toDef },
+        })
+        await nextTick()
+        await new Promise(resolve => setTimeout(resolve, 50))
+
+        const mappingEditor = wrapper.findComponent({ name: 'MappingEditor' })
+        expect(mappingEditor.props('leftItems')).toEqual([])
     })
 
     it('updates entity mode', async () => {
@@ -454,6 +510,57 @@ describe('DslToEditor', () => {
             if (updated.type === 'format') {
                 expect(updated.format.format_type).toBe('csv')
             }
+        }
+    })
+
+    it('updates format options via CsvOptionsEditor', async () => {
+        const toDef: ToDef = {
+            type: 'format',
+            output: { mode: 'api' },
+            format: { format_type: 'csv', options: { has_header: true } },
+            mapping: {},
+        }
+        const wrapper = mount(DslToEditor, {
+            props: { modelValue: toDef },
+        })
+        await nextTick()
+
+        const csvOptionsEditor = wrapper.findComponent({ name: 'CsvOptionsEditor' })
+        expect(csvOptionsEditor.exists()).toBe(true)
+        await csvOptionsEditor.vm.$emit('update:modelValue', { has_header: false, delimiter: ';' })
+        await nextTick()
+
+        const emitted = wrapper.emitted('update:modelValue') as Array<[ToDef]>
+        const updated = emitted[emitted.length - 1][0]
+        if (updated.type === 'format') {
+            expect(updated.format.options).toEqual({ has_header: false, delimiter: ';' })
+        }
+    })
+
+    it('updates output mode to download', async () => {
+        const toDef: ToDef = {
+            type: 'format',
+            output: { mode: 'api' },
+            format: { format_type: 'json', options: {} },
+            mapping: {},
+        }
+        const wrapper = mount(DslToEditor, {
+            props: { modelValue: toDef },
+        })
+        await nextTick()
+        const selects = wrapper.findAllComponents({ name: 'VSelect' })
+        const outputModeSelect = selects.find(s => {
+            const items = s.props('items') as Array<{ value: string; title: string }> | undefined
+            return items?.some(item => item.value === 'download')
+        })
+
+        await outputModeSelect!.vm.$emit('update:modelValue', 'download')
+        await nextTick()
+
+        const emitted = wrapper.emitted('update:modelValue') as Array<[ToDef]>
+        const updated = emitted[emitted.length - 1][0]
+        if (updated.type === 'format') {
+            expect(updated.output).toEqual({ mode: 'download' })
         }
     })
 
@@ -917,6 +1024,374 @@ describe('DslToEditor', () => {
             const alerts = wrapper.findAllComponents({ name: 'VAlert' })
             const errorAlert = alerts.find(a => a.props('type') === 'error')
             expect(errorAlert).toBeUndefined()
+        })
+    })
+
+    describe('Email ToDef', () => {
+        function makeEmailTo(overrides: Partial<Extract<ToDef, { type: 'email' }>> = {}): ToDef {
+            return {
+                type: 'email',
+                template_uuid: '',
+                to: [],
+                mapping: {},
+                ...overrides,
+            }
+        }
+
+        it('includes Email in type selector when workflowMailConfigured is true', async () => {
+            mockWorkflowMailConfigured.value = true
+            const toDef: ToDef = {
+                type: 'format',
+                output: { mode: 'api' },
+                format: { format_type: 'json', options: {} },
+                mapping: {},
+            }
+            const wrapper = mount(DslToEditor, { props: { modelValue: toDef } })
+            await nextTick()
+
+            const selects = wrapper.findAllComponents({ name: 'VSelect' })
+            const typeSelect = selects[0]
+            const items = typeSelect.props('items') as Array<{ value: string; title: string }>
+            expect(items.some(item => item.value === 'email')).toBe(true)
+        })
+
+        it('changes to Email type and emits default email ToDef', async () => {
+            const toDef: ToDef = {
+                type: 'next_step',
+                mapping: {},
+            }
+            const wrapper = mount(DslToEditor, {
+                props: { modelValue: toDef },
+            })
+            await nextTick()
+
+            const selects = wrapper.findAllComponents({ name: 'VSelect' })
+            await selects[0].vm.$emit('update:modelValue', 'email')
+            await nextTick()
+
+            const emitted = wrapper.emitted('update:modelValue') as Array<[ToDef]>
+            const updated = emitted[emitted.length - 1][0]
+            expect(updated.type).toBe('email')
+            if (updated.type === 'email') {
+                expect(updated.to).toEqual([])
+                expect(updated.template_uuid).toBe('')
+            }
+        })
+
+        it('renders info alert, template select, and target status caption', async () => {
+            const wrapper = mount(DslToEditor, {
+                props: { modelValue: makeEmailTo() },
+            })
+            await nextTick()
+
+            const alerts = wrapper.findAllComponents({ name: 'VAlert' })
+            expect(alerts.some(a => a.text().includes('email_to.info'))).toBe(true)
+
+            const selects = wrapper.findAllComponents({ name: 'VSelect' })
+            const templateSelect = selects.find(
+                s => (s.props('label') as string) === 'workflows.dsl.send_email_template'
+            )
+            expect(templateSelect).toBeTruthy()
+        })
+
+        it('loads email templates on mount and populates the template select', async () => {
+            mockListEmailTemplates.mockResolvedValueOnce([
+                { uuid: 'tmpl-1', name: 'Order Confirmation' },
+            ])
+            const wrapper = mount(DslToEditor, {
+                props: { modelValue: makeEmailTo() },
+            })
+            await nextTick()
+            await new Promise(resolve => setTimeout(resolve, 50))
+
+            expect(mockListEmailTemplates).toHaveBeenCalledWith('workflow')
+
+            const selects = wrapper.findAllComponents({ name: 'VSelect' })
+            const templateSelect = selects.find(
+                s => (s.props('label') as string) === 'workflows.dsl.send_email_template'
+            )
+            expect(templateSelect?.props('items')).toEqual([
+                { title: 'Order Confirmation', value: 'tmpl-1' },
+            ])
+        })
+
+        it('clears the template list when loading email templates fails', async () => {
+            mockListEmailTemplates.mockRejectedValueOnce(new Error('network error'))
+            const wrapper = mount(DslToEditor, {
+                props: { modelValue: makeEmailTo() },
+            })
+            await nextTick()
+            await new Promise(resolve => setTimeout(resolve, 50))
+
+            const selects = wrapper.findAllComponents({ name: 'VSelect' })
+            const templateSelect = selects.find(
+                s => (s.props('label') as string) === 'workflows.dsl.send_email_template'
+            )
+            expect(templateSelect?.props('items')).toEqual([])
+        })
+
+        it('updates template_uuid when template select changes', async () => {
+            const wrapper = mount(DslToEditor, {
+                props: { modelValue: makeEmailTo() },
+            })
+            await nextTick()
+
+            const selects = wrapper.findAllComponents({ name: 'VSelect' })
+            const templateSelect = selects.find(
+                s => (s.props('label') as string) === 'workflows.dsl.send_email_template'
+            )
+            await templateSelect!.vm.$emit('update:modelValue', 'tmpl-9')
+            await nextTick()
+
+            const emitted = wrapper.emitted('update:modelValue') as Array<[ToDef]>
+            const updated = emitted[emitted.length - 1][0]
+            if (updated.type === 'email') {
+                expect(updated.template_uuid).toBe('tmpl-9')
+            }
+        })
+
+        it('adds a To recipient and switches its kind to field', async () => {
+            const wrapper = mount(DslToEditor, {
+                props: { modelValue: makeEmailTo() },
+            })
+            await nextTick()
+
+            const addToButton = wrapper
+                .findAll('button')
+                .find(b => b.text().includes('add_recipient'))
+            expect(addToButton).toBeTruthy()
+            await addToButton!.trigger('click')
+            await nextTick()
+
+            let emitted = wrapper.emitted('update:modelValue') as Array<[ToDef]>
+            let updated = emitted[emitted.length - 1][0]
+            expect(updated.type).toBe('email')
+            if (updated.type === 'email') {
+                expect(updated.to).toEqual([{ kind: 'const_string', value: '' }])
+            }
+
+            await wrapper.setProps({ modelValue: updated })
+            await nextTick()
+
+            const selects = wrapper.findAllComponents({ name: 'VSelect' })
+            const kindSelect = selects.find(s => {
+                const items = s.props('items') as string[] | undefined
+                return (
+                    Array.isArray(items) &&
+                    items.includes('field') &&
+                    items.includes('const_string')
+                )
+            })
+            expect(kindSelect).toBeTruthy()
+            await kindSelect!.vm.$emit('update:modelValue', 'field')
+            await nextTick()
+
+            emitted = wrapper.emitted('update:modelValue') as Array<[ToDef]>
+            updated = emitted[emitted.length - 1][0]
+            if (updated.type === 'email') {
+                expect(updated.to).toEqual([{ kind: 'field', field: '' }])
+            }
+        })
+
+        it('updates a To recipient field value and removes it', async () => {
+            const wrapper = mount(DslToEditor, {
+                props: {
+                    modelValue: makeEmailTo({ to: [{ kind: 'field', field: '' }] }),
+                },
+            })
+            await nextTick()
+
+            const textFields = wrapper.findAllComponents({ name: 'VTextField' })
+            const valueField = textFields.find(
+                tf => (tf.props('label') as string) === 'workflows.dsl.value'
+            )
+            expect(valueField).toBeTruthy()
+            await valueField!.vm.$emit('update:modelValue', 'customer_email')
+            await nextTick()
+
+            let emitted = wrapper.emitted('update:modelValue') as Array<[ToDef]>
+            let updated = emitted[emitted.length - 1][0]
+            if (updated.type === 'email') {
+                expect(updated.to).toEqual([{ kind: 'field', field: 'customer_email' }])
+            }
+
+            await wrapper.setProps({ modelValue: updated })
+            await nextTick()
+
+            const deleteButtons = wrapper.findAllComponents({ name: 'VBtn' })
+            const removeBtn = deleteButtons.find(b => b.props('icon') === 'mdi-delete')
+            expect(removeBtn).toBeTruthy()
+            await removeBtn!.trigger('click')
+            await nextTick()
+
+            emitted = wrapper.emitted('update:modelValue') as Array<[ToDef]>
+            updated = emitted[emitted.length - 1][0]
+            if (updated.type === 'email') {
+                expect(updated.to).toEqual([])
+            }
+        })
+
+        it('updates a To recipient const value', async () => {
+            const wrapper = mount(DslToEditor, {
+                props: {
+                    modelValue: makeEmailTo({ to: [{ kind: 'const_string', value: '' }] }),
+                },
+            })
+            await nextTick()
+
+            const textFields = wrapper.findAllComponents({ name: 'VTextField' })
+            const valueField = textFields.find(
+                tf => (tf.props('label') as string) === 'workflows.dsl.value'
+            )
+            await valueField!.vm.$emit('update:modelValue', 'static@test.com')
+            await nextTick()
+
+            const emitted = wrapper.emitted('update:modelValue') as Array<[ToDef]>
+            const updated = emitted[emitted.length - 1][0]
+            if (updated.type === 'email') {
+                expect(updated.to).toEqual([{ kind: 'const_string', value: 'static@test.com' }])
+            }
+        })
+
+        it('adds and removes a Cc recipient, clearing cc when list becomes empty', async () => {
+            const wrapper = mount(DslToEditor, {
+                props: { modelValue: makeEmailTo() },
+            })
+            await nextTick()
+
+            const addCcButton = wrapper
+                .findAll('button')
+                .find(b => b.text().includes('add_cc_recipient'))
+            expect(addCcButton).toBeTruthy()
+            await addCcButton!.trigger('click')
+            await nextTick()
+
+            let emitted = wrapper.emitted('update:modelValue') as Array<[ToDef]>
+            let updated = emitted[emitted.length - 1][0]
+            if (updated.type === 'email') {
+                expect(updated.cc).toEqual([{ kind: 'const_string', value: '' }])
+            }
+
+            await wrapper.setProps({ modelValue: updated })
+            await nextTick()
+
+            const deleteButtons = wrapper.findAllComponents({ name: 'VBtn' })
+            const ccDeleteButtons = deleteButtons.filter(b => b.props('icon') === 'mdi-delete')
+            const removeCcBtn = ccDeleteButtons[ccDeleteButtons.length - 1]
+            expect(removeCcBtn).toBeTruthy()
+            await removeCcBtn!.trigger('click')
+            await nextTick()
+
+            emitted = wrapper.emitted('update:modelValue') as Array<[ToDef]>
+            updated = emitted[emitted.length - 1][0]
+            if (updated.type === 'email') {
+                expect(updated.cc).toBeUndefined()
+            }
+        })
+
+        it('switches Cc kind and updates its field/const values', async () => {
+            const wrapper = mount(DslToEditor, {
+                props: {
+                    modelValue: makeEmailTo({
+                        cc: [{ kind: 'const_string', value: 'cc@test.com' }],
+                    }),
+                },
+            })
+            await nextTick()
+
+            const selects = wrapper.findAllComponents({ name: 'VSelect' })
+            const kindSelects = selects.filter(s => {
+                const items = s.props('items') as string[] | undefined
+                return (
+                    Array.isArray(items) &&
+                    items.includes('field') &&
+                    items.includes('const_string')
+                )
+            })
+            const ccKindSelect = kindSelects[kindSelects.length - 1]
+            expect(ccKindSelect).toBeTruthy()
+            await ccKindSelect!.vm.$emit('update:modelValue', 'field')
+            await nextTick()
+
+            let emitted = wrapper.emitted('update:modelValue') as Array<[ToDef]>
+            let updated = emitted[emitted.length - 1][0]
+            if (updated.type === 'email') {
+                expect(updated.cc).toEqual([{ kind: 'field', field: '' }])
+            }
+
+            await wrapper.setProps({ modelValue: updated })
+            await nextTick()
+
+            const textFields = wrapper.findAllComponents({ name: 'VTextField' })
+            const valueField = textFields.find(
+                tf => (tf.props('label') as string) === 'workflows.dsl.value'
+            )
+            await valueField!.vm.$emit('update:modelValue', 'cc_field')
+            await nextTick()
+
+            emitted = wrapper.emitted('update:modelValue') as Array<[ToDef]>
+            updated = emitted[emitted.length - 1][0]
+            if (updated.type === 'email') {
+                expect(updated.cc).toEqual([{ kind: 'field', field: 'cc_field' }])
+            }
+        })
+
+        it('updates a Cc const value directly', async () => {
+            const wrapper = mount(DslToEditor, {
+                props: {
+                    modelValue: makeEmailTo({ cc: [{ kind: 'const_string', value: '' }] }),
+                },
+            })
+            await nextTick()
+
+            const textFields = wrapper.findAllComponents({ name: 'VTextField' })
+            const valueField = textFields.find(
+                tf => (tf.props('label') as string) === 'workflows.dsl.value'
+            )
+            await valueField!.vm.$emit('update:modelValue', 'cc-static@test.com')
+            await nextTick()
+
+            const emitted = wrapper.emitted('update:modelValue') as Array<[ToDef]>
+            const updated = emitted[emitted.length - 1][0]
+            if (updated.type === 'email') {
+                expect(updated.cc).toEqual([{ kind: 'const_string', value: 'cc-static@test.com' }])
+            }
+        })
+
+        it('updates the email mapping via the mapping editor', async () => {
+            const wrapper = mount(DslToEditor, {
+                props: { modelValue: makeEmailTo() },
+            })
+            await nextTick()
+
+            const mappingEditor = wrapper.findComponent({ name: 'MappingEditor' })
+            expect(mappingEditor.exists()).toBe(true)
+            const newMapping = { normalized_field: 'destination_field' }
+            await mappingEditor.vm.$emit('update:modelValue', newMapping)
+            await nextTick()
+
+            const emitted = wrapper.emitted('update:modelValue') as Array<[ToDef]>
+            const updated = emitted[emitted.length - 1][0]
+            if (updated.type === 'email') {
+                expect(updated.mapping).toEqual(newMapping)
+            }
+        })
+
+        it('adds an empty mapping pair via the add_mapping button for email type', async () => {
+            const wrapper = mount(DslToEditor, {
+                props: { modelValue: makeEmailTo() },
+            })
+            await nextTick()
+
+            const addMappingButton = wrapper
+                .findAll('button')
+                .find(b => b.text().includes('add_mapping'))
+            expect(addMappingButton).toBeTruthy()
+            await addMappingButton!.trigger('click')
+            await nextTick()
+
+            const mappingEditor = wrapper.findComponent({ name: 'MappingEditor' })
+            expect(mappingEditor.exists()).toBe(true)
         })
     })
 })
