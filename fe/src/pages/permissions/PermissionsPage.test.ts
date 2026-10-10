@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { mount } from '@vue/test-utils'
 import { ref } from 'vue'
 import { createRouter, createWebHistory } from 'vue-router'
@@ -1012,6 +1012,337 @@ describe('PermissionsPage', () => {
             await wrapper.vm.$nextTick()
 
             expect(wrapper.find('[data-testid="user-status-badge"]').text()).toBe('inactive')
+        })
+    })
+
+    // v-window-item is lazy: the "roles" tab's own template (row slots, the
+    // "New Role" button, permission/description branches) never executes
+    // while "users" is the active tab. These tests switch tabs with real
+    // data loaded so those branches actually render.
+    describe('roles tab rendering (lazy v-window-item)', () => {
+        const rolesForDisplay: Role[] = [
+            {
+                ...mockRoles[0],
+                uuid: 'role-no-desc',
+                name: 'No Description Role',
+                description: null as unknown as string,
+                permissions: [],
+            },
+            {
+                ...mockRoles[0],
+                uuid: 'role-one-perm',
+                name: 'One Permission Role',
+                description: 'Has a description',
+                permissions: [mockRoles[0].permissions[0]],
+            },
+        ]
+
+        const mountOnRolesTab = async () => {
+            // onMounted triggers its own loadRoles() call that would otherwise
+            // overwrite mockRolesList with the default beforeEach fixture, so
+            // the fixture for this describe block must come from the mock
+            // response itself, not a direct ref assignment.
+            mockGetRoles.mockResolvedValueOnce({
+                data: rolesForDisplay,
+                meta: {
+                    pagination: {
+                        total: 2,
+                        page: 1,
+                        per_page: 20,
+                        total_pages: 1,
+                        has_previous: false,
+                        has_next: false,
+                    },
+                },
+            })
+            const wrapper = mount(PermissionsPage, {
+                global: {
+                    plugins: [router],
+                    stubs: { UserDialog: true },
+                },
+            })
+            await vi.waitUntil(() => mockRolesList.value[0]?.uuid === 'role-no-desc', {
+                timeout: 1000,
+            })
+            ;(wrapper.vm as any).activeTab = 'roles'
+            await wrapper.vm.$nextTick()
+            await wrapper.vm.$nextTick()
+            return wrapper
+        }
+
+        it('falls back to a translated placeholder when a role has no description', async () => {
+            const wrapper = await mountOnRolesTab()
+
+            const table = wrapper.find('[data-testid="roles-table"]')
+            expect(table.text()).toContain('no_description')
+        })
+
+        it('shows the singular permission count label for a role with one permission', async () => {
+            const wrapper = await mountOnRolesTab()
+
+            const table = wrapper.find('[data-testid="roles-table"]')
+            expect(table.text()).toContain('1')
+            expect(table.text()).toContain('permission')
+        })
+
+        it('renders a formatted created-at date for each role row', async () => {
+            const wrapper = await mountOnRolesTab()
+
+            const table = wrapper.find('[data-testid="roles-table"]')
+            const expected = (wrapper.vm as any).formatDate(rolesForDisplay[0].created_at)
+            expect(table.text()).toContain(expected)
+        })
+
+        it('opens the edit dialog when the role row edit button is clicked', async () => {
+            const wrapper = await mountOnRolesTab()
+
+            const table = wrapper.find('[data-testid="roles-table"]')
+            const editButtons = table
+                .findAll('.v-btn--variant-text')
+                .filter(btn => btn.classes().some(c => c.includes('info')))
+            expect(editButtons.length).toBeGreaterThan(0)
+
+            await editButtons[0].trigger('click')
+            await wrapper.vm.$nextTick()
+
+            expect((wrapper.vm as any).showDialog).toBe(true)
+            expect((wrapper.vm as any).editingRole).toEqual(rolesForDisplay[0])
+        })
+
+        it('confirms deletion when the role row delete button is clicked', async () => {
+            const wrapper = await mountOnRolesTab()
+
+            const table = wrapper.find('[data-testid="roles-table"]')
+            const deleteButtons = table
+                .findAll('.v-btn--variant-text')
+                .filter(btn => btn.classes().some(c => c.includes('error')))
+            expect(deleteButtons.length).toBeGreaterThan(0)
+
+            await deleteButtons[0].trigger('click')
+            await wrapper.vm.$nextTick()
+
+            expect((wrapper.vm as any).showDeleteDialog).toBe(true)
+            expect((wrapper.vm as any).roleToDelete).toEqual(rolesForDisplay[0])
+        })
+
+        it('opens the create-role dialog from the "New Role" button', async () => {
+            const wrapper = await mountOnRolesTab()
+
+            await wrapper.find('[data-testid="roles-create-btn"]').trigger('click')
+            await wrapper.vm.$nextTick()
+
+            expect((wrapper.vm as any).showDialog).toBe(true)
+            expect((wrapper.vm as any).editingRole).toBeNull()
+        })
+    })
+
+    describe('users tab row actions', () => {
+        const roleForBadge: Role = { ...mockRoles[0], uuid: 'role-badge', name: 'Badge Role' }
+
+        const userWithRole = {
+            uuid: 'user-badge',
+            username: 'badge_user',
+            email: 'badge@test.com',
+            first_name: 'Badge',
+            last_name: 'User',
+            status: 'active',
+            is_active: true,
+            is_admin: false,
+            role_uuids: ['role-badge'],
+            created_at: '2024-01-01T00:00:00Z',
+            updated_at: '2024-01-01T00:00:00Z',
+        }
+
+        const mountUsersWithRole = async () => {
+            // onMounted's own loadRoles() call would otherwise overwrite
+            // mockRolesList with the default beforeEach fixture.
+            mockGetRoles.mockResolvedValueOnce({
+                data: [roleForBadge],
+                meta: {
+                    pagination: {
+                        total: 1,
+                        page: 1,
+                        per_page: 20,
+                        total_pages: 1,
+                        has_previous: false,
+                        has_next: false,
+                    },
+                },
+            })
+            mockUsers.value = [userWithRole] as any
+            mockLoadUsers.mockResolvedValue({
+                data: [userWithRole],
+                meta: {
+                    pagination: {
+                        total: 1,
+                        page: 1,
+                        per_page: 20,
+                        total_pages: 1,
+                        has_previous: false,
+                        has_next: false,
+                    },
+                },
+            })
+
+            const wrapper = mount(PermissionsPage, {
+                global: {
+                    plugins: [router],
+                    stubs: { UserDialog: true, RoleDialog: true },
+                },
+            })
+            await vi.waitUntil(() => mockRolesList.value[0]?.uuid === 'role-badge', {
+                timeout: 1000,
+            })
+            ;(wrapper.vm as any).activeTab = 'users'
+            await wrapper.vm.$nextTick()
+            await wrapper.vm.$nextTick()
+            return wrapper
+        }
+
+        it('renders a badge for each role assigned to the user', async () => {
+            const wrapper = await mountUsersWithRole()
+
+            const table = wrapper.find('[data-testid="users-table"]')
+            expect(table.text()).toContain('Badge Role')
+        })
+
+        it('opens the edit dialog when the user row edit button is clicked', async () => {
+            const wrapper = await mountUsersWithRole()
+
+            const table = wrapper.find('[data-testid="users-table"]')
+            const editButtons = table
+                .findAll('.v-btn--variant-text')
+                .filter(btn => btn.classes().some(c => c.includes('info')))
+            expect(editButtons.length).toBeGreaterThan(0)
+
+            await editButtons[0].trigger('click')
+            await wrapper.vm.$nextTick()
+
+            expect((wrapper.vm as any).showUserDialog).toBe(true)
+            expect((wrapper.vm as any).editingUser).toEqual(userWithRole)
+        })
+
+        it('confirms deletion when the user row delete button is clicked', async () => {
+            const wrapper = await mountUsersWithRole()
+
+            const table = wrapper.find('[data-testid="users-table"]')
+            const deleteButtons = table
+                .findAll('.v-btn--variant-text')
+                .filter(btn => btn.classes().some(c => c.includes('error')))
+            expect(deleteButtons.length).toBeGreaterThan(0)
+
+            await deleteButtons[0].trigger('click')
+            await wrapper.vm.$nextTick()
+
+            expect((wrapper.vm as any).showDeleteUserDialog).toBe(true)
+            expect((wrapper.vm as any).userToDelete).toEqual(userWithRole)
+        })
+
+        it('opens the create-user dialog from the "New User" button', async () => {
+            const wrapper = await mountUsersWithRole()
+
+            await wrapper.find('[data-testid="users-create-btn"]').trigger('click')
+            await wrapper.vm.$nextTick()
+
+            expect((wrapper.vm as any).showUserDialog).toBe(true)
+            expect((wrapper.vm as any).editingUser).toBeNull()
+        })
+    })
+
+    describe('query-param driven tab/dialog selection on mount', () => {
+        afterEach(async () => {
+            await router.push('/permissions')
+        })
+
+        it('switches to the roles tab when ?tab=roles is present', async () => {
+            await router.push('/permissions?tab=roles')
+
+            const wrapper = mount(PermissionsPage, {
+                global: { plugins: [router], stubs: { UserDialog: true, RoleDialog: true } },
+            })
+            await wrapper.vm.$nextTick()
+            await wrapper.vm.$nextTick()
+
+            expect((wrapper.vm as any).activeTab).toBe('roles')
+        })
+
+        it('opens the create-user dialog when ?create=true&tab=users and clears the URL', async () => {
+            await router.push('/permissions?tab=users&create=true')
+            const replaceStateSpy = vi
+                .spyOn(window.history, 'replaceState')
+                .mockImplementation(() => {})
+
+            const wrapper = mount(PermissionsPage, {
+                global: { plugins: [router], stubs: { UserDialog: true, RoleDialog: true } },
+            })
+            await vi.waitUntil(() => (wrapper.vm as any).showUserDialog === true, { timeout: 1000 })
+
+            expect((wrapper.vm as any).activeTab).toBe('users')
+            expect(replaceStateSpy).toHaveBeenCalledWith({}, '', '/permissions')
+            replaceStateSpy.mockRestore()
+        })
+
+        it('opens the create-role dialog when ?create=true&tab=roles and clears the URL', async () => {
+            await router.push('/permissions?tab=roles&create=true')
+            const replaceStateSpy = vi
+                .spyOn(window.history, 'replaceState')
+                .mockImplementation(() => {})
+
+            const wrapper = mount(PermissionsPage, {
+                global: { plugins: [router], stubs: { UserDialog: true, RoleDialog: true } },
+            })
+            await vi.waitUntil(() => (wrapper.vm as any).showDialog === true, { timeout: 1000 })
+
+            expect((wrapper.vm as any).activeTab).toBe('roles')
+            expect(replaceStateSpy).toHaveBeenCalledWith({}, '', '/permissions')
+            replaceStateSpy.mockRestore()
+        })
+    })
+
+    describe('tab-switch watcher', () => {
+        it('loads roles when switching to an empty roles tab', async () => {
+            mockGetRoles.mockResolvedValueOnce({
+                data: [],
+                meta: {
+                    pagination: {
+                        total: 0,
+                        page: 1,
+                        per_page: 20,
+                        total_pages: 1,
+                        has_previous: false,
+                        has_next: false,
+                    },
+                },
+            })
+
+            const wrapper = mount(PermissionsPage, {
+                global: { plugins: [router], stubs: { UserDialog: true, RoleDialog: true } },
+            })
+            await vi.waitUntil(() => mockGetRoles.mock.calls.length > 0, { timeout: 1000 })
+            await wrapper.vm.$nextTick()
+            expect(mockRolesList.value).toHaveLength(0)
+
+            mockGetRoles.mockClear()
+            ;(wrapper.vm as any).activeTab = 'roles'
+            await wrapper.vm.$nextTick()
+
+            expect(mockGetRoles).toHaveBeenCalled()
+        })
+
+        it('loads users when switching back to an empty users tab', async () => {
+            const wrapper = mount(PermissionsPage, {
+                global: { plugins: [router], stubs: { UserDialog: true, RoleDialog: true } },
+            })
+            await vi.waitUntil(() => mockGetRoles.mock.calls.length > 0, { timeout: 1000 })
+            await wrapper.vm.$nextTick()
+
+            mockLoadUsers.mockClear()
+            ;(wrapper.vm as any).activeTab = 'roles'
+            await wrapper.vm.$nextTick()
+            ;(wrapper.vm as any).activeTab = 'users'
+            await wrapper.vm.$nextTick()
+
+            expect(mockLoadUsers).toHaveBeenCalled()
         })
     })
 })

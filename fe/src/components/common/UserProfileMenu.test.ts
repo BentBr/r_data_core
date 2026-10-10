@@ -1,6 +1,7 @@
-import { describe, it, expect, vi, beforeEach, type Mock } from 'vitest'
-import { mount } from '@vue/test-utils'
+import { describe, it, expect, vi, beforeEach, afterEach, type Mock } from 'vitest'
+import { mount, DOMWrapper, type VueWrapper } from '@vue/test-utils'
 import { createRouter, createWebHistory } from 'vue-router'
+import { nextTick } from 'vue'
 import UserProfileMenu from './UserProfileMenu.vue'
 
 const mockClearAuthState: Mock = vi.fn()
@@ -46,6 +47,23 @@ const mountMenu = () =>
         global: { plugins: [router] },
     })
 
+// The <v-menu> list is lazily rendered and sits behind the global
+// <teleport> stub (test-setup.ts stubs teleport as `true`, which serializes
+// teleported content as the literal string "[object Object]" instead of
+// executing it). Opening the menu with a real teleport renders the list into
+// document.body, which is the only way to exercise those template branches.
+let mountedWrappers: VueWrapper[] = []
+
+const mountMenuWithDom = () => {
+    const wrapper = mount(UserProfileMenu, {
+        global: { plugins: [router], stubs: { teleport: false } },
+    })
+    mountedWrappers.push(wrapper)
+    return wrapper
+}
+
+const body = () => new DOMWrapper(document.body)
+
 describe('UserProfileMenu', () => {
     beforeEach(() => {
         vi.clearAllMocks()
@@ -53,6 +71,11 @@ describe('UserProfileMenu', () => {
         mockIsSuperAdmin = false
         mockUserPreference = 'system'
         mockLogout.mockResolvedValue(undefined)
+    })
+
+    afterEach(() => {
+        mountedWrappers.forEach(w => w.unmount())
+        mountedWrappers = []
     })
 
     it('renders the current username', () => {
@@ -137,5 +160,69 @@ describe('UserProfileMenu', () => {
         expect(mockClearAuthState).toHaveBeenCalled()
         expect(consoleErrorSpy).toHaveBeenCalledWith('Logout failed:', expect.any(Error))
         consoleErrorSpy.mockRestore()
+    })
+
+    it('falls back to the system label for an unrecognised theme preference', () => {
+        // userPreference is typed to the three known values; this exercises
+        // the switch's defensive `default` branch for any other runtime value.
+        mockUserPreference = 'unknown' as unknown as 'system'
+        const wrapper = mountMenu()
+
+        expect((wrapper.vm as any).getThemeDisplayName()).toBe('system')
+    })
+
+    describe('menu content (real teleport)', () => {
+        it('renders the user info header, options, and logout row once opened', async () => {
+            mockUser = { username: 'carol' }
+            mockIsSuperAdmin = true
+            const wrapper = mountMenuWithDom()
+
+            await wrapper.find('button').trigger('click')
+            await nextTick()
+            await nextTick()
+
+            const list = body()
+            expect(list.text()).toContain('carol')
+            expect(list.text()).toContain('Super Admin')
+            expect(list.text()).toContain('profile')
+            expect(list.text()).toContain('profile_subtitle')
+            expect(list.text()).toContain('mode')
+            expect(list.text()).toContain('system')
+            expect(list.text()).toContain('logout')
+            expect(list.text()).toContain('logout_subtitle')
+        })
+
+        it('disables the profile option (not yet implemented)', async () => {
+            const wrapper = mountMenuWithDom()
+
+            await wrapper.find('button').trigger('click')
+            await nextTick()
+            await nextTick()
+
+            const profileItem = Array.from(document.querySelectorAll('.v-list-item')).find(el =>
+                el.textContent?.includes('profile_subtitle')
+            )
+            expect(profileItem?.className).toContain('v-list-item--disabled')
+        })
+
+        it('triggers logout when the logout row is clicked', async () => {
+            const pushSpy = vi.spyOn(router, 'push')
+            const wrapper = mountMenuWithDom()
+
+            await wrapper.find('button').trigger('click')
+            await nextTick()
+            await nextTick()
+
+            const logoutItem = Array.from(document.querySelectorAll('.v-list-item')).find(el =>
+                el.textContent?.includes('logout_subtitle')
+            )
+            expect(logoutItem).toBeTruthy()
+            ;(logoutItem as HTMLElement).click()
+            await nextTick()
+
+            expect(mockClearAuthState).toHaveBeenCalled()
+            expect(pushSpy).toHaveBeenCalledWith({ name: 'Login', query: {} })
+            pushSpy.mockRestore()
+        })
     })
 })
