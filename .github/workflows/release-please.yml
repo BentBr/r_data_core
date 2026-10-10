@@ -175,6 +175,50 @@ jobs:
 
                         console.log(`Set commit status for ${sha}: ${state}`);
 
+    # Mirror the core tag into the mcp-v* series that mcp-release.yml listens
+    # on.
+    #
+    # release-please's rust strategy upgrades every Cargo workspace member and
+    # offers no way to exclude one, so crates/mcp always carries the core
+    # version — an attempt to register it as its own release-please package
+    # would just have two packages writing the same file. Rather than fight
+    # that, the MCP server is versioned with the core and its tag is derived
+    # from the same release, so no one has to tag by hand.
+    #
+    # The cost is an MCP release on every core release, including ones that
+    # change nothing in crates/mcp. That is the trade for a release process
+    # that runs unattended.
+    mcp-tag:
+        needs: release-please
+        if: ${{ needs.release-please.outputs.release_created == 'true' }}
+        runs-on: ubuntu-latest
+        permissions:
+            contents: write
+        steps:
+            -   name: Checkout the release commit
+                uses: actions/checkout@v7
+                with:
+                    ref: ${{ needs.release-please.outputs.tag_name }}
+
+            -   name: Tag the MCP release
+                env:
+                    VERSION: ${{ needs.release-please.outputs.version }}
+                run: |
+                    set -euo pipefail
+                    tag="mcp-v${VERSION}"
+                    # Idempotent: a re-run of this job must not fail the
+                    # release, and the tag already existing means the work is
+                    # done rather than that something is wrong.
+                    if git ls-remote --exit-code --tags origin "refs/tags/${tag}" >/dev/null 2>&1; then
+                        echo "${tag} already exists; nothing to do"
+                        exit 0
+                    fi
+                    git config user.name 'github-actions[bot]'
+                    git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+                    git tag -a "${tag}" -m "MCP server ${VERSION}"
+                    git push origin "${tag}"
+                    echo "pushed ${tag}"
+
     # Build and publish Docker images when a release is created
     docker-publish:
         needs: release-please
