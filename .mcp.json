@@ -1,11 +1,17 @@
 {
     "mcpServers": {
         "rdatacore": {
-            "command": "./target/release/r-data-core-mcp",
-            "args": [],
+            "command": "docker",
+            "args": [
+                "compose",
+                "run",
+                "--rm",
+                "--no-deps",
+                "-T",
+                "mcp-stdio"
+            ],
             "env": {
-                "RDC_BASE_URL": "http://rdatacore.docker",
-                "RDC_API_KEY": "${RDC_MCP_API_KEY}"
+                "RDC_MCP_API_KEY": "${RDC_MCP_API_KEY}"
             }
         }
     }

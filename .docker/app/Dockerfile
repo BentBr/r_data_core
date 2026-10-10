@@ -199,11 +199,12 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
     CMD ["true"]
 
 # ==============================================================================
-# MCP server image (HTTP transport)
+# MCP server image
 #
-# Only the serve binary ships. The stdio binary is run on a developer's own
-# machine by their MCP client, over a pipe it holds open — putting it in a
-# container nothing can speak to would only invite confusion.
+# Ships both binaries. `r-data-core-mcp-serve` is the HTTP transport and is
+# this image's entrypoint. `r-data-core-mcp` is the stdio transport: an MCP
+# client runs it over a pipe, which `docker compose run -T mcp-stdio` provides,
+# so a developer gets the server without a host toolchain.
 # ==============================================================================
 FROM debian:${DEBIAN_VERSION}-slim AS r-data-core-mcp
 
@@ -227,6 +228,7 @@ USER appuser
 WORKDIR /usr/local/bin
 
 COPY --from=builder --chown=appuser:appuser /app/target/release/r-data-core-mcp-serve /usr/local/bin/r-data-core-mcp-serve
+COPY --from=builder --chown=appuser:appuser /app/target/release/r-data-core-mcp /usr/local/bin/r-data-core-mcp
 
 ENTRYPOINT ["/usr/local/bin/r-data-core-mcp-serve"]
 

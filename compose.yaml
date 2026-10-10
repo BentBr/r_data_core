@@ -297,6 +297,41 @@ services:
                 aliases:
                     - mcp.rdatacore.docker
 
+    # The MCP server's stdio transport, for a local MCP client.
+    #
+    # Never started by `up` — it is launched per-session by the client via
+    # `docker compose run --rm --no-deps -T mcp-stdio`, which is what gives it
+    # the pipe the protocol needs. The `cli-only` profile keeps it out of every
+    # other profile's service set while still letting `run` reach it.
+    #
+    # stdio is single-user by nature: everything happens as the owner of
+    # RDC_API_KEY, and the audit trail says so.
+    mcp-stdio:
+        profiles: [cli-only]
+        image: r_data_core-mcp
+        build:
+            context: .
+            dockerfile: ./.docker/app/Dockerfile
+            target: r-data-core-mcp
+            args:
+                RUST_VERSION: "1.96.0"
+                BUILD_MODE: "debug"
+                PACKAGE_NAME: "r_data_core_mcp"
+                BINARY_NAME: "r-data-core-mcp"
+                RUST_LOG_LEVEL: "info"
+        entrypoint: ['/usr/local/bin/r-data-core-mcp']
+        environment:
+            RDC_MCP_TRANSPORT: stdio
+            RDC_BASE_URL: http://rdatacore.docker
+            # Supplied by the MCP client's environment, never stored here.
+            RDC_API_KEY: ${RDC_MCP_API_KEY:-}
+            # Logs go to stderr; stdout carries the JSON-RPC stream and a stray
+            # line there corrupts the protocol.
+            RUST_LOG: warn
+            MAIN_SERVICE: app
+        networks:
+            - default
+
     # ── Single sign-on ──────────────────────────────────────────────────────
     # Opt-in via COMPOSE_PROFILES. Previously a separate compose.sso.yaml,
     # which every command then had to name with -f; that is a file people work

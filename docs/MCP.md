@@ -110,23 +110,60 @@ led into a wall of 403s.
 
 ## Using it from Claude Code
 
-`.mcp.json` is committed, so there is nothing to write. It points at a
-locally built binary and reads the key from your environment — the file holds
-a `${RDC_MCP_API_KEY}` reference, never a literal key, because it is in git.
+`.mcp.json` is committed and runs the server **in a container** — there is no
+host Rust toolchain to install and nothing to `cargo build`. It references
+`${RDC_MCP_API_KEY}` rather than holding a key, because the file is in git.
 
 ```bash
-cargo build --release -p r_data_core_mcp
-export RDC_MCP_API_KEY=<a key from Settings → API keys>
+# 1. Build the image (once, and after changing the MCP crate)
+docker compose --profile mcp build mcp
+
+# 2. Create an API key: admin UI → Settings → API keys
+export RDC_MCP_API_KEY=<the key, shown once>
 ```
 
 Then restart Claude Code in this directory and run `/mcp`; `rdatacore` should
 be listed as connected.
 
-This is the stdio transport, so it needs neither Keycloak nor the `mcp`
-compose profile — only the API reachable at `RDC_BASE_URL`. The key is
-exchanged for a short-lived admin token at `/admin/api/v1/auth/api-key/token`,
-so the key's owner needs the workflow permissions you expect the assistant to
-use; the server resolves them at startup and offers only those tools.
+Behind that, the client runs:
+
+```bash
+docker compose run --rm --no-deps -T mcp-stdio
+```
+
+`-T` is what makes it work: stdio mode *is* the protocol stream, so the
+client needs a pipe rather than a TTY. `--no-deps` keeps it from starting the
+rest of the stack, and `--rm` means no container survives the session. The
+`mcp-stdio` service sits behind a `cli-only` profile so `docker compose up`
+never starts it — `run` reaches it anyway.
+
+The container talks to `http://rdatacore.docker` over the compose network, so
+the API must be up (`docker compose up -d`). It needs neither Keycloak nor the
+`mcp` profile: those are for the HTTP transport.
+
+Check it without a client:
+
+```bash
+RDC_MCP_API_KEY=wrong docker compose run --rm --no-deps -T mcp-stdio
+```
+
+A credential error naming the admin panel means the container reached the API
+and the only thing missing is a valid key. `MissingCredential` means the
+variable never arrived.
+
+Logs go to stderr by design — a stray line on stdout corrupts the JSON-RPC
+stream — and the service sets `RUST_LOG=warn` to keep that quiet.
+
+### Building from source instead
+
+If you would rather run the binary directly:
+
+```bash
+cargo build --release -p r_data_core_mcp
+```
+
+then point `.mcp.json`'s `command` at `./target/release/r-data-core-mcp` and
+set `RDC_BASE_URL` and `RDC_API_KEY` in its `env`.
 
 ---
 

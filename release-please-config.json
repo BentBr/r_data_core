@@ -19,7 +19,12 @@
                 "crates/workflow/Cargo.toml",
                 "crates/worker/Cargo.toml",
                 "crates/test-support/Cargo.toml",
-                "fe/package.json"
+                "fe/package.json",
+                {
+                    "type": "json",
+                    "path": "mcp-npm-package/package.json",
+                    "jsonpath": "$.version"
+                }
             ]
         }
     }
