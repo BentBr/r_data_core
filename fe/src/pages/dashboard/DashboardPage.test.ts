@@ -13,7 +13,7 @@ vi.mock('@/composables/useTranslations', () => ({
     useTranslations: () => ({
         t: (key: string, params?: Record<string, string | number>) => {
             const translations: Record<string, string> = {
-                'dashboard.title': 'R Data Core Admin Dashboard',
+                'dashboard.title': 'RDataCore Admin Dashboard',
                 'dashboard.tiles.entity_definitions': 'Entity Definitions',
                 'dashboard.tiles.entities': 'Entities',
                 'dashboard.tiles.workflows': 'Workflows',

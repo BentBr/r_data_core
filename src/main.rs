@@ -77,7 +77,7 @@ async fn main() -> r_data_core_core::error::Result<()> {
     // Initialize logger
     init_logger(&config.log.level);
 
-    info!("Starting R Data Core server...");
+    info!("Starting RDataCore server...");
     info!("Environment: {}", config.environment);
     info!("Log level: {}", config.log.level);
     info!("API docs enabled: {}", config.api.enable_docs);

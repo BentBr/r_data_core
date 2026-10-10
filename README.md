@@ -305,7 +305,8 @@ Workflows can be triggered by:
 
 ## Support
 
-- **Documentation**: [API Docs](https://rdatacore.eu/api/docs/)
+- **API Documentation**: [API Docs](https://api.rdatacore.eu/api/docs/)
+- **Admin API Documentation**: [Admin API Docs](https://api.rdatacore.eu/admin/api/docs/)
 - **Issues**: [GitHub Issues](https://github.com/BentBr/r_data_core/issues)
 - **Contact**: hello@rdatacore.eu
 

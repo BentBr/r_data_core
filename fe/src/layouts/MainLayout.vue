@@ -12,7 +12,7 @@
         >
             <!-- App Title -->
             <v-list-item
-                title="R Data Core"
+                title="RDataCore"
                 subtitle="Admin Interface"
                 nav
             >
@@ -181,7 +181,7 @@
     // Page title
     const currentPageTitle = computed(() => {
         const currentItem = navigationItems.value.find(item => item.path === route.path)
-        return currentItem?.title ?? 'R Data Core'
+        return currentItem?.title ?? 'RDataCore'
     })
 
     const updateIsMobile = () => {

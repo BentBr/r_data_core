@@ -115,7 +115,7 @@ describe('MainLayout', () => {
     it('falls back to the default title when the route has no matching navigation item', async () => {
         const wrapper = await mountLayout('/unknown-route-outside-nav')
 
-        expect((wrapper.vm as any).currentPageTitle).toBe('R Data Core')
+        expect((wrapper.vm as any).currentPageTitle).toBe('RDataCore')
         await router.push('/dashboard')
     })
 
