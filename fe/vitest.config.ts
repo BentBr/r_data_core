@@ -28,16 +28,17 @@ export default defineConfig({
             // declarations and the tests themselves carry no testable runtime.
             // Finalized against the measurement report (plan Task 5).
             exclude: ['src/types/generated/**', 'src/main.ts', 'src/**/*.d.ts', 'src/**/*.test.ts'],
-            // Lines-only gate, matching the backend's --fail-under-lines. Branch
-            // / function / statement coverage is reported but not gated.
+            // Lines-only gate, matching the backend's --fail-under-lines, which
+            // is already 80 (MIN_LINES in scripts/coverage.sh). Branch /
+            // function / statement coverage is reported but not gated.
             //
-            // vitest 4's v8 provider counts 226 files where v3 counted 172 —
-            // the extra 54 are components v3 silently skipped. Keeping 70
-            // therefore means 70% of the real tree, not of the flattering
-            // subset. Keep in sync with FE_THRESHOLD in
-            // .github/workflows/coverage.yml.
+            // vitest 4's v8 provider counts 226 files where v3 counted 172,
+            // so this is 80% of the real tree rather than of the flattering
+            // subset v3 measured. Keep in sync with FE_THRESHOLD in
+            // .github/workflows/coverage.yml — the badge there only paints
+            // green at 80 or above.
             thresholds: {
-                lines: 70,
+                lines: 80,
             },
         },
     },
