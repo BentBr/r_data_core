@@ -7,6 +7,11 @@ x-api-key
 # exporting it should not be able to commit it by accident. The committed
 # .mcp.json holds a ${RDC_MCP_API_KEY} reference, never a literal key.
 .mcp.json.local
+
+# Editor/plugin scratch. Nothing in the repo reads it, and the MCP client
+# config that is actually used is .mcp.json at the root — a second, empty
+# one here would only invite edits to the wrong file.
+.ai/
 server.log
 .idea
 logs
