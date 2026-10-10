@@ -239,8 +239,13 @@ jobs:
                     REPO: ${{ github.repository }}
                     TAG: ${{ inputs.tag || github.ref_name }}
                 run: |
+                    # Absolute path: the script cds to /tmp before copying,
+                    # so a relative source resolves against the wrong
+                    # directory. The coverage callers pass /tmp/... for the
+                    # same reason.
                     ./.github/scripts/publish-to-pages.sh \
-                        mcp-latest.json dist/mcp-latest.json "MCP manifest" \
+                        mcp-latest.json "${GITHUB_WORKSPACE}/dist/mcp-latest.json" \
+                        "MCP manifest" \
                         "chore(mcp): publish the ${TAG} download manifest"
 
     # Gated on `publish`, because postinstall downloads the binaries from the

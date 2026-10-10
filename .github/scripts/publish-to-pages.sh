@@ -22,6 +22,15 @@ MESSAGE="${4:-}"
 : "${GH_TOKEN:?GH_TOKEN is required}"
 : "${REPO:?REPO is required}"
 
+# Resolved before the cd below: every path the caller gave is relative to
+# where they invoked this, and the clone happens elsewhere. A relative source
+# silently resolved against /tmp once already.
+SRC="$(cd "$(dirname "$SRC")" && pwd)/$(basename "$SRC")"
+if [ ! -f "$SRC" ]; then
+    echo "source file not found: $SRC" >&2
+    exit 1
+fi
+
 cd /tmp
 rm -rf pages
 if git clone --branch gh-pages --depth 1 "https://x-access-token:${GH_TOKEN}@github.com/${REPO}.git" pages 2>/dev/null; then
