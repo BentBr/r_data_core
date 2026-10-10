@@ -219,6 +219,20 @@ jobs:
                     git push origin "${tag}"
                     echo "pushed ${tag}"
 
+    # Build the MCP release for the tag mcp-tag just created.
+    #
+    # Called rather than left to mcp-release.yml's own push-on-tag trigger:
+    # that trigger never fires for a tag pushed with the default GITHUB_TOKEN,
+    # which is why mcp-v0.4.12 was created and nothing built. Same reason
+    # docker-publish is invoked this way.
+    mcp-release:
+        needs: [ release-please, mcp-tag ]
+        if: ${{ needs.release-please.outputs.release_created == 'true' }}
+        uses: ./.github/workflows/mcp-release.yml
+        with:
+            tag: mcp-v${{ needs.release-please.outputs.version }}
+        secrets: inherit
+
     # Build and publish Docker images when a release is created
     docker-publish:
         needs: release-please
