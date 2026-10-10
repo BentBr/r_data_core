@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.4.13](https://github.com/BentBr/r_data_core/compare/core-v0.4.12...core-v0.4.13) (2026-10-10)
+
+
+### Bug Fixes
+
+* **ci:** actually run the MCP release after the tag is created ([003012a](https://github.com/BentBr/r_data_core/commit/003012a899a5adf1dfe5695c7b4cb9e7a74a190c))
+* **ci:** publish the MCP manifest from an absolute path ([87eeef0](https://github.com/BentBr/r_data_core/commit/87eeef0569ee86d31bab96fd4c64783ee19b0b56))
+
 ## [0.4.12](https://github.com/BentBr/r_data_core/compare/core-v0.4.11...core-v0.4.12) (2026-10-10)
 
 
