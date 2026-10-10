@@ -1,5 +1,26 @@
 # Changelog
 
+## [0.4.12](https://github.com/BentBr/r_data_core/compare/core-v0.4.11...core-v0.4.12) (2026-10-10)
+
+
+### Features
+
+* **mcp:** advertise DSL resources and add system_info ([eb7916b](https://github.com/BentBr/r_data_core/commit/eb7916b913a235f25d86ba52b3e11b7efc451a64))
+* **mcp:** derive the MCP release tag from the core release ([92fdaa0](https://github.com/BentBr/r_data_core/commit/92fdaa0aa661e67adcea920867b63b208b15604f))
+* **mcp:** publish the npm package from the release workflow ([0905672](https://github.com/BentBr/r_data_core/commit/090567207b349beeee7558f30c028d4acf847d86))
+* **mcp:** release arm64 Linux builds and a download manifest ([7f2ea04](https://github.com/BentBr/r_data_core/commit/7f2ea04fe794b2521a08e86c5074d1d33a035e59))
+* **mcp:** run the stdio server from a container ([9581e24](https://github.com/BentBr/r_data_core/commit/9581e24ca78b9fa0ee95fe3a3aaf1c888606ed3f))
+* **mcp:** serve the HTTP transport from compose behind a profile ([10c075a](https://github.com/BentBr/r_data_core/commit/10c075aa6f28f916a189e15477e47a6d06fb12c8))
+
+
+### Bug Fixes
+
+* **core:** stop the config loader tests reading the developer's .env ([dfd0c15](https://github.com/BentBr/r_data_core/commit/dfd0c150028d912fb785d387178d052fdac55f40))
+* **deps:** clear the advisories failing the CI audit gate ([d8b7d95](https://github.com/BentBr/r_data_core/commit/d8b7d951b7a120a849b2cde2fbe88eadabdff571))
+* **deps:** clear three frontend security advisories ([66b33b4](https://github.com/BentBr/r_data_core/commit/66b33b48bcabbe32f677ae13a8c62fe10450920e))
+* **fe:** make entity form validation actually block submission ([76b549a](https://github.com/BentBr/r_data_core/commit/76b549aef41f5becd025de083c53638e4672c151))
+* **fe:** set the coverage gate to what is actually measured ([fc20f6d](https://github.com/BentBr/r_data_core/commit/fc20f6d4fc1fb4c64dd64e01aa76fd603bb132a7))
+
 ## [0.4.11](https://github.com/BentBr/r_data_core/compare/core-v0.4.10...core-v0.4.11) (2026-09-06)
 
 
