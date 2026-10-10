@@ -161,10 +161,16 @@ jobs:
                 with:
                     ref: ${{ inputs.tag || github.ref }}
 
+            # Scoped to this workflow's own artefacts. Without the pattern
+            # it downloads everything in the run, and since release-please
+            # now calls this workflow alongside docker-publish, that run also
+            # contains docker/build-push-action's *.dockerbuild records —
+            # which is what failed the download after five retries.
             -   name: Download every target's artefacts
                 uses: actions/download-artifact@v4
                 with:
                     path: staged
+                    pattern: mcp-*
 
             # The per-target checksum files are concatenated rather than
             # regenerated: regenerating here would checksum whatever arrived,
