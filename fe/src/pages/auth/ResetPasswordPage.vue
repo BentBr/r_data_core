@@ -27,7 +27,7 @@
                                 <!-- Spacer -->
                                 <LanguageSwitch />
                             </div>
-                            <div class="text-h4 font-weight-bold primary--text">R Data Core</div>
+                            <div class="text-h4 font-weight-bold primary--text">RDataCore</div>
                             <div class="text-subtitle-1 grey--text">
                                 {{ t('auth.reset_password.title') }}
                             </div>

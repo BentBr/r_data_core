@@ -78,7 +78,7 @@
         "logged_in_as": "Logged in as"
     },
     "dashboard": {
-        "title": "R Data Core Admin Dashboard",
+        "title": "RDataCore Admin Dashboard",
         "tiles": {
             "entity_definitions": "Entity Definitions",
             "entities": "Entities",

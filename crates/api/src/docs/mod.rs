@@ -197,8 +197,8 @@ use utoipa_swagger_ui::{Config, SwaggerUi};
         (name = "email-templates", description = "Email template management"),
     ),
     info(
-        title = "R Data Core Admin API",
-        version = "0.1.0",
+        title = "RDataCore Admin API",
+        version = env!("CARGO_PKG_VERSION"),
         description = "Admin API for the Master Data Management with flexible pagination support",
         license(
             name = "MIT",
@@ -376,8 +376,8 @@ impl Modify for JsonValueSchemaAddon {
         (name = "workflows", description = "Workflow provider and consumer endpoints")
     ),
     info(
-        title = "R Data Core Public API",
-        version = "0.1.0",
+        title = "RDataCore Public API",
+        version = env!("CARGO_PKG_VERSION"),
         description = "Public API for the Master Data Management with flexible pagination support",
         license(
             name = "MIT",

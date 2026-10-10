@@ -3,7 +3,7 @@ name = "r_data_core_mcp"
 version = "0.1.0"
 edition = "2021"
 description = "MCP server for RDataCore — lets AI assistants author, run and debug workflows"
-authors = ["Bent Brüggemann <mail@bent-brueggemann.de>"]
+authors = ["Bent Brüggemann <hello@rdatacore.eu>"]
 license = "Business"
 publish = false  # proprietary — never published to a registry
 

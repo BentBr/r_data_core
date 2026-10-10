@@ -1,6 +1,6 @@
 # Design System Documentation
 
-This directory contains the unified design system for R Data Core, extracted from the Figma design
+This directory contains the unified design system for RDataCore, extracted from the Figma design
 system: https://www.figma.com/make/TfyVgKu2VFjIRq4frfI3CM/RDataCore
 
 ## Overview
