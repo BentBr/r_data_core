@@ -106,11 +106,11 @@ pub async fn create_workflow(
         if let Err(e) = utils::validate_cron(cron_str) {
             return ApiResponse::<()>::unprocessable_entity_with_violations(
                 &format!("Invalid cron schedule: {e}"),
-                vec![ValidationViolation {
-                    field: "schedule_cron".to_string(),
-                    message: "Invalid cron expression".to_string(),
-                    code: Some("INVALID_CRON".to_string()),
-                }],
+                vec![ValidationViolation::field(
+                    "schedule_cron",
+                    "Invalid cron expression",
+                    "INVALID_CRON",
+                )],
             );
         }
     }
@@ -166,11 +166,11 @@ pub async fn update_workflow(
         if let Err(e) = utils::validate_cron(cron_str) {
             return ApiResponse::<()>::unprocessable_entity_with_violations(
                 &format!("Invalid cron schedule: {e}"),
-                vec![ValidationViolation {
-                    field: "schedule_cron".to_string(),
-                    message: "Invalid cron expression".to_string(),
-                    code: Some("INVALID_CRON".to_string()),
-                }],
+                vec![ValidationViolation::field(
+                    "schedule_cron",
+                    "Invalid cron expression",
+                    "INVALID_CRON",
+                )],
             );
         }
     }

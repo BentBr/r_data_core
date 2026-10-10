@@ -17,17 +17,27 @@ core (foundation — no internal dependencies)
   ├── license (license verification)
   │     └── depends on: core
   │
+  ├── oidc-http (OIDC discovery + JWKS fetching)
+  │     └── depends on: core
+  │     └── exists so the MCP server can reach it without linking
+  │        services/persistence — it is an HTTP client of RDataCore
+  │
   ├── persistence (SQLx repositories)
   │     └── depends on: core, workflow
   │
   ├── services (business logic)
-  │     └── depends on: core, persistence, workflow, license
+  │     └── depends on: core, persistence, workflow, license, oidc-http
   │
   ├── api (HTTP endpoints)
   │     └── depends on: core, persistence, services, workflow, license
   │
   ├── worker (background tasks)
   │     └── depends on: core, persistence, services, workflow
+  │
+  ├── mcp (Model Context Protocol server)
+  │     └── depends on: core, workflow, oidc-http
+  │     └── deliberately NOT services/persistence: it reaches RDataCore over
+  │        HTTP like any other client, and must not link its database code
   │
   └── test-support (dev-only test helpers)
         └── depends on: core, persistence, services, workflow

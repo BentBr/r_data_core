@@ -172,6 +172,8 @@ fn validation_violation_fields_are_accessible() {
         field: "email".to_string(),
         message: "required".to_string(),
         code: Some("NOT_BLANK".to_string()),
+        json_path: None,
+        legal_values: Vec::new(),
     };
     assert_eq!(v.field, "email");
     assert_eq!(v.message, "required");
@@ -184,6 +186,42 @@ fn validation_violation_code_can_be_none() {
         field: "name".to_string(),
         message: "too short".to_string(),
         code: None,
+        json_path: None,
+        legal_values: Vec::new(),
     };
     assert!(v.code.is_none());
+}
+
+/// The convenience constructor leaves the precise-location fields unset, which
+/// is what almost every producer wants; only a producer that can genuinely
+/// supply a path should fill one in.
+#[test]
+fn violation_field_constructor_supplies_no_location() {
+    let v = ValidationViolation::field("email", "must not be blank", "NOT_BLANK");
+    assert_eq!(v.field, "email");
+    assert_eq!(v.code.as_deref(), Some("NOT_BLANK"));
+    assert!(v.json_path.is_none());
+    assert_eq!(v.legal_values, Vec::<String>::new());
+}
+
+/// The new fields are always serialized, so the JSON matches the generated
+/// TypeScript. ts-rs cannot read `skip_serializing_if`, so omitting them would
+/// have the type promise keys the server never sends.
+#[test]
+fn violation_serializes_its_location_fields_even_when_empty() {
+    let v = ValidationViolation::field("email", "must not be blank", "NOT_BLANK");
+    let json = serde_json::to_value(&v).expect("serializable");
+    assert!(json.get("json_path").is_some(), "got {json}");
+    assert!(json.get("legal_values").is_some(), "got {json}");
+}
+
+/// Older payloads without the new keys must still deserialize.
+#[test]
+fn violation_deserializes_without_the_location_fields() {
+    let v: ValidationViolation = serde_json::from_value(serde_json::json!({
+        "field": "email", "message": "bad", "code": null
+    }))
+    .expect("legacy payloads must still parse");
+    assert!(v.json_path.is_none());
+    assert_eq!(v.legal_values, Vec::<String>::new());
 }

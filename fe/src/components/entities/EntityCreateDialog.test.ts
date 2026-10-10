@@ -64,6 +64,19 @@ vi.mock('@/composables/useFieldRendering', () => ({
     useFieldRendering: () => ({
         getFieldComponent: () => 'v-text-field',
         getFieldRules: () => [],
+        parseJsonFieldValue: (value: unknown, fieldType: string) => {
+            if (fieldType !== 'Json') {
+                return { parsed: value, error: null }
+            }
+            if (typeof value !== 'string' || value.trim() === '') {
+                return { parsed: value, error: null }
+            }
+            try {
+                return { parsed: JSON.parse(value), error: null }
+            } catch {
+                return { parsed: value, error: 'Invalid JSON' }
+            }
+        },
     }),
 }))
 
@@ -597,6 +610,19 @@ describe('EntityCreateDialog', () => {
             expect(vm.selectedParentDisplay).toBeNull()
         })
 
+        it('clears display text when parent search yields no match', () => {
+            wrapper = mountComponent()
+
+            const vm = wrapper.vm as unknown as {
+                onParentSelect: (uuid: string | null) => void
+                selectedParentDisplay: string | null
+            }
+
+            vm.onParentSelect(null)
+
+            expect(vm.selectedParentDisplay).toBeNull()
+        })
+
         it('preserves display text when path suggestions change', () => {
             wrapper = mountComponent()
 
@@ -629,6 +655,287 @@ describe('EntityCreateDialog', () => {
             // Display text should still be set
             expect(vm.selectedParentDisplay).toBe('/folder/parent1')
             expect(vm.formData.parent_uuid).toBe('uuid-parent')
+        })
+    })
+
+    describe('onEntityTypeChange', () => {
+        it('resets form data and applies ui_settings defaults for the new type', () => {
+            wrapper = mountComponent({
+                entityDefinitions: [
+                    {
+                        uuid: 'def-uuid-2',
+                        entity_type: 'with_defaults',
+                        display_name: 'With Defaults',
+                        published: true,
+                        allow_children: true,
+                        fields: [
+                            {
+                                name: 'status',
+                                display_name: 'Status',
+                                field_type: 'String',
+                                ui_settings: { default: 'active' },
+                            },
+                        ],
+                        created_at: '2024-01-01T00:00:00Z',
+                        updated_at: '2024-01-01T00:00:00Z',
+                        created_by: 'user-uuid',
+                        version: 1,
+                    },
+                ] as any,
+            })
+
+            const vm = wrapper.vm as unknown as {
+                formData: {
+                    entity_type: string
+                    data: Record<string, unknown>
+                    parent_uuid: string | null
+                }
+                onEntityTypeChange: () => void
+                selectedParentDisplay: string | null
+            }
+
+            vm.formData.entity_type = 'with_defaults'
+            vm.formData.parent_uuid = 'some-parent'
+            vm.onEntityTypeChange()
+
+            expect(vm.formData.data.entity_key).toBe('')
+            expect(vm.formData.data.path).toBe('/')
+            expect(vm.formData.data.published).toBe(false)
+            expect(vm.formData.data.status).toBe('active')
+            expect(vm.formData.parent_uuid).toBeNull()
+            expect(vm.selectedParentDisplay).toBeNull()
+        })
+    })
+
+    describe('closeDialog', () => {
+        it('resets all form and suggestion state', async () => {
+            wrapper = mountComponent()
+
+            const vm = wrapper.vm as unknown as {
+                formData: {
+                    entity_type: string
+                    data: Record<string, unknown>
+                    parent_uuid: string | null
+                }
+                pathSuggestions: unknown[]
+                parentSuggestions: unknown[]
+                selectedParentDisplay: string | null
+                fieldErrors: Record<string, string>
+                closeDialog: () => void
+            }
+
+            vm.formData.entity_type = 'test_type'
+            vm.formData.data.entity_key = 'some-key'
+            vm.pathSuggestions = [{ kind: 'file', name: 'a', path: '/a' }]
+            vm.parentSuggestions = [{ kind: 'file', name: 'b', path: '/b' }]
+            vm.selectedParentDisplay = '/b'
+            vm.fieldErrors = { entity_key: 'taken' }
+
+            vm.closeDialog()
+            await wrapper.vm.$nextTick()
+
+            expect(vm.formData.entity_type).toBe('')
+            expect(vm.formData.data).toEqual({
+                entity_key: '',
+                path: '/',
+                published: false,
+            })
+            expect(vm.pathSuggestions).toEqual([])
+            expect(vm.parentSuggestions).toEqual([])
+            expect(vm.selectedParentDisplay).toBeNull()
+            expect(vm.fieldErrors).toEqual({})
+        })
+
+        it('is triggered when the dialog visibility watcher turns false', async () => {
+            wrapper = mountComponent()
+
+            const vm = wrapper.vm as unknown as {
+                formData: { entity_type: string }
+            }
+            vm.formData.entity_type = 'test_type'
+
+            await wrapper.setProps({ modelValue: false })
+            await wrapper.vm.$nextTick()
+
+            expect(vm.formData.entity_type).toBe('')
+        })
+    })
+
+    describe('defaultParent prefill watchers', () => {
+        it('prefills parent and path when defaultParent changes while dialog is open', async () => {
+            wrapper = mountComponent({ modelValue: true })
+
+            const vm = wrapper.vm as unknown as {
+                formData: {
+                    entity_type: string
+                    parent_uuid: string | null
+                    data: { path: string }
+                }
+                selectedParentDisplay: string | null
+            }
+            vm.formData.entity_type = 'test_type'
+
+            await wrapper.setProps({
+                defaultParent: {
+                    entity_type: 'test_type',
+                    field_data: {
+                        uuid: 'parent-uuid-1',
+                        path: '/parent-folder',
+                        entity_key: 'parent-key',
+                    },
+                } as any,
+            })
+            await wrapper.vm.$nextTick()
+
+            expect(vm.formData.parent_uuid).toBe('parent-uuid-1')
+            expect(vm.formData.data.path).toBe('/parent-folder/parent-key')
+            expect(vm.selectedParentDisplay).toBe('/parent-folder/parent-key')
+        })
+
+        it('does not prefill when entity_type has not been selected yet', async () => {
+            wrapper = mountComponent({ modelValue: true })
+
+            const vm = wrapper.vm as unknown as {
+                formData: { parent_uuid: string | null }
+            }
+
+            await wrapper.setProps({
+                defaultParent: {
+                    entity_type: 'test_type',
+                    field_data: {
+                        uuid: 'parent-uuid-1',
+                        path: '/parent-folder',
+                        entity_key: 'parent-key',
+                    },
+                } as any,
+            })
+            await wrapper.vm.$nextTick()
+
+            expect(vm.formData.parent_uuid).toBeNull()
+        })
+
+        it('prefills from an already-set defaultParent when dialog opens', async () => {
+            wrapper = mountComponent({
+                modelValue: false,
+                defaultParent: {
+                    entity_type: 'test_type',
+                    field_data: {
+                        uuid: 'parent-uuid-2',
+                        path: '/root',
+                        entity_key: 'child',
+                    },
+                } as any,
+            })
+
+            const vm = wrapper.vm as unknown as {
+                formData: {
+                    entity_type: string
+                    parent_uuid: string | null
+                    data: { path: string }
+                }
+            }
+            vm.formData.entity_type = 'test_type'
+
+            await wrapper.setProps({ modelValue: true })
+            await wrapper.vm.$nextTick()
+
+            expect(vm.formData.parent_uuid).toBe('parent-uuid-2')
+            expect(vm.formData.data.path).toBe('/root/child')
+        })
+    })
+
+    describe('createEntity submission', () => {
+        // form.value is a real VForm ref, but exercising its actual
+        // validate() would depend on Vuetify's internal (debounced/RAF-based)
+        // validation pipeline, which is unreliable under vi.useFakeTimers().
+        // We stub `form` directly with a fake validate() so these tests
+        // exercise createEntity's own logic deterministically. Note this also
+        // demonstrates a production bug (see "never blocks" test below):
+        // `if (!form.value?.validate())` never awaits the Promise
+        // VForm.validate() returns, so the guard is always a no-op.
+        const withFakeForm = (w: VueWrapper, resolvedValue: unknown = { valid: true }) => {
+            ;(w.vm as unknown as { form: unknown }).form = {
+                validate: () => Promise.resolve(resolvedValue),
+            }
+        }
+
+        it('emits create with processed data on success', async () => {
+            wrapper = mountComponent()
+            withFakeForm(wrapper)
+
+            const vm = wrapper.vm as unknown as {
+                formData: { entity_type: string; data: Record<string, unknown> }
+                createEntity: () => Promise<void>
+            }
+            vm.formData.entity_type = 'test_type'
+            vm.formData.data.entity_key = 'my-key'
+
+            await vm.createEntity()
+
+            expect(wrapper.emitted('create')).toBeTruthy()
+            const payload = wrapper.emitted('create')?.[0]?.[0] as {
+                entity_type: string
+                data: Record<string, unknown>
+            }
+            expect(payload.entity_type).toBe('test_type')
+            expect(payload.data.entity_key).toBe('my-key')
+        })
+
+        it('sets a field error and skips emit when a JSON field is invalid', async () => {
+            wrapper = mountComponent({
+                entityDefinitions: [
+                    {
+                        uuid: 'def-uuid-3',
+                        entity_type: 'json_type',
+                        display_name: 'Json Type',
+                        published: true,
+                        allow_children: true,
+                        fields: [{ name: 'meta', display_name: 'Meta', field_type: 'Json' }],
+                        created_at: '2024-01-01T00:00:00Z',
+                        updated_at: '2024-01-01T00:00:00Z',
+                        created_by: 'user-uuid',
+                        version: 1,
+                    },
+                ] as any,
+            })
+            withFakeForm(wrapper)
+
+            const vm = wrapper.vm as unknown as {
+                formData: { entity_type: string; data: Record<string, unknown> }
+                createEntity: () => Promise<void>
+                getFieldErrorMessages: (name: string) => string[]
+            }
+            vm.formData.entity_type = 'json_type'
+            vm.formData.data.meta = '{not valid json'
+            // Let the deep watcher on formData.data (which clears stale field
+            // errors) settle before invoking createEntity, otherwise it can
+            // race with and wipe out the error createEntity is about to set.
+            await wrapper.vm.$nextTick()
+
+            await vm.createEntity()
+
+            expect(wrapper.emitted('create')).toBeFalsy()
+            expect(vm.getFieldErrorMessages('meta').length).toBeGreaterThan(0)
+        })
+
+        it('blocks submission when the form reports invalid', async () => {
+            // Regression guard. validate() returns a Promise, so the
+            // un-awaited `!form.value?.validate()` was always false and every
+            // invalid form reached the API. Vuetify reports invalid here; the
+            // dialog must not emit.
+            wrapper = mountComponent()
+            withFakeForm(wrapper, { valid: false, errors: [{ id: 'entity_type' }] })
+
+            const vm = wrapper.vm as unknown as {
+                formData: { entity_type: string; data: Record<string, unknown> }
+                createEntity: () => Promise<void>
+            }
+            vm.formData.entity_type = 'test_type'
+            vm.formData.data.entity_key = 'my-key'
+
+            await vm.createEntity()
+
+            expect(wrapper.emitted('create')).toBeFalsy()
         })
     })
 })

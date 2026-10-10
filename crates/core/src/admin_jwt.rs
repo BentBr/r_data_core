@@ -73,49 +73,10 @@ pub fn generate_jwt(
     expiration_seconds: u64,
     roles: &[Role],
 ) -> Result<String> {
-    let user_uuid = user.uuid;
-
     let username = &user.username;
     log::debug!("Generating JWT for user: {username}");
 
-    // Create expiration time
-    let now = OffsetDateTime::now_utc();
-    let expiration = now
-        .checked_add(Duration::seconds(
-            i64::try_from(expiration_seconds).unwrap_or(i64::MAX),
-        ))
-        .ok_or_else(|| {
-            crate::error::Error::Auth("Could not create token expiration".to_string())
-        })?;
-
-    // Check the super_admin flag first, then role super_admin flags
-    let user_is_super_admin = user.super_admin;
-    let role_is_super_admin = roles.iter().any(|role| role.super_admin);
-    let is_super_admin = user_is_super_admin || role_is_super_admin;
-
-    // Extract permissions from roles
-    let permissions = if is_super_admin {
-        // Super admin (user or role) gets all permissions for all namespaces
-        generate_all_permissions()
-    } else if !roles.is_empty() {
-        // Merge permissions from all roles
-        merge_permissions_from_roles(roles)
-    } else {
-        // No roles mean no permissions
-        Vec::new()
-    };
-
-    // Create claims
-    let claims = AuthUserClaims {
-        sub: user_uuid.to_string(),
-        iss: ADMIN_JWT_ISSUER.to_string(),
-        name: user.username.clone(),
-        email: user.email.clone(),
-        is_super_admin,
-        permissions,
-        exp: usize::try_from(expiration.unix_timestamp()).unwrap_or(0),
-        iat: usize::try_from(now.unix_timestamp()).unwrap_or(0),
-    };
+    let claims = build_claims(user, roles, expiration_seconds)?;
 
     // Generate the token
     let token = encode(
@@ -126,6 +87,55 @@ pub fn generate_jwt(
     .map_err(|e| crate::error::Error::Auth(format!("Token generation error: {e}")))?;
 
     Ok(token)
+}
+
+/// Build the claims a session for this user and these roles carries.
+///
+/// Every way of authenticating mints its claims through here — password
+/// login, an OIDC bearer token, the SSO callback — so the authority someone
+/// holds cannot depend on how they signed in. Reimplementing the flattening
+/// anywhere else would produce a silent authorization difference rather than
+/// a visible failure, which is why this is public rather than inlined.
+///
+/// # Errors
+/// Returns an error when the expiry cannot be represented.
+pub fn build_claims(
+    user: &AdminUser,
+    roles: &[Role],
+    expiration_seconds: u64,
+) -> Result<AuthUserClaims> {
+    let now = OffsetDateTime::now_utc();
+    let expiration = now
+        .checked_add(Duration::seconds(
+            i64::try_from(expiration_seconds).unwrap_or(i64::MAX),
+        ))
+        .ok_or_else(|| {
+            crate::error::Error::Auth("Could not create token expiration".to_string())
+        })?;
+
+    // Check the super_admin flag first, then role super_admin flags
+    let is_super_admin = user.super_admin || roles.iter().any(|role| role.super_admin);
+
+    let permissions = if is_super_admin {
+        // Super admin (user or role) gets all permissions for all namespaces
+        generate_all_permissions()
+    } else if roles.is_empty() {
+        // No roles mean no permissions
+        Vec::new()
+    } else {
+        merge_permissions_from_roles(roles)
+    };
+
+    Ok(AuthUserClaims {
+        sub: user.uuid.to_string(),
+        iss: ADMIN_JWT_ISSUER.to_string(),
+        name: user.username.clone(),
+        email: user.email.clone(),
+        is_super_admin,
+        permissions,
+        exp: usize::try_from(expiration.unix_timestamp()).unwrap_or(0),
+        iat: usize::try_from(now.unix_timestamp()).unwrap_or(0),
+    })
 }
 
 /// Merge permissions from all roles
@@ -268,6 +278,7 @@ mod tests {
             failed_login_attempts: 0,
             locked_until: None,
             super_admin: true,
+            is_sso_provisioned: false,
             uuid: Uuid::now_v7(),
             first_name: Some("Test".to_string()),
             last_name: Some("User".to_string()),

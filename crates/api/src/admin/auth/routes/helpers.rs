@@ -129,12 +129,26 @@ pub async fn handle_password_failure(
     ApiResponse::unauthorized("Invalid credentials")
 }
 
-/// Reset lockout state, persist last-login, issue tokens, store refresh token, build response.
-pub async fn complete_login(
-    mut user: AdminUser,
-    repo: AdminUserRepository,
+/// The session artefacts a successful sign-in produces.
+pub struct IssuedSession {
+    pub tokens: crate::token_service::TokenPair,
+    pub using_default_password: bool,
+}
+
+/// Reset lockout state, persist last-login, issue tokens, store refresh token.
+///
+/// Every way of signing in ends here — password login and the single-sign-on
+/// callback both — so an SSO session is the *same* session a password login
+/// produces. That is what lets refresh, logout and revoke-all work with no
+/// SSO-specific branches anywhere in the session code.
+///
+/// Returns `None` when something internal failed; the reason is logged, and
+/// callers should answer with a generic failure rather than say more.
+pub async fn issue_session(
+    user: &mut AdminUser,
+    repo: &AdminUserRepository,
     data: &ApiStateWrapper,
-) -> actix_web::HttpResponse {
+) -> Option<IssuedSession> {
     user.record_login_success();
     if let Err(e) = repo
         .update_lockout_state(&user.uuid, &user.status, user.failed_login_attempts, None)
@@ -146,13 +160,13 @@ pub async fn complete_login(
         log::error!("Failed to update last login: {e:?}");
     }
 
-    let roles = load_user_roles(&user, data, &repo).await;
+    let roles = load_user_roles(user, data, repo).await;
     let token_service = TokenService::new(data.api_config());
-    let token_pair = match token_service.generate_token_pair(&user, &roles) {
+    let token_pair = match token_service.generate_token_pair(user, &roles) {
         Ok(pair) => pair,
         Err(e) => {
             log::error!("Failed to generate tokens: {e:?}");
-            return ApiResponse::internal_error("Authentication failed");
+            return None;
         }
     };
 
@@ -164,18 +178,18 @@ pub async fn complete_login(
     if let Err(e) = refresh_repo
         .create(
             user.uuid,
-            token_pair.refresh_token_hash,
+            token_pair.refresh_token_hash.clone(),
             token_pair.refresh_expires_at,
             device_info,
         )
         .await
     {
         log::error!("Failed to store refresh token: {e:?}");
-        return ApiResponse::internal_error("Authentication failed");
+        return None;
     }
 
     let using_default_password = if data.api_config().check_default_admin_password {
-        check_admin_default_password(&repo).await
+        check_admin_default_password(repo).await
     } else {
         false
     };
@@ -193,12 +207,28 @@ pub async fn complete_login(
             .await;
     }
 
+    Some(IssuedSession {
+        tokens: token_pair,
+        using_default_password,
+    })
+}
+
+/// Issue a session and answer with the standard login response.
+pub async fn complete_login(
+    mut user: AdminUser,
+    repo: AdminUserRepository,
+    data: &ApiStateWrapper,
+) -> actix_web::HttpResponse {
+    let Some(session) = issue_session(&mut user, &repo, data).await else {
+        return ApiResponse::internal_error("Authentication failed");
+    };
+
     build_login_response(
         &user,
-        token_pair.access_token,
-        token_pair.refresh_token,
-        token_pair.access_expires_at,
-        token_pair.refresh_expires_at,
-        using_default_password,
+        session.tokens.access_token,
+        session.tokens.refresh_token,
+        session.tokens.access_expires_at,
+        session.tokens.refresh_expires_at,
+        session.using_default_password,
     )
 }

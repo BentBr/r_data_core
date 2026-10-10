@@ -80,6 +80,7 @@ describe('Generated type contract tests', () => {
                 created_at: '2024-01-01T00:00:00Z',
                 updated_at: '2024-06-15T10:30:00Z',
                 created_by: '01923e4a-bbbb-7d8e-9f01-234567890abc',
+                is_sso_provisioned: false,
             })
             expect(fixture.uuid).toBeTruthy()
         })
@@ -103,6 +104,7 @@ describe('Generated type contract tests', () => {
                 created_at: '2024-01-01T00:00:00Z',
                 updated_at: '2024-01-01T00:00:00Z',
                 created_by: '01923e4a-bbbb-7d8e-9f01-234567890abc',
+                is_sso_provisioned: false,
             })
             expect(fixture.first_name).toBeNull()
             expect(fixture.last_login).toBeNull()
@@ -324,8 +326,24 @@ describe('Generated type contract tests', () => {
                 field: 'email',
                 message: 'Invalid email format',
                 code: null,
+                json_path: null,
+                legal_values: [],
             })
             expect(fixture.field).toBe('email')
+        })
+
+        it('ValidationViolation carries a precise location when one exists', () => {
+            // The DSL validator supplies these; most producers cannot, and
+            // send null / [] instead.
+            const fixture = assertType<ValidationViolation>({
+                field: 'steps[0]',
+                message: 'unknown variant `entity_write`',
+                code: 'DSL_STEP_MALFORMED',
+                json_path: 'steps[0].to.type',
+                legal_values: ['format', 'entity', 'next_step', 'email'],
+            })
+            expect(fixture.json_path).toBe('steps[0].to.type')
+            expect(fixture.legal_values).toContain('next_step')
         })
 
         it('DslValidateResponse matches expected API shape', () => {

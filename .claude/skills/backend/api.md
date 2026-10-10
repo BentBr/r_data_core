@@ -29,8 +29,11 @@ description: Actix-web HTTP API layer — middleware, authentication, admin/publ
 
 1. Logger
 2. CORS
-3. Authentication (JWT / API Key / Combined)
-4. Error handling
+3. `OidcAuth` — identity-provider bearer tokens, registered on the app scope
+   in `api_state::configure_app_with_options`. Inert unless `RDC_OIDC_ISSUER`
+   is set.
+4. Authentication (JWT / API Key / Combined)
+5. Error handling
 
 ## Authentication Modules
 
@@ -40,8 +43,30 @@ description: Actix-web HTTP API layer — middleware, authentication, admin/publ
 | `middleware/jwt_auth.rs` | JWT authentication |
 | `middleware/api_auth.rs` | API key authentication |
 | `middleware/combined_auth.rs` | Multi-method auth |
+| `middleware/oidc_auth.rs` | OIDC bearer tokens — the third auth arm |
 | `auth/permission_check.rs` | Permission verification |
 | `auth/permission_required.rs` | Permission guard macros |
+
+### The third auth arm (OIDC)
+
+OIDC is a third way to populate `AuthUserClaims`, never a second authorization
+path. `oidc_auth.rs` validates a bearer token and inserts the same claims the
+JWT arm does, so every route guarded by `RequiredAuth` or a permission check
+works unchanged.
+
+| Piece | Notes |
+|-------|-------|
+| `middleware/oidc_auth.rs` | Routes on an **unverified** `iss` peek — sound only because it picks which validator runs. A token naming another issuer passes through; one naming ours and failing is refused outright |
+| `admin/auth/routes/oidc.rs` | `start` / `callback` (browser) and `exchange` (machine callers). `state` is bound to the browser by an HttpOnly cookie — without it, login CSRF |
+| `services::OidcRuntime` | The shared tail: verify → resolve → mint. All three endpoints and the middleware go through it, so the account-status check cannot diverge |
+| `services::OidcFlow` | PKCE, single-use `state` claimed via `CacheManager::increment`, code exchange |
+| `core::oidc::is_local_redirect_path` | The single redirect-target validator. Rejects backslashes and control characters, not just a `//` prefix |
+
+Refusals are classified: 403 denied, 401 bad token, 503 provider or database
+unreachable. Do not collapse the last two — they send whoever is on call to
+different places.
+
+Operator-facing detail lives in `docs/SSO.md`.
 
 ## Admin Endpoints (`/admin/api/v1/`)
 

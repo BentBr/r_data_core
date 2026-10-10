@@ -1,6 +1,7 @@
 #![deny(clippy::all, clippy::pedantic, clippy::nursery, warnings)]
 
 pub mod adapter;
+pub mod dry_run;
 pub mod entity_persistence;
 pub mod item_processing;
 pub mod outbox;

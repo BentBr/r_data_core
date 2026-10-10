@@ -133,6 +133,8 @@ Perform arithmetic operations on numeric fields:
 **Operands**:
 - `{ "kind": "field", "field": "field_name" }` - Reference a normalized field
 - `{ "kind": "const", "value": 123.45 }` - Use a constant number
+- `{ "kind": "external_entity_field", ... }` - Read a numeric field from another
+  entity, resolved at run time
 
 **Type Casting**: String values are automatically cast to numbers when possible (e.g., `"123.45"` → `123.45`). Invalid conversions fail with clear error messages.
 
@@ -155,6 +157,103 @@ Concatenate string values:
 - `{ "kind": "const_string", "value": "text" }` - Use a constant string
 
 **Type Casting**: Numeric values are automatically cast to strings (e.g., `123.0` → `"123"`, `123.45` → `"123.45"`).
+
+### ResolveEntityPath
+
+Look an entity up by field filters and write its path — and optionally its UUID
+— into the normalized data. Runs in the services layer, so it reaches the
+database.
+
+```json
+{
+  "type": "resolve_entity_path",
+  "target_path": "customer_path",
+  "target_uuid": "customer_uuid",
+  "entity_type": "customer",
+  "filters": { "email": { "kind": "field", "field": "email" } },
+  "value_transforms": { "email": "lowercase" },
+  "fallback_path": "/customers/unknown"
+}
+```
+
+| Field | Required | Notes |
+|---|---|---|
+| `target_path` | yes | Normalized field to receive the resolved path |
+| `target_uuid` | no | Receives the entity's UUID — use as `parent_uuid` for children |
+| `entity_type` | yes | Entity type to query |
+| `filters` | yes | Field name → `StringOperand` |
+| `value_transforms` | no | Field → transform, e.g. `lowercase`, `trim` |
+| `fallback_path` | no | Used when nothing matches |
+
+### BuildPath
+
+Build a path from a template with `{field}` placeholders.
+
+```json
+{
+  "type": "build_path",
+  "target": "entity_path",
+  "template": "/customers/{country}/{city}",
+  "separator": "/",
+  "field_transforms": { "city": "lowercase" }
+}
+```
+
+`separator` defaults to `/`. `field_transforms` applies to placeholder values
+before substitution.
+
+### GetOrCreateEntity
+
+Resolve an entity by path, creating it when absent. This one writes.
+
+```json
+{
+  "type": "get_or_create_entity",
+  "target_path": "category_path",
+  "target_uuid": "category_uuid",
+  "entity_type": "category",
+  "path_template": "/categories/{category_name}",
+  "create_field_data": { "name": { "kind": "field", "field": "category_name" } },
+  "path_separator": "/"
+}
+```
+
+### Authenticate
+
+Verify a submitted identifier and password against entity data and issue an
+entity JWT.
+
+```json
+{
+  "type": "authenticate",
+  "entity_type": "user",
+  "identifier_field": "email",
+  "password_field": "password",
+  "input_identifier": "email",
+  "input_password": "password",
+  "target_token": "token",
+  "extra_claims": { "role": "role" },
+  "token_expiry_seconds": 3600
+}
+```
+
+`token_expiry_seconds` falls back to the `JWT_EXPIRATION` environment variable.
+
+### SendEmail
+
+Send an email mid-run via a workflow email template. Requires SMTP to be
+configured; without it the transform sets `target_status` and continues rather
+than failing the run.
+
+```json
+{
+  "type": "send_email",
+  "template_uuid": "0195f0a0-...",
+  "to": [{ "kind": "field", "field": "email" }],
+  "cc": [{ "kind": "const_string", "value": "ops@example.com" }],
+  "target_status": "email_status"
+}
+```
 
 ## ToDef Types
 
@@ -198,6 +297,29 @@ Save data to an entity:
 ```
 
 **Modes**: `create`, `update`, `create_or_update`
+
+For `update` and `create_or_update`, identify the existing record with either:
+
+| Field | Notes |
+|---|---|
+| `identify` | An `EntityFilter`, the same shape `from.entity` uses |
+| `update_key` | A field name whose value locates the record |
+
+### Email
+
+Send the step's produced output as an email.
+
+```json
+{
+  "type": "email",
+  "template_uuid": "0195f0a0-...",
+  "to": [{ "kind": "field", "field": "email" }],
+  "cc": [{ "kind": "const_string", "value": "ops@example.com" }],
+  "mapping": { "total": "order_total" }
+}
+```
+
+`mapping` maps produced fields to template variables.
 
 ### NextStep
 
@@ -475,6 +597,34 @@ Trigger workflow via GET request at `/api/v1/workflows/{uuid}/trigger`, fetch da
 ```
 
 **Note**: When using `trigger` type, step 2 doesn't need `PreviousStep` since step 1 has no data to pass. Step 2 can use static `from.uri` endpoints to pull from external APIs. The trigger endpoint is `GET /api/v1/workflows/{uuid}/trigger`, while Provider workflows use `GET /api/v1/workflows/{uuid}` to fetch data.
+
+## Post-Run Hooks (`on_complete`)
+
+A program may carry an `on_complete` section alongside `steps`, describing
+actions to take once the whole run finishes.
+
+```json
+{
+  "steps": [ ... ],
+  "on_complete": {
+    "actions": [
+      {
+        "type": "send_email",
+        "template_uuid": "0195f0a0-...",
+        "to": [{ "kind": "const_string", "value": "ops@example.com" }],
+        "cc": null,
+        "condition": "on_failure"
+      }
+    ]
+  }
+}
+```
+
+**Conditions**: `always` (default), `on_success` (no failed items),
+`on_failure` (at least one failed item).
+
+Recipients here must be `const_string`. There is no per-item context after the
+run, so field references have nothing to resolve against.
 
 ## Type Casting Rules
 

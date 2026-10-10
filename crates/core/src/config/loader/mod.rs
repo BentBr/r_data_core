@@ -12,6 +12,29 @@ pub use worker::load_worker_config;
 use crate::config::{CacheConfig, LicenseConfig};
 use crate::error::Result;
 
+/// Load `.env`, except under this crate's own unit tests.
+///
+/// The loaders are tested by setting process environment variables and
+/// asserting on what comes back. `dotenvy` will not override a variable that
+/// is already set, but it *will* set one a test deliberately removed — so a
+/// test asserting "this is required and missing" passes only for a developer
+/// whose `.env` happens not to contain that key. CI, which has no `.env`,
+/// never sees the failure.
+///
+/// Integration tests in other crates still read `.env`, which is what they
+/// want: they exercise a configured instance.
+// Under `cfg(test)` the body is empty, so nursery suggests `const fn` — which
+// the real build cannot be. The allow is scoped to the test build rather than
+// applied unconditionally, so the suggestion still lands if this ever becomes
+// const-able for real.
+#[cfg_attr(test, allow(clippy::missing_const_for_fn))]
+pub(super) fn load_dotenv() {
+    #[cfg(not(test))]
+    {
+        dotenvy::dotenv().ok();
+    }
+}
+
 /// Load license configuration from environment variables
 ///
 /// This function loads the license configuration using the same logic as the main config loader.
@@ -20,8 +43,7 @@ use crate::error::Result;
 /// # Errors
 /// Returns an error if .env file loading fails (though this is usually non-fatal)
 pub fn load_license_config() -> Result<LicenseConfig> {
-    // Load .env file if present (same as other config loaders)
-    dotenvy::dotenv().ok();
+    load_dotenv();
 
     Ok(shared::get_license_config())
 }
@@ -34,8 +56,7 @@ pub fn load_license_config() -> Result<LicenseConfig> {
 /// # Errors
 /// Returns an error if required environment variables are missing
 pub fn load_cache_config() -> Result<(CacheConfig, String)> {
-    // Load .env file if present (same as other config loaders)
-    dotenvy::dotenv().ok();
+    load_dotenv();
 
     let cache = shared::get_cache_config();
     let redis_url = std::env::var("REDIS_URL")

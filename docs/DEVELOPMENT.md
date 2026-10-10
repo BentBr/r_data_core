@@ -122,6 +122,25 @@ cargo sqlx migrate run
 RUST_BACKTRACE=1 RUST_LOG=info cargo run --bin r-data-core
 ```
 
+### Compose profiles
+
+`docker compose up -d` brings up only the core stack: Postgres, Redis, the
+API, the worker, the maintenance job, the frontend dev server, the mail
+catcher and the proxy. Everything heavier is opt-in through `COMPOSE_PROFILES`
+in `.env`:
+
+| Profile | Adds | Notes |
+|---|---|---|
+| `sso` | `keycloak`, `sso-migrate`, `sso-seed` | Also needs the `RDC_OIDC_*` block — see `docs/SSO.md` |
+| `mcp` | the above, plus `mcp` | The MCP server's HTTP transport refuses to start without an issuer, so this profile implies `sso` |
+| `e2e` | `playwright` | |
+
+Profiles combine: `COMPOSE_PROFILES=mcp,e2e`.
+
+Keycloak imports its realm only when the realm does not already exist, so a
+realm file edited after first boot needs
+`docker compose up -d --force-recreate keycloak` to take effect.
+
 ## Using RDT (Rusty Dev Tool)
 
 This project uses `rdt` for common development tasks:

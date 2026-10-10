@@ -202,7 +202,11 @@
     }
 
     const updateEntity = async () => {
-        if (!form.value?.validate()) {
+        // validate() returns a Promise. Without the await the object itself
+        // is tested, and an object is always truthy — so the guard never
+        // fired and invalid forms were submitted to the API regardless.
+        const validation = await form.value?.validate()
+        if (validation && !validation.valid) {
             return
         }
 

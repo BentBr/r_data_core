@@ -1,6 +1,5 @@
 #![deny(clippy::all, clippy::pedantic, clippy::nursery, warnings)]
 
-use dotenvy::dotenv;
 use std::env;
 
 use crate::config::WorkerConfig;
@@ -17,7 +16,7 @@ use super::shared::{
 /// Returns an error if required environment variables are missing or invalid
 pub fn load_worker_config() -> Result<WorkerConfig> {
     // Ensure .env is loaded for binaries that only use WorkerConfig
-    dotenv().ok();
+    super::load_dotenv();
 
     let interval_str = env::var("JOB_QUEUE_UPDATE_INTERVAL").map_err(|_| {
         crate::error::Error::Config("JOB_QUEUE_UPDATE_INTERVAL not set".to_string())

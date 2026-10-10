@@ -28,7 +28,13 @@
                         :rules="[rules.required, rules.email]"
                         required
                     />
+                    <!--
+                        No password field for a federated account: the server
+                        refuses to set one, so offering the control would only
+                        let someone type a password and be told no.
+                    -->
                     <v-text-field
+                        v-if="!isSsoUser"
                         v-model="formData.password"
                         :label="t('users.dialog.password')"
                         type="password"
@@ -49,7 +55,14 @@
                         :rules="[rules.required]"
                         required
                     />
+                    <!--
+                        Roles for a federated account come from the identity
+                        provider's claims on each sign-in and are not stored
+                        here, so an editable control would silently discard
+                        the change. Shown read-only, and said so.
+                    -->
                     <v-select
+                        v-if="!isSsoUser"
                         v-model="formData.role_uuids"
                         :label="t('users.dialog.roles')"
                         :items="availableRoles"
@@ -61,6 +74,34 @@
                         persistent-hint
                         :loading="loadingRoles"
                     />
+                    <div
+                        v-else
+                        class="mb-4"
+                        data-testid="sso-roles-readonly"
+                    >
+                        <div class="text-caption text-medium-emphasis mb-1">
+                            {{ t('users.dialog.roles') }}
+                        </div>
+                        <div class="d-flex flex-wrap ga-2 mb-1">
+                            <v-chip
+                                v-for="roleName in assignedRoleNames"
+                                :key="roleName"
+                                size="small"
+                                label
+                            >
+                                {{ roleName }}
+                            </v-chip>
+                            <span
+                                v-if="assignedRoleNames.length === 0"
+                                class="text-body-2 text-medium-emphasis"
+                            >
+                                {{ t('users.dialog.sso_roles_none') }}
+                            </span>
+                        </div>
+                        <div class="text-caption text-medium-emphasis">
+                            {{ t('users.dialog.sso_roles_hint') }}
+                        </div>
+                    </div>
                     <v-switch
                         v-model="formData.is_active"
                         :label="t('users.dialog.active')"
@@ -97,7 +138,7 @@
 </template>
 
 <script setup lang="ts">
-    import { ref, watch, onMounted } from 'vue'
+    import { ref, computed, watch, onMounted } from 'vue'
     import { useTranslations } from '@/composables/useTranslations'
     import { useRoles } from '@/composables/useRoles'
     import { getDialogMaxWidth } from '@/design-system/components'
@@ -122,6 +163,21 @@
     const formRef = ref()
     const formValid = ref(false)
     const availableRoles = ref<Role[]>([])
+
+    /**
+     * Whether this account signs in through an identity provider.
+     *
+     * Only meaningful when editing: a new account created here is always a
+     * local one.
+     */
+    const isSsoUser = computed(() => props.editingUser?.is_sso_provisioned === true)
+
+    /** The names of the roles this account currently holds, for display. */
+    const assignedRoleNames = computed(() =>
+        (props.editingUser?.role_uuids ?? [])
+            .map(uuid => availableRoles.value.find(role => role.uuid === uuid)?.name)
+            .filter((name): name is string => typeof name === 'string')
+    )
 
     const formData = ref<CreateUserRequest & { is_active?: boolean; super_admin?: boolean }>({
         username: '',

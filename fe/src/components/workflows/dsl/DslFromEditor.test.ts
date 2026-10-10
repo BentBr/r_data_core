@@ -367,6 +367,46 @@ describe('DslFromEditor', () => {
         }
     })
 
+    it('updates format options via CsvOptionsEditor', async () => {
+        const fromDef: FromDef = {
+            type: 'format',
+            source: { source_type: 'uri', config: { uri: '' }, auth: { type: 'none' } },
+            format: { format_type: 'csv', options: { has_header: true } },
+            mapping: {},
+        }
+        const wrapper = mount(DslFromEditor, {
+            props: { modelValue: fromDef },
+        })
+        await nextTick()
+
+        const csvOptionsEditor = wrapper.findComponent({ name: 'CsvOptionsEditor' })
+        expect(csvOptionsEditor.exists()).toBe(true)
+        await csvOptionsEditor.vm.$emit('update:modelValue', { has_header: false, delimiter: ';' })
+        await nextTick()
+
+        const emitted = wrapper.emitted('update:modelValue') as Array<[FromDef]>
+        const updated = emitted[emitted.length - 1][0]
+        if (updated.type === 'format') {
+            expect(updated.format.options).toEqual({ has_header: false, delimiter: ';' })
+        }
+    })
+
+    it('shows the API accept-POST endpoint banner for api source type', async () => {
+        const fromDef: FromDef = {
+            type: 'format',
+            source: { source_type: 'api', config: {}, auth: { type: 'none' } },
+            format: { format_type: 'json', options: {} },
+            mapping: {},
+        }
+        const wrapper = mount(DslFromEditor, {
+            props: { modelValue: fromDef, workflowUuid: 'wf-42' },
+        })
+        await nextTick()
+
+        expect(wrapper.text()).toContain('endpoint_info')
+        expect(wrapper.text()).toContain('wf-42')
+    })
+
     it('updates format type for format type', async () => {
         const fromDef: FromDef = {
             type: 'format',
@@ -592,6 +632,429 @@ describe('DslFromEditor', () => {
         const text = wrapper.text()
         // Check that translation key is used (mocked to return key itself)
         expect(text).toContain('filter_operator')
+    })
+
+    it('toggles filter off and removes it from the model', async () => {
+        const fromDef: FromDef = {
+            type: 'entity',
+            entity_definition: 'test_entity',
+            filter: { field: 'status', operator: '=', value: 'active' },
+            mapping: {},
+        }
+        const wrapper = mount(DslFromEditor, {
+            props: { modelValue: fromDef },
+        })
+        await nextTick()
+
+        const toggle = wrapper.findComponent({ name: 'VSwitch' })
+        expect(toggle.exists()).toBe(true)
+        await toggle.vm.$emit('update:modelValue', false)
+        await nextTick()
+
+        const emitted = wrapper.emitted('update:modelValue') as Array<[FromDef]>
+        const updated = emitted[emitted.length - 1][0]
+        if (updated.type === 'entity') {
+            expect(updated.filter).toBeUndefined()
+        }
+    })
+
+    it('toggles filter on when none exists and creates a default filter', async () => {
+        const fromDef: FromDef = {
+            type: 'entity',
+            entity_definition: 'test_entity',
+            mapping: {},
+        }
+        const wrapper = mount(DslFromEditor, {
+            props: { modelValue: fromDef },
+        })
+        await nextTick()
+
+        const toggle = wrapper.findComponent({ name: 'VSwitch' })
+        await toggle.vm.$emit('update:modelValue', true)
+        await nextTick()
+
+        const emitted = wrapper.emitted('update:modelValue') as Array<[FromDef]>
+        const updated = emitted[emitted.length - 1][0]
+        if (updated.type === 'entity') {
+            expect(updated.filter).toEqual({ field: '', operator: '=', value: '' })
+        }
+    })
+
+    it('updates filter value text field', async () => {
+        const fromDef: FromDef = {
+            type: 'entity',
+            entity_definition: 'test_entity',
+            filter: { field: 'status', operator: '=', value: 'active' },
+            mapping: {},
+        }
+        const wrapper = mount(DslFromEditor, {
+            props: { modelValue: fromDef },
+        })
+        await nextTick()
+
+        const textFields = wrapper.findAllComponents({ name: 'VTextField' })
+        const filterValueField = textFields.find(
+            tf => (tf.props('label') as string) === 'workflows.dsl.filter_value'
+        )
+        expect(filterValueField).toBeTruthy()
+        await filterValueField!.vm.$emit('update:modelValue', 'inactive')
+        await nextTick()
+
+        const emitted = wrapper.emitted('update:modelValue') as Array<[FromDef]>
+        const updated = emitted[emitted.length - 1][0]
+        if (updated.type === 'entity') {
+            expect(updated.filter?.value).toBe('inactive')
+        }
+    })
+
+    describe('Trigger FromDef', () => {
+        it('renders the trigger endpoint info banner', async () => {
+            const fromDef: FromDef = { type: 'trigger', mapping: {} }
+            const wrapper = mount(DslFromEditor, {
+                props: { modelValue: fromDef, workflowUuid: 'wf-123' },
+            })
+            await nextTick()
+
+            expect(wrapper.text()).toContain('endpoint_info')
+            expect(wrapper.text()).toContain('wf-123')
+            expect(wrapper.text()).toContain('/trigger')
+        })
+
+        it('uses a placeholder endpoint when no workflowUuid is provided', async () => {
+            const fromDef: FromDef = { type: 'trigger', mapping: {} }
+            const wrapper = mount(DslFromEditor, {
+                props: { modelValue: fromDef },
+            })
+            await nextTick()
+
+            expect(wrapper.text()).toContain('{workflow-uuid}')
+        })
+
+        it('changes from trigger to format type', async () => {
+            const fromDef: FromDef = { type: 'trigger', mapping: {} }
+            const wrapper = mount(DslFromEditor, {
+                props: { modelValue: fromDef },
+            })
+            await nextTick()
+
+            const select = wrapper.findComponent({ name: 'VSelect' })
+            await select.vm.$emit('update:modelValue', 'format')
+            await nextTick()
+
+            const emitted = wrapper.emitted('update:modelValue') as Array<[FromDef]>
+            const updated = emitted[emitted.length - 1][0]
+            expect(updated.type).toBe('format')
+        })
+    })
+
+    describe('PreviousStep FromDef', () => {
+        it('shows error alert when stepIndex is 0', async () => {
+            const fromDef: FromDef = { type: 'previous_step', mapping: {} }
+            const wrapper = mount(DslFromEditor, {
+                props: { modelValue: fromDef, stepIndex: 0 },
+            })
+            await nextTick()
+
+            const alerts = wrapper.findAllComponents({ name: 'VAlert' })
+            const errorAlert = alerts.find(a => a.props('type') === 'error')
+            expect(errorAlert).toBeTruthy()
+            expect(errorAlert!.text()).toContain('previous_step_error_first_step')
+        })
+
+        it('shows info banner when stepIndex is greater than 0', async () => {
+            const fromDef: FromDef = { type: 'previous_step', mapping: {} }
+            const wrapper = mount(DslFromEditor, {
+                props: { modelValue: fromDef, stepIndex: 1 },
+            })
+            await nextTick()
+
+            const alerts = wrapper.findAllComponents({ name: 'VAlert' })
+            expect(alerts.find(a => a.props('type') === 'error')).toBeUndefined()
+            expect(wrapper.text()).toContain('previous_step_info')
+        })
+
+        it('defaults stepIndex to 0 when not provided', async () => {
+            const fromDef: FromDef = { type: 'previous_step', mapping: {} }
+            const wrapper = mount(DslFromEditor, {
+                props: { modelValue: fromDef },
+            })
+            await nextTick()
+
+            const alerts = wrapper.findAllComponents({ name: 'VAlert' })
+            expect(alerts.find(a => a.props('type') === 'error')).toBeTruthy()
+        })
+
+        it('uses previousStepFields as select items in the mapping editor', async () => {
+            const fromDef: FromDef = { type: 'previous_step', mapping: {} }
+            const wrapper = mount(DslFromEditor, {
+                props: {
+                    modelValue: fromDef,
+                    stepIndex: 1,
+                    previousStepFields: ['field_a', 'field_b'],
+                },
+            })
+            await nextTick()
+
+            const mappingEditor = wrapper.findComponent({ name: 'MappingEditor' })
+            expect(mappingEditor.props('useSelectForLeft')).toBe(true)
+            expect(mappingEditor.props('leftItems')).toEqual(['field_a', 'field_b'])
+        })
+
+        it('does not use a select for left items when previousStepFields is empty', async () => {
+            const fromDef: FromDef = { type: 'previous_step', mapping: {} }
+            const wrapper = mount(DslFromEditor, {
+                props: { modelValue: fromDef, stepIndex: 1 },
+            })
+            await nextTick()
+
+            const mappingEditor = wrapper.findComponent({ name: 'MappingEditor' })
+            expect(mappingEditor.props('useSelectForLeft')).toBe(false)
+        })
+
+        it('updates mapping and changes type away from previous_step', async () => {
+            const fromDef: FromDef = { type: 'previous_step', mapping: {} }
+            const wrapper = mount(DslFromEditor, {
+                props: { modelValue: fromDef, stepIndex: 1 },
+            })
+            await nextTick()
+
+            const mappingEditor = wrapper.findComponent({ name: 'MappingEditor' })
+            const newMapping = { prev_field: 'normalized' }
+            await mappingEditor.vm.$emit('update:modelValue', newMapping)
+            await nextTick()
+
+            let emitted = wrapper.emitted('update:modelValue') as Array<[FromDef]>
+            let updated = emitted[emitted.length - 1][0]
+            if (updated.type === 'previous_step') {
+                expect(updated.mapping).toEqual(newMapping)
+            }
+
+            const select = wrapper.findComponent({ name: 'VSelect' })
+            await select.vm.$emit('update:modelValue', 'entity')
+            await nextTick()
+            emitted = wrapper.emitted('update:modelValue') as Array<[FromDef]>
+            updated = emitted[emitted.length - 1][0]
+            expect(updated.type).toBe('entity')
+        })
+    })
+
+    describe('CSV test upload and auto-mapping', () => {
+        function makeFile(content: string, name = 'test.csv'): File {
+            const file = new File([content], name, { type: 'text/csv' })
+            Object.defineProperty(file, 'text', {
+                value: () => Promise.resolve(content),
+            })
+            return file
+        }
+
+        it('maps CSV headers to fields on file upload', async () => {
+            const fromDef: FromDef = {
+                type: 'format',
+                source: { source_type: 'uri', config: { uri: '' }, auth: { type: 'none' } },
+                format: { format_type: 'csv', options: { has_header: true } },
+                mapping: {},
+            }
+            const wrapper = mount(DslFromEditor, {
+                props: { modelValue: fromDef },
+            })
+            await nextTick()
+
+            const fileInput = wrapper.find('input[type="file"]')
+            expect(fileInput.exists()).toBe(true)
+
+            const file = makeFile('name,email\nAlice,alice@test.com')
+            const input = fileInput.element as HTMLInputElement
+            Object.defineProperty(input, 'files', { value: [file], configurable: true })
+            await fileInput.trigger('change')
+            await nextTick()
+            await new Promise(resolve => setTimeout(resolve, 20))
+
+            const emitted = wrapper.emitted('update:modelValue') as Array<[FromDef]> | undefined
+            expect(emitted).toBeTruthy()
+            const updated = emitted![emitted!.length - 1][0]
+            if (updated.type === 'format') {
+                expect(updated.mapping).toEqual({ name: 'name', email: 'email' })
+            }
+        })
+
+        it('generates column names when the CSV has no header row', async () => {
+            const fromDef: FromDef = {
+                type: 'format',
+                source: { source_type: 'uri', config: { uri: '' }, auth: { type: 'none' } },
+                format: { format_type: 'csv', options: { has_header: false } },
+                mapping: {},
+            }
+            const wrapper = mount(DslFromEditor, {
+                props: { modelValue: fromDef },
+            })
+            await nextTick()
+
+            const fileInput = wrapper.find('input[type="file"]')
+            const file = makeFile('Alice,alice@test.com')
+            const input = fileInput.element as HTMLInputElement
+            Object.defineProperty(input, 'files', { value: [file], configurable: true })
+            await fileInput.trigger('change')
+            await nextTick()
+            await new Promise(resolve => setTimeout(resolve, 20))
+
+            const emitted = wrapper.emitted('update:modelValue') as Array<[FromDef]> | undefined
+            const updated = emitted![emitted!.length - 1][0]
+            if (updated.type === 'format') {
+                expect(updated.mapping).toEqual({ col_1: 'col_1', col_2: 'col_2' })
+            }
+        })
+
+        it('does nothing on upload when no file is selected', async () => {
+            const fromDef: FromDef = {
+                type: 'format',
+                source: { source_type: 'uri', config: { uri: '' }, auth: { type: 'none' } },
+                format: { format_type: 'csv', options: { has_header: true } },
+                mapping: {},
+            }
+            const wrapper = mount(DslFromEditor, {
+                props: { modelValue: fromDef },
+            })
+            await nextTick()
+
+            const fileInput = wrapper.find('input[type="file"]')
+            const input = fileInput.element as HTMLInputElement
+            Object.defineProperty(input, 'files', { value: [], configurable: true })
+            await fileInput.trigger('change')
+            await nextTick()
+
+            expect(wrapper.emitted('update:modelValue')).toBeFalsy()
+        })
+
+        it('auto-maps fields from a remote URI via fetch', async () => {
+            ;(global.fetch as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
+                text: () => Promise.resolve('id,name\n1,Alice'),
+            })
+            const fromDef: FromDef = {
+                type: 'format',
+                source: {
+                    source_type: 'uri',
+                    config: { uri: 'http://example.com/data.csv' },
+                    auth: { type: 'none' },
+                },
+                format: { format_type: 'csv', options: { has_header: true } },
+                mapping: {},
+            }
+            const wrapper = mount(DslFromEditor, {
+                props: { modelValue: fromDef },
+            })
+            await nextTick()
+
+            const autoMapButton = wrapper
+                .findAll('button')
+                .find(b => b.text().includes('auto_map_from_uri'))
+            expect(autoMapButton).toBeTruthy()
+            await autoMapButton!.trigger('click')
+            await nextTick()
+            await new Promise(resolve => setTimeout(resolve, 20))
+
+            expect(global.fetch).toHaveBeenCalledWith('http://example.com/data.csv')
+            const emitted = wrapper.emitted('update:modelValue') as Array<[FromDef]> | undefined
+            const updated = emitted![emitted!.length - 1][0]
+            if (updated.type === 'format') {
+                expect(updated.mapping).toEqual({ id: 'id', name: 'name' })
+            }
+        })
+
+        it('ignores fetch errors during auto-map from URI', async () => {
+            ;(global.fetch as ReturnType<typeof vi.fn>).mockRejectedValueOnce(
+                new Error('CORS error')
+            )
+            const fromDef: FromDef = {
+                type: 'format',
+                source: {
+                    source_type: 'uri',
+                    config: { uri: 'http://example.com/data.csv' },
+                    auth: { type: 'none' },
+                },
+                format: { format_type: 'csv', options: { has_header: true } },
+                mapping: {},
+            }
+            const wrapper = mount(DslFromEditor, {
+                props: { modelValue: fromDef },
+            })
+            await nextTick()
+
+            const autoMapButton = wrapper
+                .findAll('button')
+                .find(b => b.text().includes('auto_map_from_uri'))
+            await autoMapButton!.trigger('click')
+            await nextTick()
+            await new Promise(resolve => setTimeout(resolve, 20))
+
+            expect(wrapper.emitted('update:modelValue')).toBeFalsy()
+        })
+
+        it('does not show the auto-map button when source type is not uri', async () => {
+            const fromDef: FromDef = {
+                type: 'format',
+                source: { source_type: 'api', config: {}, auth: { type: 'none' } },
+                format: { format_type: 'csv', options: { has_header: true } },
+                mapping: {},
+            }
+            const wrapper = mount(DslFromEditor, {
+                props: { modelValue: fromDef },
+            })
+            await nextTick()
+
+            const autoMapButton = wrapper
+                .findAll('button')
+                .find(b => b.text().includes('auto_map_from_uri'))
+            expect(autoMapButton).toBeUndefined()
+        })
+
+        it('does not show CSV upload controls when source type is trigger', async () => {
+            const fromDef: FromDef = {
+                type: 'format',
+                source: { source_type: 'trigger', config: {}, auth: { type: 'none' } },
+                format: { format_type: 'csv', options: { has_header: true } },
+                mapping: {},
+            }
+            const wrapper = mount(DslFromEditor, {
+                props: { modelValue: fromDef },
+            })
+            await nextTick()
+
+            const fileInput = wrapper.find('input[type="file"]')
+            expect(fileInput.exists()).toBe(false)
+        })
+    })
+
+    describe('Auth config for source', () => {
+        it('updates source auth via AuthConfigEditor', async () => {
+            const fromDef: FromDef = {
+                type: 'format',
+                source: { source_type: 'uri', config: { uri: '' }, auth: { type: 'none' } },
+                format: { format_type: 'json', options: {} },
+                mapping: {},
+            }
+            const wrapper = mount(DslFromEditor, {
+                props: { modelValue: fromDef },
+            })
+            await nextTick()
+
+            const panelTitle = wrapper.findComponent({ name: 'VExpansionPanelTitle' })
+            await panelTitle.trigger('click')
+            await nextTick()
+            await new Promise(resolve => setTimeout(resolve, 50))
+            await nextTick()
+
+            const authEditor = wrapper.findComponent({ name: 'AuthConfigEditor' })
+            expect(authEditor.exists()).toBe(true)
+            const newAuth = { type: 'api_key' as const, key: 'secret', header_name: 'X-API-Key' }
+            await authEditor.vm.$emit('update:modelValue', newAuth)
+            await nextTick()
+
+            const emitted = wrapper.emitted('update:modelValue') as Array<[FromDef]>
+            const updated = emitted[emitted.length - 1][0]
+            if (updated.type === 'format') {
+                expect(updated.source.auth).toEqual(newAuth)
+            }
+        })
     })
 
     it('uses filter_field and filter_value translation keys', () => {

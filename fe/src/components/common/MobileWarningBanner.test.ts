@@ -187,3 +187,53 @@ describe('MobileWarningBanner', () => {
         expect(wrapper.find('.v-alert').exists()).toBe(true)
     })
 })
+
+describe('MobileWarningBanner - cross-banner localStorage independence', () => {
+    beforeEach(() => {
+        setActivePinia(createPinia())
+        localStorage.clear()
+        Object.defineProperty(window, 'innerWidth', {
+            writable: true,
+            configurable: true,
+            value: 1400,
+        })
+    })
+
+    it('uses a separate localStorage key from the default-password banner', () => {
+        localStorage.setItem('mobile_warning_banner_dismissed', 'true')
+        localStorage.setItem('default_password_banner_dismissed', 'true')
+
+        expect(localStorage.getItem('mobile_warning_banner_dismissed')).toBe('true')
+        expect(localStorage.getItem('default_password_banner_dismissed')).toBe('true')
+
+        localStorage.removeItem('mobile_warning_banner_dismissed')
+        expect(localStorage.getItem('mobile_warning_banner_dismissed')).toBeNull()
+        expect(localStorage.getItem('default_password_banner_dismissed')).toBe('true')
+    })
+
+    it('dismissing via the X icon does not affect the default-password banner key', async () => {
+        Object.defineProperty(window, 'innerWidth', {
+            writable: true,
+            configurable: true,
+            value: 800,
+        })
+        localStorage.removeItem('mobile_warning_banner_dismissed')
+
+        const wrapper = mount(MobileWarningBanner, {
+            global: { plugins: [vuetify, createPinia()] },
+        })
+        await wrapper.vm.$nextTick()
+        await new Promise(resolve => setTimeout(resolve, 100))
+
+        const alert = wrapper.findComponent({ name: 'VAlert' })
+        expect(alert.exists()).toBe(true)
+
+        await alert.vm.$emit('click:close')
+        await wrapper.vm.$nextTick()
+        await new Promise(resolve => setTimeout(resolve, 50))
+
+        expect(wrapper.findComponent({ name: 'VAlert' }).exists()).toBe(false)
+        expect(localStorage.getItem('mobile_warning_banner_dismissed')).toBe('true')
+        expect(localStorage.getItem('default_password_banner_dismissed')).not.toBe('true')
+    })
+})

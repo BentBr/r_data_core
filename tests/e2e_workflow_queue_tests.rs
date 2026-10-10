@@ -612,6 +612,7 @@ async fn post_to_workflow_endpoint_enqueues_fetch_job() -> anyhow::Result<()> {
         license_service,
         password_reset_service: None,
         system_log_service: None,
+        oidc: None,
     };
 
     let app_data = web::Data::new(ApiStateWrapper::new(api_state));

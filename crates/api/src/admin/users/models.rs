@@ -59,6 +59,14 @@ pub struct UserResponse {
     /// UUID of the user who created this user
     #[ts(type = "string")]
     pub created_by: Uuid,
+    /// Whether this account was created by single sign-on.
+    ///
+    /// The interface needs this to stop offering things that cannot work for
+    /// such an account: it has no password to change, and its roles come from
+    /// the identity provider's claims on each sign-in rather than from
+    /// anything stored here, so an editable role control would silently
+    /// discard the change.
+    pub is_sso_provisioned: bool,
 }
 
 impl UserResponse {
@@ -83,6 +91,7 @@ impl UserResponse {
             created_at: user.created_at,
             updated_at: user.updated_at,
             created_by: user.base.created_by,
+            is_sso_provisioned: user.is_sso_provisioned,
         }
     }
 }

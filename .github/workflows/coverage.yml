@@ -134,7 +134,7 @@ jobs:
                         else print "yellowgreen";
                     }')
                     printf '{"schemaVersion":1,"label":"BE coverage","message":"%s%%","color":"%s"}\n' "$PCT" "$COLOR" > /tmp/coverage.json
-                    ./.github/scripts/publish-badge.sh coverage.json /tmp/coverage.json "BE"
+                    ./.github/scripts/publish-to-pages.sh coverage.json /tmp/coverage.json "BE"
 
     # ==========================================================================
     # Frontend coverage — vitest v8. The line threshold lives in
@@ -213,4 +213,4 @@ jobs:
                         else print "yellowgreen";
                     }')
                     printf '{"schemaVersion":1,"label":"FE coverage","message":"%s%%","color":"%s"}\n' "$PCT" "$COLOR" > /tmp/coverage-fe.json
-                    ./.github/scripts/publish-badge.sh coverage-fe.json /tmp/coverage-fe.json "FE"
+                    ./.github/scripts/publish-to-pages.sh coverage-fe.json /tmp/coverage-fe.json "FE"

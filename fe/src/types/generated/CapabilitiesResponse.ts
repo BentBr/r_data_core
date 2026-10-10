@@ -11,4 +11,19 @@ system_mail_configured: boolean,
 /**
  * Whether workflow mail is configured (enables email outputs in workflows)
  */
-workflow_mail_configured: boolean, };
+workflow_mail_configured: boolean, 
+/**
+ * Whether a browser can sign in through an identity provider.
+ *
+ * True only when the *browser* flow is configured, not merely when
+ * bearer-token validation is. An instance that accepts provider tokens
+ * but has no client id has nowhere to send a person who clicks the
+ * button, so showing one would be a dead end.
+ *
+ * Deliberately the only thing said about single sign-on here. This
+ * endpoint is public and unauthenticated, and a test asserts every value
+ * on it stays boolean — a provider's name would tell an anonymous caller
+ * which identity provider the organisation uses, which is more than a
+ * feature flag and not worth a nicer button label.
+ */
+oidc_enabled: boolean, };

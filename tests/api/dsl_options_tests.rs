@@ -224,6 +224,131 @@ async fn test_validate_reports_which_step_failed_and_why() {
     );
 }
 
+/// A parse failure locates the exact field, not just the step.
+///
+/// `field: "steps[1]"` tells a caller which step is broken; `json_path:
+/// "steps[1].from.type"` tells them which key to fix. For an assistant
+/// iterating on a program that difference is a whole turn.
+#[serial]
+#[tokio::test]
+async fn test_validate_reports_a_precise_json_path() {
+    let (app, pool, _uuid) = setup_test_app().await.unwrap();
+    let token = get_auth_token(&app, &pool).await;
+
+    let req = test::TestRequest::post()
+        .uri(VALIDATE)
+        .insert_header(("Authorization", format!("Bearer {token}")))
+        .set_json(serde_json::json!({
+            "steps": [{
+                "from": { "type": "trigger", "mapping": {} },
+                "transform": { "type": "none" },
+                "to": { "type": "entity_write", "mapping": {} }
+            }]
+        }))
+        .to_request();
+
+    let resp = test::call_service(&app, req).await;
+    assert_eq!(resp.status(), StatusCode::UNPROCESSABLE_ENTITY);
+
+    let body: serde_json::Value = test::read_body_json(resp).await;
+    let violation = &body["violations"][0];
+
+    assert_eq!(
+        violation["json_path"], "steps[0].to.type",
+        "the path must reach the offending key, got {violation}"
+    );
+}
+
+/// Unknown-variant failures carry the legal alternatives as data.
+///
+/// serde already names them in its prose. Lifting them into an array means a
+/// caller — a form builder, or a model — can use them without parsing English.
+#[serial]
+#[tokio::test]
+async fn test_validate_lists_legal_values_for_an_unknown_variant() {
+    let (app, pool, _uuid) = setup_test_app().await.unwrap();
+    let token = get_auth_token(&app, &pool).await;
+
+    let req = test::TestRequest::post()
+        .uri(VALIDATE)
+        .insert_header(("Authorization", format!("Bearer {token}")))
+        .set_json(serde_json::json!({
+            "steps": [{ "from": { "type": "nope" } }]
+        }))
+        .to_request();
+
+    let body: serde_json::Value = test::read_body_json(test::call_service(&app, req).await).await;
+    let legal: Vec<String> = serde_json::from_value(body["violations"][0]["legal_values"].clone())
+        .unwrap_or_else(|e| panic!("legal_values must be an array: {e}; body: {body}"));
+
+    for expected in ["format", "entity", "previous_step", "trigger"] {
+        assert!(
+            legal.iter().any(|v| v == expected),
+            "missing {expected} in {legal:?}"
+        );
+    }
+}
+
+/// Semantic failures locate the step too.
+///
+/// `program.validate()` reports rule violations as prose beginning "Step N:".
+/// Left alone the violation reads `field: "dsl"`, which points at nothing.
+#[serial]
+#[tokio::test]
+async fn test_validate_locates_a_semantic_failure() {
+    let (app, pool, _uuid) = setup_test_app().await.unwrap();
+    let token = get_auth_token(&app, &pool).await;
+
+    // PreviousStep is illegal in step 0: parses fine, fails the rules.
+    let req = test::TestRequest::post()
+        .uri(VALIDATE)
+        .insert_header(("Authorization", format!("Bearer {token}")))
+        .set_json(serde_json::json!({
+            "steps": [{
+                "from": { "type": "previous_step", "mapping": {} },
+                "transform": { "type": "none" },
+                "to": { "type": "format", "output": { "mode": "api" },
+                        "format": { "format_type": "json", "options": {} },
+                        "mapping": {} }
+            }]
+        }))
+        .to_request();
+
+    let body: serde_json::Value = test::read_body_json(test::call_service(&app, req).await).await;
+    let violation = &body["violations"][0];
+
+    assert_eq!(
+        violation["json_path"], "steps[0]",
+        "a semantic failure must still name the step, got {violation}"
+    );
+}
+
+/// A rule failure that names no step must not invent a location.
+///
+/// An honest `steps` beats a fabricated `steps[0].to.type` — a caller acting
+/// on a made-up path edits the wrong thing.
+#[serial]
+#[tokio::test]
+async fn test_validate_does_not_invent_a_path_it_cannot_know() {
+    let (app, pool, _uuid) = setup_test_app().await.unwrap();
+    let token = get_auth_token(&app, &pool).await;
+
+    // An empty program fails validation without reference to any step.
+    let req = test::TestRequest::post()
+        .uri(VALIDATE)
+        .insert_header(("Authorization", format!("Bearer {token}")))
+        .set_json(serde_json::json!({ "steps": [] }))
+        .to_request();
+
+    let body: serde_json::Value = test::read_body_json(test::call_service(&app, req).await).await;
+    let violation = &body["violations"][0];
+
+    assert_eq!(
+        violation["json_path"], "steps",
+        "with no step to point at, the path must stay general, got {violation}"
+    );
+}
+
 #[serial]
 #[tokio::test]
 async fn test_validate_requires_authentication() {

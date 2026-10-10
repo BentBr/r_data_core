@@ -25,5 +25,6 @@ pub fn register_routes(cfg: &mut web::ServiceConfig) {
         .service(crud::delete_workflow)
         .service(runs::run_workflow_now)
         .service(versions::list_workflow_versions)
-        .service(versions::get_workflow_version);
+        .service(versions::get_workflow_version)
+        .service(versions::restore_workflow_version);
 }
