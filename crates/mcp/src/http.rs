@@ -83,6 +83,7 @@ pub struct ServerState {
     keys: Arc<dyn KeySource>,
     client: Arc<RdcClient>,
     permissions: RwLock<HashMap<String, CachedPermissions>>,
+    permissions_capacity: usize,
     http_config: StreamableHttpServerConfig,
 }
 
@@ -139,6 +140,7 @@ impl ServerState {
             keys,
             client,
             permissions: RwLock::new(HashMap::new()),
+            permissions_capacity: crate::auth::oidc::CACHE_MAX_ENTRIES,
             http_config,
         })
     }
@@ -218,6 +220,18 @@ impl ServerState {
         // one per distinct token seen since startup would grow without bound
         // on a long-running server.
         cache.retain(|_, held| held.fetched_at.elapsed() < PERMISSIONS_TTL);
+        // Then bound it: a flood of distinct valid tokens must not outgrow
+        // the cap before anything ages out. O(n) per eviction, on a miss only.
+        while cache.len() >= self.permissions_capacity {
+            let Some(oldest) = cache
+                .iter()
+                .min_by_key(|(_, held)| held.fetched_at)
+                .map(|(key, _)| key.clone())
+            else {
+                break;
+            };
+            cache.remove(&oldest);
+        }
         cache.insert(
             key,
             CachedPermissions {
@@ -232,6 +246,17 @@ impl ServerState {
 }
 
 impl ServerState {
+    #[cfg(test)]
+    pub(crate) const fn with_permissions_capacity(mut self, capacity: usize) -> Self {
+        self.permissions_capacity = capacity;
+        self
+    }
+
+    #[cfg(test)]
+    pub(crate) async fn permissions_cache_len(&self) -> usize {
+        self.permissions.read().await.len()
+    }
+
     /// The configuration this server was built from.
     pub(crate) const fn config(&self) -> &Config {
         &self.config

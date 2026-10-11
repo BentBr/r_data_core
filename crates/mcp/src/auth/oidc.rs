@@ -22,6 +22,7 @@
 //! required, and its absence is an error rather than a prompt to validate here.
 
 use std::collections::HashMap;
+use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Arc;
 
 use serde::Deserialize;
@@ -64,6 +65,8 @@ struct CachedToken {
     token: String,
     /// When to stop using it, already reduced by `REFRESH_AT`.
     refresh_after_secs: u64,
+    /// Insertion order, to break ties between entries that expire together.
+    sequence: u64,
 }
 
 /// What the exchange endpoint returns.
@@ -80,12 +83,21 @@ struct ExchangeEnvelope {
     data: Option<ExchangeData>,
 }
 
+/// Upper bound on cached callers, per cache.
+///
+/// Entries age out on their own, but only at the rate tokens expire. A burst
+/// of distinct valid tokens — a provider minting one per request, or a
+/// deliberate flood — would otherwise grow the map until the aging caught up.
+pub const CACHE_MAX_ENTRIES: usize = 10_000;
+
 /// Exchanges validated caller identities for short-lived local tokens.
 pub struct OidcBackend {
     exchange_url: String,
     http: reqwest::Client,
     /// Keyed on a hash of the caller's token, never on anything shared.
     cache: RwLock<HashMap<String, CachedToken>>,
+    cache_capacity: usize,
+    next_sequence: AtomicU64,
     clock: Arc<dyn Clock>,
 }
 
@@ -109,8 +121,21 @@ impl OidcBackend {
             exchange_url: format!("{base}/{EXCHANGE_PATH}"),
             http,
             cache: RwLock::new(HashMap::new()),
+            cache_capacity: CACHE_MAX_ENTRIES,
+            next_sequence: AtomicU64::new(0),
             clock: clock as Arc<dyn Clock>,
         })
+    }
+
+    #[cfg(test)]
+    pub(crate) const fn with_cache_capacity(mut self, capacity: usize) -> Self {
+        self.cache_capacity = capacity;
+        self
+    }
+
+    #[cfg(test)]
+    pub(crate) async fn cached_entries(&self) -> usize {
+        self.cache.read().await.len()
     }
 
     /// A cached local token for this caller, if one is still fresh.
@@ -190,6 +215,7 @@ impl AuthBackend for OidcBackend {
         let entry = CachedToken {
             token: token.clone(),
             refresh_after_secs: self.clock.now_secs().saturating_add(usable),
+            sequence: self.next_sequence.fetch_add(1, Ordering::Relaxed),
         };
         let mut cache = self.cache.write().await;
         // Drop what has aged out before adding to it. Nothing else ever
@@ -199,6 +225,7 @@ impl AuthBackend for OidcBackend {
         // rare by construction.
         let now = self.clock.now_secs();
         cache.retain(|_, held| now < held.refresh_after_secs);
+        evict_to_fit(&mut cache, self.cache_capacity);
         cache.insert(key, entry);
         drop(cache);
 
@@ -224,3 +251,21 @@ fn caller_key(token: &str) -> String {
 
 #[cfg(test)]
 mod oidc_tests;
+
+/// Make room for one more entry, dropping the one closest to expiry first.
+///
+/// Ties go to the earliest inserted, so the result does not depend on hash
+/// order. The entry about to be inserted is not in the map yet, so it cannot
+/// be the one dropped.
+fn evict_to_fit(cache: &mut HashMap<String, CachedToken>, capacity: usize) {
+    while cache.len() >= capacity {
+        let Some(oldest) = cache
+            .iter()
+            .min_by_key(|(_, held)| (held.refresh_after_secs, held.sequence))
+            .map(|(key, _)| key.clone())
+        else {
+            return;
+        };
+        cache.remove(&oldest);
+    }
+}

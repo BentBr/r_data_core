@@ -139,3 +139,34 @@ async fn a_client_that_connects_and_sends_nothing_is_disconnected() {
         started.elapsed()
     );
 }
+
+#[tokio::test]
+async fn the_permissions_cache_never_grows_past_its_capacity() {
+    let pairs: std::collections::HashMap<String, String> = [
+        // Unreachable on purpose: a failed lookup still caches an empty set,
+        // which is what the cap has to bound.
+        ("RDC_BASE_URL", "http://127.0.0.1:9"),
+        ("RDC_MCP_TRANSPORT", "http"),
+        ("RDC_MCP_RESOURCE_URL", "https://mcp.example.com"),
+        ("RDC_OIDC_ISSUER", "https://auth.example.com"),
+        ("RDC_OIDC_AUDIENCE", "rdc-mcp"),
+        ("RDC_MCP_TIMEOUT_SECS", "1"),
+    ]
+    .iter()
+    .map(|(k, v)| ((*k).to_string(), (*v).to_string()))
+    .collect();
+    let state = ServerState::new(Config::from_map(&pairs).expect("valid"))
+        .expect("state")
+        .with_permissions_capacity(3);
+
+    for caller in ["one", "two", "three", "four"] {
+        state
+            .permissions_for(&CallerContext {
+                bearer: Some(caller.to_string()),
+                validated: true,
+            })
+            .await;
+    }
+
+    assert_eq!(state.permissions_cache_len().await, 3);
+}
