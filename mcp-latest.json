@@ -1,7 +1,7 @@
 {
   "version": "0.4.16",
   "tag": "mcp-v0.4.16",
-  "published_at": "2026-10-11T14:40:16Z",
+  "published_at": "2026-10-11T16:08:57Z",
   "npm": "@rdatacore/mcp-server",
   "downloads": [
     {"asset": "r-data-core-mcp-serve-x86_64-apple-darwin", "sha256": "8003f2a460a587e24c9f080f2f3cdb60188a74682947f7952d161c84033390f0", "url": "https://github.com/BentBr/r_data_core/releases/download/mcp-v0.4.16/r-data-core-mcp-serve-x86_64-apple-darwin"},
@@ -10,8 +10,8 @@
     {"asset": "r-data-core-mcp-serve-aarch64-unknown-linux-gnu", "sha256": "60675ef0176daa0fcd417740989e6035cce53435fb628ff322923d740658f121", "url": "https://github.com/BentBr/r_data_core/releases/download/mcp-v0.4.16/r-data-core-mcp-serve-aarch64-unknown-linux-gnu"},
     {"asset": "r-data-core-mcp-aarch64-apple-darwin", "sha256": "282043b53bc2f6c16b4ec48bed596c4110a0e6effef74dae5de2242d3fca043f", "url": "https://github.com/BentBr/r_data_core/releases/download/mcp-v0.4.16/r-data-core-mcp-aarch64-apple-darwin"},
     {"asset": "r-data-core-mcp-serve-aarch64-apple-darwin", "sha256": "438b7267d8e69fd3145253a9662df7a77b4a7f6c4f69cd4910a454b23883326a", "url": "https://github.com/BentBr/r_data_core/releases/download/mcp-v0.4.16/r-data-core-mcp-serve-aarch64-apple-darwin"},
-    {"asset": "*r-data-core-mcp-serve-x86_64-pc-windows-msvc.exe", "sha256": "345cb70b233ad08f655b0aec4569c05572298635a049b5be80ccfc41c96e5cb9", "url": "https://github.com/BentBr/r_data_core/releases/download/mcp-v0.4.16/*r-data-core-mcp-serve-x86_64-pc-windows-msvc.exe"},
-    {"asset": "*r-data-core-mcp-x86_64-pc-windows-msvc.exe", "sha256": "c1b6291813b7ca0d3f9c9388418e4c9e0b2a8a2c801a8ec2b93805d4a4f05fe7", "url": "https://github.com/BentBr/r_data_core/releases/download/mcp-v0.4.16/*r-data-core-mcp-x86_64-pc-windows-msvc.exe"},
+    {"asset": "*r-data-core-mcp-serve-x86_64-pc-windows-msvc.exe", "sha256": "1e6943d089a4b1a7e398acdcebf9fce93582565b496eda3a7348fd02514f064c", "url": "https://github.com/BentBr/r_data_core/releases/download/mcp-v0.4.16/*r-data-core-mcp-serve-x86_64-pc-windows-msvc.exe"},
+    {"asset": "*r-data-core-mcp-x86_64-pc-windows-msvc.exe", "sha256": "d98031cc227be1cf74a78930dbe165df96612d38928567b181677d69ea3e85a4", "url": "https://github.com/BentBr/r_data_core/releases/download/mcp-v0.4.16/*r-data-core-mcp-x86_64-pc-windows-msvc.exe"},
     {"asset": "r-data-core-mcp-serve-x86_64-unknown-linux-gnu", "sha256": "e8143802e005eb76aedf2cf779c331fb6c9decf8aa61e74e14a0245ff94f3e4e", "url": "https://github.com/BentBr/r_data_core/releases/download/mcp-v0.4.16/r-data-core-mcp-serve-x86_64-unknown-linux-gnu"},
     {"asset": "r-data-core-mcp-x86_64-unknown-linux-gnu", "sha256": "e195fd6285ff7081cc00e4d74ef5d83e6ba925ebd8d63a671cd9dbca80268c57", "url": "https://github.com/BentBr/r_data_core/releases/download/mcp-v0.4.16/r-data-core-mcp-x86_64-unknown-linux-gnu"}
   ]
