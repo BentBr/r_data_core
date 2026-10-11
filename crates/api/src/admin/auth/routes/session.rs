@@ -5,7 +5,8 @@ use actix_web::{post, web, Responder};
 use uuid::Uuid;
 
 use crate::admin::auth::models::{LogoutRequest, RefreshTokenRequest, RefreshTokenResponse};
-use crate::admin::auth::routes::helpers::{build_refresh_response, load_user_roles};
+use crate::admin::auth::routes::helpers::build_refresh_response;
+use crate::admin::auth::routes::sso_session::roles_for_refresh;
 use crate::api_state::{ApiStateTrait, ApiStateWrapper};
 use crate::auth::auth_enum::RequiredAuth;
 use crate::response::ApiResponse;
@@ -150,8 +151,9 @@ pub async fn admin_refresh_token(
         return ApiResponse::unauthorized("Account not active");
     }
 
-    // Load roles and generate tokens via TokenService
-    let roles = load_user_roles(&user, &data, &admin_repo).await;
+    let Some(roles) = roles_for_refresh(&refresh_token, &user, &data, &admin_repo).await else {
+        return ApiResponse::unauthorized("Invalid refresh token");
+    };
     let token_service = TokenService::new(data.api_config());
     let token_pair = match token_service.generate_token_pair(&user, &roles) {
         Ok(pair) => pair,

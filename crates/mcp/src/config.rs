@@ -14,6 +14,17 @@ use std::time::Duration;
 use thiserror::Error;
 use url::Url;
 
+mod credential;
+mod limits;
+mod numbers;
+
+pub use credential::Credential;
+pub use limits::{
+    HttpServerLimits, DEFAULT_HEADER_READ_TIMEOUT_SECS, DEFAULT_IDLE_TIMEOUT_SECS,
+    DEFAULT_MAX_CONNECTIONS,
+};
+pub(crate) use numbers::positive_u64;
+
 /// Outbound HTTP timeout when unset.
 const DEFAULT_TIMEOUT_SECS: u64 = 30;
 /// Listen address when unset. Loopback, so an unconfigured server is not
@@ -67,9 +78,12 @@ pub struct Config {
     pub base_url: Url,
     pub transport: Transport,
     /// Static credential for stdio mode. Never set in OIDC mode.
-    pub credential: Option<String>,
+    pub credential: Option<Credential>,
     pub oidc_issuer: Option<String>,
     pub oidc_audience: Option<String>,
+    /// Raw `RDC_OIDC_ALLOW_INSECURE_ISSUER`, passed through so the MCP server
+    /// accepts the same development provider `RDataCore` does.
+    pub oidc_allow_insecure_issuer: Option<String>,
     /// This server's own public URL, for OAuth protected-resource metadata.
     pub resource_url: Option<String>,
     /// Browser origins permitted to reach the MCP endpoint.
@@ -83,6 +97,8 @@ pub struct Config {
     /// `Host` authorities permitted to reach the MCP endpoint.
     pub allowed_hosts: Vec<String>,
     pub timeout: Duration,
+    /// Accept-loop limits; only read in HTTP mode.
+    pub server_limits: HttpServerLimits,
 }
 
 impl Config {
@@ -114,9 +130,11 @@ impl Config {
             Some(other) => return Err(ConfigError::InvalidTransport(other.to_string())),
         };
 
-        let credential = get(map, "RDC_API_KEY").map(str::to_string);
+        let credential = get(map, "RDC_API_KEY").map(Credential::new);
         let oidc_issuer = get(map, "RDC_OIDC_ISSUER").map(str::to_string);
         let oidc_audience = get(map, "RDC_OIDC_AUDIENCE").map(str::to_string);
+        let oidc_allow_insecure_issuer =
+            get(map, "RDC_OIDC_ALLOW_INSECURE_ISSUER").map(str::to_string);
 
         // Exhaustive on purpose — see the module comment.
         match (&transport, credential.is_some(), oidc_issuer.is_some()) {
@@ -141,18 +159,12 @@ impl Config {
             validate_resource_url(resource_url.as_deref())?;
         }
 
-        let timeout = match get(map, "RDC_MCP_TIMEOUT_SECS") {
-            None => Duration::from_secs(DEFAULT_TIMEOUT_SECS),
-            Some(raw) => raw.parse::<u64>().map_or_else(
-                |_| {
-                    Err(ConfigError::InvalidNumber(
-                        "RDC_MCP_TIMEOUT_SECS",
-                        raw.to_string(),
-                    ))
-                },
-                |secs| Ok(Duration::from_secs(secs)),
-            )?,
-        };
+        let timeout = Duration::from_secs(positive_u64(
+            map,
+            "RDC_MCP_TIMEOUT_SECS",
+            DEFAULT_TIMEOUT_SECS,
+        )?);
+        let server_limits = HttpServerLimits::from_map(map)?;
 
         let allowed_origins = get(map, "RDC_MCP_ALLOWED_ORIGINS").map_or_else(
             || origin_of(resource_url.as_deref()).into_iter().collect(),
@@ -185,10 +197,12 @@ impl Config {
             credential,
             oidc_issuer,
             oidc_audience,
+            oidc_allow_insecure_issuer,
             resource_url,
             allowed_origins,
             allowed_hosts,
             timeout,
+            server_limits,
         })
     }
 }
@@ -204,12 +218,15 @@ impl Config {
         let (Some(issuer), Some(audience)) = (&self.oidc_issuer, &self.oidc_audience) else {
             return None;
         };
-        let pairs: HashMap<String, String> = [
+        let mut pairs: HashMap<String, String> = [
             ("RDC_OIDC_ISSUER".to_string(), issuer.clone()),
             ("RDC_OIDC_AUDIENCE".to_string(), audience.clone()),
         ]
         .into_iter()
         .collect();
+        if let Some(allow) = &self.oidc_allow_insecure_issuer {
+            pairs.insert("RDC_OIDC_ALLOW_INSECURE_ISSUER".to_string(), allow.clone());
+        }
         r_data_core_core::oidc::OidcConfig::from_map(&pairs)
             .ok()
             .flatten()
@@ -226,7 +243,7 @@ fn split_list(raw: &str) -> Vec<String> {
 }
 
 /// The `scheme://host[:port]` of a URL.
-fn origin_of(raw: Option<&str>) -> Option<String> {
+pub(crate) fn origin_of(raw: Option<&str>) -> Option<String> {
     let parsed = Url::parse(raw?).ok()?;
     let host = parsed.host_str()?;
     let scheme = parsed.scheme();

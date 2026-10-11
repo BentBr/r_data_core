@@ -60,6 +60,7 @@ impl Idp {
         Mock::given(method("GET"))
             .and(path("/.well-known/openid-configuration"))
             .respond_with(ResponseTemplate::new(200).set_body_json(json!({
+                "issuer": server.uri(),
                 "jwks_uri": format!("{}/jwks", server.uri()),
                 "authorization_endpoint": format!("{}/authorize", server.uri()),
                 "token_endpoint": format!("{}/token", server.uri()),
@@ -149,6 +150,7 @@ fn keypair() -> (EncodingKey, serde_json::Value) {
 struct MinimalState {
     pool: PgPool,
     nothing: (),
+    cache: Arc<CacheManager>,
     oidc: Option<Arc<OidcServices>>,
 }
 
@@ -178,7 +180,7 @@ impl ApiStateTrait for MinimalState {
         None
     }
     fn cache_manager_ref(&self) -> &dyn std::any::Any {
-        &self.nothing
+        &self.cache
     }
     fn workflow_service_ref(&self) -> &dyn std::any::Any {
         &self.nothing
@@ -260,6 +262,7 @@ pub fn state(idp: Option<&Idp>) -> ApiStateWrapper {
     ApiStateWrapper::new(MinimalState {
         pool,
         nothing: (),
+        cache,
         oidc,
     })
 }

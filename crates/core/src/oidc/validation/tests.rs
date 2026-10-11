@@ -12,16 +12,16 @@ use serde_json::json;
 use super::*;
 use crate::oidc::keys::Jwk;
 
-const ISSUER: &str = "https://auth.example.com";
-const AUDIENCE: &str = "r-data-core";
+pub(super) const ISSUER: &str = "https://auth.example.com";
+pub(super) const AUDIENCE: &str = "r-data-core";
 const KID: &str = "test-key-1";
-const NOW: i64 = 1_700_000_000;
+pub(super) const NOW: i64 = 1_700_000_000;
 
 /// A 2048-bit RSA key generated once for these tests.
 ///
 /// Deterministic on purpose: generating one per run makes failures harder to
 /// reproduce, and nothing here is secret.
-fn keypair() -> (EncodingKey, Jwk) {
+pub(super) fn keypair() -> (EncodingKey, Jwk) {
     use rsa::pkcs1::EncodeRsaPrivateKey;
     use rsa::traits::PublicKeyParts;
     use rsa::RsaPrivateKey;
@@ -46,7 +46,7 @@ fn keypair() -> (EncodingKey, Jwk) {
     (encoding, jwk)
 }
 
-fn config() -> OidcConfig {
+pub(super) fn config() -> OidcConfig {
     OidcConfig::from_map(
         &[("RDC_OIDC_ISSUER", ISSUER), ("RDC_OIDC_AUDIENCE", AUDIENCE)]
             .iter()
@@ -57,7 +57,7 @@ fn config() -> OidcConfig {
     .expect("enabled")
 }
 
-fn claims(overrides: serde_json::Value) -> HashMap<String, serde_json::Value> {
+pub(super) fn claims(overrides: serde_json::Value) -> HashMap<String, serde_json::Value> {
     let mut base: HashMap<String, serde_json::Value> = serde_json::from_value(json!({
         "iss": ISSUER,
         "aud": AUDIENCE,
@@ -82,13 +82,13 @@ fn claims(overrides: serde_json::Value) -> HashMap<String, serde_json::Value> {
     base
 }
 
-fn sign(claims: &HashMap<String, serde_json::Value>, key: &EncodingKey) -> String {
+pub(super) fn sign(claims: &HashMap<String, serde_json::Value>, key: &EncodingKey) -> String {
     let mut header = Header::new(jsonwebtoken::Algorithm::RS256);
     header.kid = Some(KID.to_string());
     encode(&header, claims, key).expect("sign")
 }
 
-fn key_set(jwk: Jwk) -> JwkSet {
+pub(super) fn key_set(jwk: Jwk) -> JwkSet {
     JwkSet { keys: vec![jwk] }
 }
 
@@ -99,7 +99,7 @@ fn a_well_formed_token_is_accepted() {
     let (key, jwk) = keypair();
     let token = sign(&claims(json!({})), &key);
 
-    let out = validate_token(&token, &key_set(jwk), &config(), NOW).expect("should validate");
+    let out = validate_token(&token, &key_set(jwk), &config(), NOW, None).expect("should validate");
 
     assert_eq!(out.subject, "user-1");
     assert_eq!(out.email.as_deref(), Some("ada@example.com"));
@@ -114,7 +114,7 @@ fn an_expired_token_is_rejected() {
     let (key, jwk) = keypair();
     let token = sign(&claims(json!({ "exp": NOW - 3600 })), &key);
     assert_eq!(
-        validate_token(&token, &key_set(jwk), &config(), NOW).expect_err("expired"),
+        validate_token(&token, &key_set(jwk), &config(), NOW, None).expect_err("expired"),
         ValidationError::Expired
     );
 }
@@ -124,7 +124,7 @@ fn a_not_yet_valid_token_is_rejected() {
     let (key, jwk) = keypair();
     let token = sign(&claims(json!({ "nbf": NOW + 3600 })), &key);
     assert_eq!(
-        validate_token(&token, &key_set(jwk), &config(), NOW).expect_err("not yet valid"),
+        validate_token(&token, &key_set(jwk), &config(), NOW, None).expect_err("not yet valid"),
         ValidationError::NotYetValid
     );
 }
@@ -134,7 +134,7 @@ fn a_token_from_another_issuer_is_rejected() {
     let (key, jwk) = keypair();
     let token = sign(&claims(json!({ "iss": "https://evil.example.com" })), &key);
     assert!(matches!(
-        validate_token(&token, &key_set(jwk), &config(), NOW).expect_err("wrong issuer"),
+        validate_token(&token, &key_set(jwk), &config(), NOW, None).expect_err("wrong issuer"),
         ValidationError::IssuerMismatch { .. }
     ));
 }
@@ -146,7 +146,7 @@ fn a_token_for_another_audience_is_rejected() {
     let (key, jwk) = keypair();
     let token = sign(&claims(json!({ "aud": "some-other-service" })), &key);
     assert!(matches!(
-        validate_token(&token, &key_set(jwk), &config(), NOW).expect_err("wrong audience"),
+        validate_token(&token, &key_set(jwk), &config(), NOW, None).expect_err("wrong audience"),
         ValidationError::AudienceMismatch { .. }
     ));
 }
@@ -162,7 +162,7 @@ fn a_token_signed_by_a_different_key_is_rejected() {
     let token = sign(&claims(json!({})), &other_key);
 
     assert_eq!(
-        validate_token(&token, &key_set(jwk), &config(), NOW).expect_err("bad signature"),
+        validate_token(&token, &key_set(jwk), &config(), NOW, None).expect_err("bad signature"),
         ValidationError::BadSignature
     );
 }
@@ -174,7 +174,7 @@ fn a_token_naming_an_unknown_key_is_rejected() {
     jwk.kid = "some-other-key".to_string();
 
     assert!(matches!(
-        validate_token(&token, &key_set(jwk), &config(), NOW).expect_err("unknown kid"),
+        validate_token(&token, &key_set(jwk), &config(), NOW, None).expect_err("unknown kid"),
         ValidationError::UnknownKid { .. }
     ));
 }
@@ -188,7 +188,7 @@ fn an_unsigned_token_is_rejected() {
     let token = format!("{header}.{payload}.");
 
     let (_key, jwk) = keypair();
-    let err = validate_token(&token, &key_set(jwk), &config(), NOW).expect_err("alg:none");
+    let err = validate_token(&token, &key_set(jwk), &config(), NOW, None).expect_err("alg:none");
     assert!(
         matches!(
             err,
@@ -213,7 +213,7 @@ fn a_symmetrically_signed_token_is_rejected() {
 
     let (_key, jwk) = keypair();
     assert!(matches!(
-        validate_token(&token, &key_set(jwk), &config(), NOW).expect_err("symmetric"),
+        validate_token(&token, &key_set(jwk), &config(), NOW, None).expect_err("symmetric"),
         ValidationError::UnsupportedAlgorithm { .. }
     ));
 }
@@ -225,7 +225,7 @@ fn a_token_without_a_key_id_is_rejected() {
     let token = encode(&header, &claims(json!({})), &key).expect("sign");
 
     assert_eq!(
-        validate_token(&token, &key_set(jwk), &config(), NOW).expect_err("no kid"),
+        validate_token(&token, &key_set(jwk), &config(), NOW, None).expect_err("no kid"),
         ValidationError::MissingKid
     );
 }
@@ -238,7 +238,7 @@ fn a_token_without_a_subject_is_rejected() {
     let token = sign(&claims(json!({ "sub": null })), &key);
 
     assert_eq!(
-        validate_token(&token, &key_set(jwk), &config(), NOW).expect_err("no subject"),
+        validate_token(&token, &key_set(jwk), &config(), NOW, None).expect_err("no subject"),
         ValidationError::MissingSubject
     );
 }
@@ -247,7 +247,7 @@ fn a_token_without_a_subject_is_rejected() {
 fn garbage_is_rejected_without_panicking() {
     let (_key, jwk) = keypair();
     for bad in ["", "not.a.token", "a.b", "....", "eyJhbGciOiJSUzI1NiJ9"] {
-        let err = validate_token(bad, &key_set(jwk.clone()), &config(), NOW)
+        let err = validate_token(bad, &key_set(jwk.clone()), &config(), NOW, None)
             .expect_err("should not validate");
         assert!(
             matches!(err, ValidationError::Malformed(_)),
@@ -262,7 +262,7 @@ fn garbage_is_rejected_without_panicking() {
 fn a_token_just_past_expiry_is_still_accepted_within_clock_skew() {
     let (key, jwk) = keypair();
     let token = sign(&claims(json!({ "exp": NOW - 30 })), &key);
-    validate_token(&token, &key_set(jwk), &config(), NOW)
+    validate_token(&token, &key_set(jwk), &config(), NOW, None)
         .expect("30s of drift must not lock people out");
 }
 
@@ -272,7 +272,7 @@ fn a_missing_email_verified_claim_counts_as_unverified() {
     // on, and providers differ about whether they send it.
     let (key, jwk) = keypair();
     let token = sign(&claims(json!({ "email_verified": null })), &key);
-    let out = validate_token(&token, &key_set(jwk), &config(), NOW).expect("valid");
+    let out = validate_token(&token, &key_set(jwk), &config(), NOW, None).expect("valid");
     assert!(!out.email_verified);
 }
 
@@ -282,7 +282,7 @@ fn groups_as_a_bare_string_are_read() {
     // array.
     let (key, jwk) = keypair();
     let token = sign(&claims(json!({ "groups": "rdc-admins" })), &key);
-    let out = validate_token(&token, &key_set(jwk), &config(), NOW).expect("valid");
+    let out = validate_token(&token, &key_set(jwk), &config(), NOW, None).expect("valid");
     assert_eq!(out.groups, vec!["rdc-admins".to_string()]);
 }
 
@@ -291,7 +291,7 @@ fn an_unreadable_groups_claim_yields_none_rather_than_a_guess() {
     // With deny-by-default that means rejection, which is the safe direction.
     let (key, jwk) = keypair();
     let token = sign(&claims(json!({ "groups": { "unexpected": true } })), &key);
-    let out = validate_token(&token, &key_set(jwk), &config(), NOW).expect("valid");
+    let out = validate_token(&token, &key_set(jwk), &config(), NOW, None).expect("valid");
     assert_eq!(out.groups, Vec::<String>::new());
 }
 
@@ -305,7 +305,7 @@ fn groups_come_from_the_configured_claim() {
     let mut config = config();
     config.roles_claim = "roles".to_string();
 
-    let out = validate_token(&token, &key_set(jwk), &config, NOW).expect("valid");
+    let out = validate_token(&token, &key_set(jwk), &config, NOW, None).expect("valid");
     assert_eq!(out.groups, vec!["from-roles".to_string()]);
 }
 
@@ -316,7 +316,7 @@ fn a_token_with_no_expiry_is_rejected() {
     let (key, jwk) = keypair();
     let token = sign(&claims(json!({ "exp": null })), &key);
     assert_eq!(
-        validate_token(&token, &key_set(jwk), &config(), NOW).expect_err("no expiry"),
+        validate_token(&token, &key_set(jwk), &config(), NOW, None).expect_err("no expiry"),
         ValidationError::MissingExpiry
     );
 }
@@ -329,6 +329,6 @@ fn now_is_authoritative_rather_than_the_system_clock() {
     // `now` says otherwise.
     let (key, jwk) = keypair();
     let token = sign(&claims(json!({ "exp": NOW + 60 })), &key);
-    validate_token(&token, &key_set(jwk), &config(), NOW)
+    validate_token(&token, &key_set(jwk), &config(), NOW, None)
         .expect("the supplied now must decide, not the system clock");
 }

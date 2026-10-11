@@ -223,8 +223,9 @@ pub async fn build_api_state(
 /// operator who sets `RDC_OIDC_ISSUER` and gets a server that quietly ignores
 /// it has no way to tell the feature is off until someone cannot log in.
 ///
-/// Public so the integration tests wire single sign-on the same way the binary
-/// does. A test-only copy of this would be one change away from testing a
+/// The binary calls this. The integration tests share its body through
+/// [`build_oidc_services_from_map`], so they wire single sign-on the same way
+/// the binary does. A test-only copy would be one change away from testing a
 /// configuration the server never builds.
 ///
 /// # Errors
@@ -234,11 +235,40 @@ pub fn build_oidc_services(
     cache_manager: &Arc<CacheManager>,
     frontend_base_url: Option<String>,
 ) -> r_data_core_core::error::Result<Option<Arc<OidcServices>>> {
-    let Some(oidc_config) = r_data_core_core::oidc::OidcConfig::from_env()
+    build_oidc_services_from_map(
+        pool,
+        cache_manager,
+        frontend_base_url,
+        &std::env::vars().collect(),
+    )
+}
+
+/// Wire single sign-on from an explicit settings map.
+///
+/// Test harnesses use this so that a server trusting a mock provider is built
+/// from values passed in, not from variables another test may have set.
+///
+/// # Errors
+/// Returns `Error::Config` when the map holds an invalid `RDC_OIDC_*` block.
+#[allow(clippy::implicit_hasher)] // `OidcConfig::from_map` takes the default hasher
+pub fn build_oidc_services_from_map(
+    pool: &PgPool,
+    cache_manager: &Arc<CacheManager>,
+    frontend_base_url: Option<String>,
+    map: &std::collections::HashMap<String, String>,
+) -> r_data_core_core::error::Result<Option<Arc<OidcServices>>> {
+    let Some(oidc_config) = r_data_core_core::oidc::OidcConfig::from_map(map)
         .map_err(|e| r_data_core_core::error::Error::Config(e.to_string()))?
     else {
         return Ok(None);
     };
+
+    if oidc_config.allow_insecure_issuer {
+        log::warn!(
+            "RDC_OIDC_ALLOW_INSECURE_ISSUER is set: the identity provider is contacted over \
+             plain HTTP. Never run this way outside local development."
+        );
+    }
 
     let issuer = &oidc_config.issuer;
     info!("Single sign-on enabled, trusting issuer {issuer}");

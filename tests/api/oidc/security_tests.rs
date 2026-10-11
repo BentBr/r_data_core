@@ -31,7 +31,13 @@ const KNOWN_HASH: &str = "$argon2id$v=19$m=19456,t=2,p=1$AyU4SymrYGzpmYfqDSbugg$
 /// The columns mirror `create_test_admin_user` rather than being written out
 /// afresh: everything else about `admin_users` is defaulted by the schema, and
 /// guessing at column names here is how these tests would rot.
-async fn federated_account(pool: &r_data_core_test_support::TestDatabase, username: &str) -> Uuid {
+///
+/// # Panics
+/// Panics if the insert fails.
+pub async fn federated_account(
+    pool: &r_data_core_test_support::TestDatabase,
+    username: &str,
+) -> Uuid {
     let uuid: Uuid = sqlx::query_scalar(
         "INSERT INTO admin_users \
          (username, email, password_hash, first_name, last_name, is_active, \
@@ -249,4 +255,102 @@ async fn a_local_account_is_unaffected_by_any_of_this() {
     .await;
 
     assert_eq!(response.status(), StatusCode::OK);
+}
+
+#[actix_web::test]
+async fn a_provisioned_user_cannot_be_given_stored_roles() {
+    // Roles for an SSO account come from the identity provider on every
+    // sign-in and are never stored. Accepting `role_uuids` here would make
+    // the stored set a second, silent authority that group removal at the
+    // provider could never narrow.
+    let (app, pool, admin_uuid) = setup_test_app().await.expect("test app");
+    let federated = federated_account(&pool, "federated-roles").await;
+    let token = get_auth_token(&app, &pool).await;
+
+    let role_uuid: Uuid = sqlx::query_scalar(
+        "INSERT INTO roles (name, created_by, published) VALUES ('sso-stored', $1, true) \
+         RETURNING uuid",
+    )
+    .bind(admin_uuid)
+    .fetch_one(&pool.pool)
+    .await
+    .expect("a role");
+
+    let response = test::call_service(
+        &app,
+        test::TestRequest::put()
+            .uri(&format!("/admin/api/v1/users/{federated}"))
+            .insert_header(("Authorization", format!("Bearer {token}")))
+            .set_json(serde_json::json!({ "role_uuids": [role_uuid] }))
+            .to_request(),
+    )
+    .await;
+
+    assert_eq!(response.status(), StatusCode::BAD_REQUEST);
+
+    let stored: i64 = sqlx::query_scalar("SELECT count(*) FROM user_roles WHERE user_uuid = $1")
+        .bind(federated)
+        .fetch_one(&pool.pool)
+        .await
+        .expect("count");
+    assert_eq!(stored, 0, "a refused assignment must leave nothing behind");
+}
+
+#[actix_web::test]
+async fn the_roles_endpoint_refuses_a_provisioned_user_too() {
+    // `PUT /users/{uuid}/roles` writes the same `user_roles` rows as the
+    // update form; refusing on one path and not the other is no refusal.
+    let (app, pool, admin_uuid) = setup_test_app().await.expect("test app");
+    let federated = federated_account(&pool, "federated-roles-endpoint").await;
+    let token = get_auth_token(&app, &pool).await;
+
+    let role_uuid: Uuid = sqlx::query_scalar(
+        "INSERT INTO roles (name, created_by, published) VALUES ('sso-stored-2', $1, true) \
+         RETURNING uuid",
+    )
+    .bind(admin_uuid)
+    .fetch_one(&pool.pool)
+    .await
+    .expect("a role");
+
+    let response = test::call_service(
+        &app,
+        test::TestRequest::put()
+            .uri(&format!("/admin/api/v1/users/{federated}/roles"))
+            .insert_header(("Authorization", format!("Bearer {token}")))
+            .set_json(serde_json::json!([role_uuid]))
+            .to_request(),
+    )
+    .await;
+
+    assert_eq!(response.status(), StatusCode::BAD_REQUEST);
+
+    let stored: i64 = sqlx::query_scalar("SELECT count(*) FROM user_roles WHERE user_uuid = $1")
+        .bind(federated)
+        .fetch_one(&pool.pool)
+        .await
+        .expect("count");
+    assert_eq!(stored, 0, "a refused assignment must leave nothing behind");
+}
+
+#[actix_web::test]
+async fn reading_a_provisioned_users_roles_still_works() {
+    // The refusal is for writes. A client that loads a user's roles must not
+    // fail just because the account is federated.
+    let (app, pool, _) = setup_test_app().await.expect("test app");
+    let federated = federated_account(&pool, "federated-roles-read").await;
+    let token = get_auth_token(&app, &pool).await;
+
+    let response = test::call_service(
+        &app,
+        test::TestRequest::get()
+            .uri(&format!("/admin/api/v1/users/{federated}/roles"))
+            .insert_header(("Authorization", format!("Bearer {token}")))
+            .to_request(),
+    )
+    .await;
+
+    assert_eq!(response.status(), StatusCode::OK);
+    let body: serde_json::Value = test::read_body_json(response).await;
+    assert_eq!(body["data"], serde_json::json!([]));
 }

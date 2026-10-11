@@ -263,3 +263,38 @@ async fn a_finished_attempt_clears_its_binding_cookie() {
         "a finished attempt must not leave a binding behind: {cookie}"
     );
 }
+
+#[actix_web::test]
+async fn start_is_throttled_per_client() {
+    // Each start costs a provider round trip and a cache write, with no
+    // credential required. Unthrottled, it is an amplifier aimed at the
+    // provider and a filler aimed at Redis.
+    let idp = Idp::start().await;
+    let app = app_with!(Some(&idp));
+    // Every start counts, so the bucket has its own, higher threshold.
+    let max = r_data_core_core::config::security::OIDC_START_RATE_LIMIT_MAX;
+    assert!(
+        max > r_data_core_core::config::SecurityConfig::global().rate_limit_max_attempts,
+        "a NAT full of colleagues must not hit the failed-login limit by signing in"
+    );
+
+    for _ in 0..max {
+        let response = test::call_service(
+            &app,
+            test::TestRequest::get()
+                .uri("/admin/api/v1/auth/oidc/start")
+                .to_request(),
+        )
+        .await;
+        assert_eq!(response.status(), StatusCode::FOUND);
+    }
+
+    let response = test::call_service(
+        &app,
+        test::TestRequest::get()
+            .uri("/admin/api/v1/auth/oidc/start")
+            .to_request(),
+    )
+    .await;
+    assert_eq!(response.status(), StatusCode::TOO_MANY_REQUESTS);
+}

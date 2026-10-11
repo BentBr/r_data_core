@@ -24,6 +24,7 @@ Two things are enabled separately, and you may want only the first:
 | Variable | Required | Default | What it does |
 |---|---|---|---|
 | `RDC_OIDC_ISSUER` | — | unset | The provider's issuer URL. **Setting this is what turns single sign-on on.** Leaving it unset disables the feature entirely. |
+| `RDC_OIDC_ALLOW_INSECURE_ISSUER` | no | `false` | Permit a plain-HTTP issuer. Startup refuses one otherwise, because over HTTP anyone on the path can substitute the provider's signing keys and read the client secret. Loopback issuers are exempt. For local development only. |
 | `RDC_OIDC_AUDIENCE` | when the issuer is set | — | The audience RDataCore's tokens are minted for. Startup fails without it; see [Why the audience is required](#why-the-audience-is-required). |
 | `RDC_OIDC_ROLE_MAP` | no | empty | `idp-group:rdc-role,other-group:other-role`. A malformed entry fails startup rather than being skipped. |
 | `RDC_OIDC_ROLES_CLAIM` | no | `groups` | Which claim carries group membership. |
@@ -57,6 +58,7 @@ Add this to `.env`:
 COMPOSE_PROFILES=sso
 
 RDC_OIDC_ISSUER=http://auth.rdatacore.docker:8081/realms/rdatacore
+RDC_OIDC_ALLOW_INSECURE_ISSUER=true  # dev only: Keycloak in compose speaks plain HTTP
 RDC_OIDC_AUDIENCE=r-data-core
 RDC_OIDC_CLIENT_ID=r-data-core
 RDC_OIDC_REDIRECT_URI=http://rdatacore.docker/admin/api/v1/auth/oidc/callback
@@ -262,6 +264,16 @@ unverified email address at a trusted issuer could claim someone else's
 account — including an administrator's. Turn it on only when you trust your
 provider's address verification, and only while migrating.
 
+Even with linking on and the address verified, a local account that holds
+`super_admin` is never adopted: the sign-in is refused. Super-admin is granted
+inside RDataCore, to a named person, and must not be reachable through
+whoever administers addresses at the provider.
+
+A first sign-in whose provider does not vouch for the address (`email_verified`
+absent or false) is provisioned with a placeholder address,
+`<subject>@sso.invalid`, rather than the one it claimed. If that claimed
+address already belongs to a local account, the sign-in is refused instead.
+
 ### Why the audience is required
 
 `RDC_OIDC_ISSUER` without `RDC_OIDC_AUDIENCE` fails startup.
@@ -288,17 +300,59 @@ To convert someone to a local account, remove the identity link first.
 ### The revocation window
 
 A resolved identity is cached for `RDC_OIDC_RESOLUTION_CACHE_SECS` (60 by
-default). Deactivating an account in RDataCore therefore takes effect within
-that window rather than instantly.
+default). Bearer access tokens therefore honour a cached resolution for up to
+that long after an account is deactivated directly in the database. Admin user
+updates made through RDataCore evict the entry, so those take effect at once.
 
-The token itself is verified on **every** request — only the database lookup
-is cached — so an expired or revoked token stops working immediately. What the
+The token itself is verified on **every** request, only the database lookup
+is cached, so an expired or revoked token stops working immediately. What the
 window covers is a change made on the RDataCore side. Shorten it if you want
 faster revocation and can afford a database round trip per request.
 
 Note that an account deactivated in RDataCore is refused even while the
 provider keeps issuing perfectly valid tokens. The provider says who someone
 is; RDataCore says whether they may act.
+
+### Known gaps
+
+- **No RP-initiated logout.** Signing out of RDataCore does not end the
+  session at the provider; the next "Sign in with SSO" may complete without
+  a prompt. Sign out at the provider as well where that matters.
+- **Group membership is not re-checked on refresh.** An SSO session re-mints
+  from the role set recorded at sign-in for the life of the refresh chain,
+  which lasts at most 30 days from the original sign-in, regardless of
+  refreshes. Revoking a user at the provider therefore does not end an
+  existing RDataCore session: deactivate the user in RDataCore (or revoke
+  their sessions) to end access immediately.
+- **Cached resolution after a direct-database deactivation.** Bearer access
+  tokens honour a cached resolution for up to `RDC_OIDC_RESOLUTION_CACHE_SECS`
+  (default 60s) after an account is deactivated directly in the database.
+  Admin user updates evict the entry.
+- **High availability needs Redis.** The single-use `state` claim and the
+  rate limits fall back to a per-process store when Redis is unavailable. On
+  a multi-instance deployment that makes the claim non-atomic across
+  instances: sign-ins are refused rather than doubled, but they are refused.
+
+### Upgrading
+
+Releases before the SSO hardening minted SSO sessions from stored roles.
+Two things change on upgrade; no migration is needed.
+
+1. **Every SSO user signs in again once.** Refresh tokens issued before the
+   upgrade carry no role snapshot, and a federated account presenting one is
+   refused with a 401. The admin interface sends the user back to the login
+   page; one sign-in issues a new session.
+2. **Stored roles on SSO accounts are now inert for sessions, not gone.**
+   `user_roles` rows previously assigned to SSO-provisioned accounts no longer
+   affect their SSO sessions, but they still apply to API keys owned by those
+   accounts and are still listed by `GET /users/{uuid}/roles`. Clear them per
+   user with `PUT /admin/api/v1/users/{uuid}` and `"role_uuids": []`, or all at
+   once:
+
+   ```sql
+   DELETE FROM user_roles
+   WHERE user_uuid IN (SELECT uuid FROM admin_users WHERE is_sso_provisioned);
+   ```
 
 ### What the login flow protects against
 
@@ -313,6 +367,13 @@ is; RDataCore says whether they may act.
 - **Redirect targets must be paths inside this application.** An open redirect
   on a login endpoint is a phishing primitive, and here the response carries
   session tokens in its fragment, so it would hand those tokens away too.
+- **The ID token carries a `nonce`** minted for this attempt. A token obtained
+  any other way — injected at the token endpoint, replayed from another
+  sign-in — does not carry it and is refused.
+- **The discovery document is checked** before any URL in it is followed: it
+  must name the configured issuer, and its endpoints must be `https` (or the
+  insecure override must be set). It is cached for five minutes so both legs
+  of a sign-in see the same document.
 
 ---
 

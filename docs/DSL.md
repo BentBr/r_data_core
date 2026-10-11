@@ -640,6 +640,37 @@ run, so field references have nothing to resolve against.
 - Zero: `0` → `"0"`
 - Negative: `-15.5` → `"-15.5"`
 
+## Dry Run
+
+`POST /admin/api/v1/dsl/dry-run` with `{ "steps": [...], "input": {...} }`
+executes an unsaved program against sample input and reports what each step
+did, without persisting anything. Entity reads and writes go through an
+in-memory overlay of the database, so later steps see what earlier ones
+produced and lookups behave as they will in production. It needs the
+`workflows:update` permission, because it runs the program.
+
+Response (`DryRunResponse`):
+
+| Field | Meaning |
+|---|---|
+| `steps[].step_index` | Position in the program |
+| `steps[].produced` | What the step's destination received, or would have |
+| `steps[].to` | The step's `to` definition, echoed |
+| `steps[].effect` | `executed` (ran against the overlay), `suppressed` (email or outbound push: described, never attempted) or `no_side_effect` |
+| `steps[].suppressed_detail` | For a suppressed step, what would have happened |
+| `would_write` | Entities the run would have created or updated, e.g. `"create customer 0195..."` |
+
+Both `validate` and `dry-run` answer a failure with `422` and a `violations`
+array. Each violation has `field`, `message`, `code` (`DSL_STEP_MALFORMED` for a
+step that does not parse, `DSL_INVALID` for a semantic failure), `json_path`
+(for example `steps[0].to.type`, or `null`) and `legal_values`: the accepted
+variants when the failure was an unknown one, empty when the set is not
+enumerable. A caller can correct the program from this data rather than from
+prose. A program that fails while running (a missing field, a lookup that found
+nothing) answers `422` with a single `DSL_INVALID` violation.
+
+The MCP server's `test_workflow` tool calls this endpoint.
+
 ## Validation Rules
 
 1. **Steps Array**: Must contain at least one step

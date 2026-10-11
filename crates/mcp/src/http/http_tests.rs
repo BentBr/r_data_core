@@ -11,8 +11,8 @@ use std::collections::HashMap;
 use super::*;
 
 /// A configured server, bound to an ephemeral port.
-struct RunningServer {
-    base: String,
+pub(super) struct RunningServer {
+    pub(super) base: String,
     shutdown: tokio_util::sync::CancellationToken,
 }
 
@@ -22,7 +22,7 @@ impl Drop for RunningServer {
     }
 }
 
-async fn start(extra: &[(&str, &str)]) -> RunningServer {
+pub(super) async fn start(extra: &[(&str, &str)]) -> RunningServer {
     let mut pairs: HashMap<String, String> = [
         ("RDC_BASE_URL", "https://rdc.example.com"),
         ("RDC_MCP_TRANSPORT", "http"),
@@ -55,7 +55,7 @@ async fn start(extra: &[(&str, &str)]) -> RunningServer {
     }
 }
 
-fn client() -> reqwest::Client {
+pub(super) fn client() -> reqwest::Client {
     reqwest::Client::builder()
         .timeout(std::time::Duration::from_secs(5))
         .build()
@@ -360,4 +360,23 @@ async fn a_bare_allowlist_entry_matches_any_port() {
         .expect("response");
 
     assert_eq!(response.status(), 200);
+}
+
+#[tokio::test]
+async fn metadata_is_served_under_the_resource_path_and_at_the_root() {
+    let server = start(&[("RDC_MCP_RESOURCE_URL", "https://mcp.example.com/rdc-mcp")]).await;
+
+    for path in [
+        "/.well-known/oauth-protected-resource/rdc-mcp",
+        "/.well-known/oauth-protected-resource",
+    ] {
+        let response = client()
+            .get(format!("{}{path}", server.base))
+            .send()
+            .await
+            .expect("response");
+        assert_eq!(response.status(), 200, "{path}");
+        let body: serde_json::Value = response.json().await.expect("json");
+        assert_eq!(body["resource"], "https://mcp.example.com/rdc-mcp");
+    }
 }

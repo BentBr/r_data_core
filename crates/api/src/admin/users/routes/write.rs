@@ -236,6 +236,9 @@ pub async fn update_user(
 
     // Update roles if provided
     if let Some(role_uuids) = &req.role_uuids {
+        if let Some(refusal) = super::refuse_sso_role_assignment(&user, role_uuids) {
+            return refusal;
+        }
         if let Err(e) = repo.update_user_roles(user_uuid, role_uuids).await {
             error!("Failed to update user roles: {e}");
             return ApiResponse::<()>::internal_error("Failed to update user roles");

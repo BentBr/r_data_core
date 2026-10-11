@@ -60,3 +60,10 @@ cargo run --bin apply-schema
 ```
 
 Or via the admin API: `POST /admin/api/v1/entity-definitions/apply-schema`
+
+## Single sign-on tables
+
+`migrations/20260906120000_admin_user_identities.sql` adds
+`admin_user_identities` (`provider`, `subject`, `admin_user_uuid`,
+`last_login_at`) with a unique `(provider, subject)` and `ON DELETE CASCADE`,
+and `admin_users.is_sso_provisioned BOOLEAN NOT NULL DEFAULT FALSE`.

@@ -318,6 +318,35 @@ impl RoleRepositoryTrait for RoleRepository {
     async fn count_all(&self) -> Result<i64> {
         Self::count_all(self).await
     }
+
+    async fn list_for_user(&self, user_uuid: Uuid) -> Result<Vec<Role>> {
+        let rows = sqlx::query(
+            r#"
+            SELECT
+                r.uuid, r.path, r.name, r.description,
+                r.permissions as "permissions: serde_json::Value",
+                r.is_system, r.super_admin,
+                r.created_at, r.updated_at, r.created_by, r.updated_by,
+                r.published, r.version
+            FROM roles r
+            JOIN user_roles ur ON ur.role_uuid = r.uuid
+            WHERE ur.user_uuid = $1
+            "#,
+        )
+        .bind(user_uuid)
+        .fetch_all(&self.pool)
+        .await
+        .map_err(Error::Database)?;
+
+        rows.iter()
+            .map(|r| {
+                role_from_row(r).map_err(|e| {
+                    log::error!("Failed to deserialize role: {e}");
+                    Error::Unknown(format!("Failed to deserialize role: {e}"))
+                })
+            })
+            .collect()
+    }
 }
 
 /// Helper function to deserialize `Role` from database row

@@ -29,8 +29,9 @@ use actix_web::{get, http::header, post, web, HttpResponse, Responder};
 use serde::Deserialize;
 use std::sync::Arc;
 
+use super::oidc_log::safe_reason;
 use crate::admin::auth::rate_limit;
-use crate::admin::auth::routes::helpers::issue_session;
+use crate::admin::auth::routes::helpers::{issue_session_with_roles, SessionOrigin};
 use crate::api_state::{ApiStateTrait, ApiStateWrapper};
 use crate::response::ApiResponse;
 use r_data_core_core::admin_jwt::ACCESS_TOKEN_EXPIRY_SECONDS;
@@ -77,12 +78,24 @@ pub struct ExchangeRequest {
 )]
 #[get("/auth/oidc/start")]
 pub async fn oidc_start(
+    req: actix_web::HttpRequest,
     data: web::Data<ApiStateWrapper>,
     query: web::Query<StartQuery>,
 ) -> impl Responder {
     let Some(flow) = configured_flow(&data) else {
         return ApiResponse::<()>::not_found("Single sign-on is not configured");
     };
+
+    // Unauthenticated and not free: each start is a provider round trip and
+    // a cache write. Every call counts, not only failures — there is no
+    // failure to count, and the cost is the same either way.
+    let rl_key = rate_limit::rate_limit_key(&req, rate_limit::Bucket::OidcStart);
+    if rate_limit::is_over_limit(data.cache_manager(), rate_limit::Bucket::OidcStart, &rl_key).await
+    {
+        log::warn!("Single-sign-on start rate limit hit for key {rl_key}");
+        return ApiResponse::<()>::too_many_requests("Too many sign-in attempts, try again later");
+    }
+    rate_limit::record_failure(data.cache_manager(), rate_limit::Bucket::OidcStart, &rl_key).await;
 
     match flow.start(query.return_to.as_deref()).await {
         Ok(redirect) => HttpResponse::Found()
@@ -123,7 +136,10 @@ pub async fn oidc_callback(
     // The provider refused before we were involved — a cancelled consent
     // screen, usually. Not an error worth a 500.
     if let Some(reason) = &query.error {
-        log::info!("The identity provider refused a sign-in: {reason}");
+        log::info!(
+            "The identity provider refused a sign-in: {}",
+            safe_reason(reason)
+        );
         return failed_login(&flow.landing_path(None), "provider_refused");
     }
 
@@ -148,30 +164,51 @@ pub async fn oidc_callback(
         return failed_login(&flow.landing_path(None), "unbound_state");
     }
 
-    let (claims, return_to) = match flow
+    let completed = match flow
         .complete(state, code, ACCESS_TOKEN_EXPIRY_SECONDS)
         .await
     {
-        Ok(resolved) => resolved,
+        Ok(done) => done,
         Err(e) => {
             log::warn!("Single-sign-on callback failed: {e}");
             return failed_login(&flow.landing_path(None), reason_for(&e));
         }
     };
 
-    let landing = flow.landing_path(return_to.as_deref());
+    let landing = flow.landing_path(completed.return_to.as_deref());
 
     // The identity is good. Turn it into the same session a password login
-    // produces, so nothing downstream has to know how it began.
+    // produces, so nothing downstream has to know how it began — minted
+    // from the roles the token mapped to, which is the only place they live.
     let repo = AdminUserRepository::new(Arc::new(data.db_pool().clone()));
-    let Some(uuid) = resolved_user_uuid(&data, &claims.issuer, &claims.subject).await else {
+    let Some(uuid) = resolved_user_uuid(
+        &data,
+        &completed.identity.issuer,
+        &completed.identity.subject,
+    )
+    .await
+    else {
         return failed_login(&landing, "unresolved_identity");
     };
     let Ok(Some(mut user)) = repo.find_by_uuid(&uuid).await else {
         return failed_login(&landing, "unresolved_identity");
     };
+    // Checked again here, after the cache: a resolution cached before a
+    // deactivation would otherwise sign a deactivated account in.
+    if let Err(e) = r_data_core_services::ensure_may_sign_in(&user) {
+        log::warn!("Single-sign-on callback refused after resolution: {e}");
+        return failed_login(&landing, "not_permitted");
+    }
 
-    let Some(session) = issue_session(&mut user, &repo, &data).await else {
+    let Some(session) = issue_session_with_roles(
+        &mut user,
+        &completed.roles,
+        SessionOrigin::Sso,
+        &repo,
+        &data,
+    )
+    .await
+    else {
         return failed_login(&landing, "session_failed");
     };
 
@@ -229,7 +266,7 @@ pub async fn oidc_exchange(
     // Every call costs a provider round trip and a database lookup, and it is
     // reachable without a local credential. Throttle it like login.
     let rl_key = rate_limit::rate_limit_key(&req, rate_limit::Bucket::Login);
-    if rate_limit::is_over_limit(data.cache_manager(), &rl_key).await {
+    if rate_limit::is_over_limit(data.cache_manager(), rate_limit::Bucket::Login, &rl_key).await {
         log::warn!("Token-exchange rate limit hit for key {rl_key}");
         return ApiResponse::too_many_requests("Too many exchange attempts, try again later");
     }
@@ -238,20 +275,23 @@ pub async fn oidc_exchange(
     let claims = match oidc.runtime().verify(&body.token, now).await {
         Ok(claims) => claims,
         Err(e) => {
-            rate_limit::record_failure(data.cache_manager(), &rl_key).await;
+            rate_limit::record_failure(data.cache_manager(), rate_limit::Bucket::Login, &rl_key)
+                .await;
             return refusal(&e);
         }
     };
 
     // Resolve through the shared tail, so an unmapped or deactivated identity
-    // is refused here on exactly the terms the bearer path uses.
-    if let Err(e) = oidc
+    // is refused here on exactly the terms the bearer path uses — and the
+    // mapped roles come back from it, because the token is minted from them.
+    let resolution = match oidc
         .runtime()
-        .session_claims(&claims, ACCESS_TOKEN_EXPIRY_SECONDS)
+        .resolve(&claims, ACCESS_TOKEN_EXPIRY_SECONDS)
         .await
     {
-        return refusal(&e);
-    }
+        Ok(resolution) => resolution,
+        Err(e) => return refusal(&e),
+    };
 
     let repo = AdminUserRepository::new(Arc::new(data.db_pool().clone()));
     let Some(uuid) = resolved_user_uuid(&data, &claims.issuer, &claims.subject).await else {
@@ -260,12 +300,14 @@ pub async fn oidc_exchange(
     let Ok(Some(user)) = repo.find_by_uuid(&uuid).await else {
         return ApiResponse::internal_error("Authentication failed");
     };
+    if let Err(e) = r_data_core_services::ensure_may_sign_in(&user) {
+        return refusal(&e);
+    }
 
-    let roles = crate::admin::auth::routes::helpers::load_user_roles(&user, &data, &repo).await;
     let access_token = match r_data_core_core::admin_jwt::generate_access_token(
         &user,
         data.api_config(),
-        &roles,
+        &resolution.roles,
     ) {
         Ok(token) => token,
         Err(e) => {
@@ -273,6 +315,18 @@ pub async fn oidc_exchange(
             return ApiResponse::internal_error("Authentication failed");
         }
     };
+
+    if let Some(log_svc) = data.system_log_service() {
+        log_svc
+            .log_auth_event(
+                Some(user.uuid),
+                Some(user.uuid),
+                "Provider token exchanged for a local token",
+                Some(serde_json::json!({ "action": "oidc_exchange" })),
+                r_data_core_core::system_log::SystemLogStatus::Success,
+            )
+            .await;
+    }
 
     // No refresh token. A machine caller re-exchanges instead, which keeps
     // the revocation window as short as the access token and avoids a
