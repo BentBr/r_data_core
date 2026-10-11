@@ -208,14 +208,6 @@ jobs:
                     # An empty ref would make checkout fall back to the triggering ref.
                     [ -n "$TAG_SHA" ] || { echo "guard produced no tag_sha" >&2; exit 1; }
 
-            # Needed for .github/scripts/publish-to-pages.sh; the build jobs
-            # check out for their own reasons, this job otherwise would not.
-            -   name: Checkout
-                uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7
-                with:
-                    persist-credentials: false
-                    ref: ${{ needs.guard.outputs.tag_sha }}
-
             # Scoped to this workflow's own artefacts. Without the pattern
             # it downloads everything in the run, and since release-please
             # now calls this workflow alongside docker-publish, that run also
@@ -332,6 +324,45 @@ jobs:
                     files: dist/*
                     fail_on_unmatched_files: true
 
+            -   name: Keep the manifest for the pages job
+                uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02  # v4
+                with:
+                    name: mcp-manifest
+                    path: dist/mcp-latest.json
+                    if-no-files-found: error
+
+    # A job of its own so that a gh-pages failure cannot strand a release
+    # half-published: the release and its assets are complete before this
+    # starts, and npm does not wait for it. Re-runnable on its own.
+    pages:
+        name: Publish the download manifest
+        needs: [guard, publish]
+        runs-on: ubuntu-latest
+        environment: release
+        permissions:
+            contents: write
+        steps:
+            -   name: Require the verified commit
+                env:
+                    TAG_SHA: ${{ needs.guard.outputs.tag_sha }}
+                shell: bash
+                run: |
+                    # An empty ref would make checkout fall back to the triggering ref.
+                    [ -n "$TAG_SHA" ] || { echo "guard produced no tag_sha" >&2; exit 1; }
+
+            # For .github/scripts/publish-to-pages.sh.
+            -   name: Checkout
+                uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7
+                with:
+                    persist-credentials: false
+                    ref: ${{ needs.guard.outputs.tag_sha }}
+
+            -   name: Download the manifest
+                uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093  # v4
+                with:
+                    name: mcp-manifest
+                    path: dist/
+
             # A release asset URL contains the tag, so it is not a fixed
             # address. This one is:
             #   https://bentbr.github.io/r_data_core/mcp-latest.json
@@ -425,7 +456,9 @@ jobs:
             -   name: Install an npm that can do trusted publishing
                 run: |
                     set -euo pipefail
-                    npm install -g npm@^11
+                    # Exact, so a release does not pick up whatever npm
+                    # shipped that morning. Bump deliberately.
+                    npm install -g npm@11.6.2
                     version="$(npm --version)"
                     echo "npm ${version}"
                     # Trusted publishing is OIDC, which npm learned in 11.5.1.
