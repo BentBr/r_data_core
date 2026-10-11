@@ -134,7 +134,10 @@ pub async fn oidc_callback(
     // The provider refused before we were involved — a cancelled consent
     // screen, usually. Not an error worth a 500.
     if let Some(reason) = &query.error {
-        log::info!("The identity provider refused a sign-in: {reason}");
+        log::info!(
+            "The identity provider refused a sign-in: {}",
+            safe_reason(reason)
+        );
         return failed_login(&flow.landing_path(None), "provider_refused");
     }
 
@@ -303,6 +306,18 @@ pub async fn oidc_exchange(
         }
     };
 
+    if let Some(log_svc) = data.system_log_service() {
+        log_svc
+            .log_auth_event(
+                Some(user.uuid),
+                Some(user.uuid),
+                "Provider token exchanged for a local token",
+                Some(serde_json::json!({ "action": "oidc_exchange" })),
+                r_data_core_core::system_log::SystemLogStatus::Success,
+            )
+            .await;
+    }
+
     // No refresh token. A machine caller re-exchanges instead, which keeps
     // the revocation window as short as the access token and avoids a
     // long-lived credential living in the MCP server.
@@ -422,6 +437,22 @@ const fn reason_for(error: &FlowError) -> &'static str {
     }
 }
 
+/// An OAuth error code as the provider sent it, or as much of it as is safe
+/// to put in a log line: lowercase ASCII, digits and underscores, at most 32
+/// characters. The parameter is attacker-chosen.
+fn safe_reason(raw: &str) -> String {
+    let kept: String = raw
+        .chars()
+        .take_while(|c| c.is_ascii_lowercase() || c.is_ascii_digit() || *c == '_')
+        .take(32)
+        .collect();
+    if kept.is_empty() {
+        "<empty>".to_string()
+    } else {
+        kept
+    }
+}
+
 /// Map an authentication failure onto a response.
 ///
 /// The 403/503 split matters: a locked account and an unreachable provider
@@ -450,4 +481,23 @@ fn urlencode(value: &str) -> String {
         }
     }
     out
+}
+
+#[cfg(test)]
+mod tests {
+    use super::safe_reason;
+
+    #[test]
+    fn a_provider_error_code_is_kept() {
+        assert_eq!(safe_reason("access_denied"), "access_denied");
+    }
+
+    #[test]
+    fn anything_that_is_not_an_error_code_is_not_logged_verbatim() {
+        // The parameter is attacker-chosen. Newlines forge log lines; length
+        // fills disks; anything outside the OAuth error-code alphabet is noise.
+        assert_eq!(safe_reason("evil\nFAKE LOG LINE"), "evil");
+        assert_eq!(safe_reason("x".repeat(500).as_str()).len(), 32);
+        assert_eq!(safe_reason(""), "<empty>");
+    }
 }
