@@ -1,8 +1,8 @@
 name: MCP Release
 
-# Tagged separately from the core release cycle: the MCP server is installed by
-# people who may never deploy RDataCore themselves, and tying its version to
-# the server's would force them to track releases that change nothing for them.
+# Versioned with the core: release-please's rust strategy bumps every workspace
+# member, so crates/mcp carries the core version and release-please.yml mirrors
+# each core release into an mcp-v* tag. This workflow builds that tag.
 on:
     push:
         tags:

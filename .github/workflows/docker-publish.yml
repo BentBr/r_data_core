@@ -55,19 +55,25 @@ jobs:
                 run: echo "owner_lc=${GITHUB_REPOSITORY_OWNER,,}" >> $GITHUB_OUTPUT
             -   name: Determine tag
                 id: tag
+                env:
+                    INPUT_VERSION: ${{ inputs.version }}
+                    INPUT_TAG: ${{ inputs.tag }}
+                    RELEASE_TAG: ${{ github.event.release.tag_name }}
+                    EVENT_NAME: ${{ github.event_name }}
+                    REF: ${{ github.ref }}
                 run: |
-                    if [ -n "${{ inputs.version }}" ]; then
-                      echo "tag=${{ inputs.version }}" >> $GITHUB_OUTPUT
-                      echo "is_release=true" >> $GITHUB_OUTPUT
-                    elif [ "${{ github.event_name }}" == "release" ]; then
-                      echo "tag=${{ github.event.release.tag_name }}" >> $GITHUB_OUTPUT
-                      echo "is_release=true" >> $GITHUB_OUTPUT
-                    elif [ "${{ github.ref }}" == "refs/heads/develop" ]; then
-                      echo "tag=develop" >> $GITHUB_OUTPUT
-                      echo "is_release=false" >> $GITHUB_OUTPUT
+                    if [ -n "$INPUT_VERSION" ]; then
+                      echo "tag=$INPUT_VERSION" >> "$GITHUB_OUTPUT"
+                      echo "is_release=true" >> "$GITHUB_OUTPUT"
+                    elif [ "$EVENT_NAME" == "release" ]; then
+                      echo "tag=$RELEASE_TAG" >> "$GITHUB_OUTPUT"
+                      echo "is_release=true" >> "$GITHUB_OUTPUT"
+                    elif [ "$REF" == "refs/heads/develop" ]; then
+                      echo "tag=develop" >> "$GITHUB_OUTPUT"
+                      echo "is_release=false" >> "$GITHUB_OUTPUT"
                     else
-                      echo "tag=${{ inputs.tag }}" >> $GITHUB_OUTPUT
-                      echo "is_release=false" >> $GITHUB_OUTPUT
+                      echo "tag=$INPUT_TAG" >> "$GITHUB_OUTPUT"
+                      echo "is_release=false" >> "$GITHUB_OUTPUT"
                     fi
 
     # Build AMD64 backend images on native amd64 runner
@@ -393,18 +399,24 @@ jobs:
                 run: pnpm build
             -   name: Determine version
                 id: version
+                env:
+                    INPUT_VERSION: ${{ inputs.version }}
+                    INPUT_TAG_NAME: ${{ inputs.tag_name }}
+                    RELEASE_TAG: ${{ github.event.release.tag_name }}
                 run: |
-                    if [ -n "${{ inputs.version }}" ]; then
-                      echo "version=${{ inputs.version }}" >> $GITHUB_OUTPUT
-                      echo "tag_name=${{ inputs.tag_name }}" >> $GITHUB_OUTPUT
+                    if [ -n "$INPUT_VERSION" ]; then
+                      echo "version=$INPUT_VERSION" >> "$GITHUB_OUTPUT"
+                      echo "tag_name=$INPUT_TAG_NAME" >> "$GITHUB_OUTPUT"
                     else
-                      echo "version=${{ github.event.release.tag_name }}" >> $GITHUB_OUTPUT
-                      echo "tag_name=${{ github.event.release.tag_name }}" >> $GITHUB_OUTPUT
+                      echo "version=$RELEASE_TAG" >> "$GITHUB_OUTPUT"
+                      echo "tag_name=$RELEASE_TAG" >> "$GITHUB_OUTPUT"
                     fi
             -   name: Create ZIP archive
+                env:
+                    VERSION: ${{ steps.version.outputs.version }}
                 run: |
                     cd fe/dist
-                    zip -r ../../r-data-core-admin-fe-${{ steps.version.outputs.version }}.zip .
+                    zip -r "../../r-data-core-admin-fe-${VERSION}.zip" .
             -   name: Upload to release
                 uses: softprops/action-gh-release@efb35369e0ad2afab669f228072c1b0d510eae64  # v3
                 with:
