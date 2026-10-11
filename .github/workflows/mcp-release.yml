@@ -281,6 +281,18 @@ jobs:
                     node-version: '22'
                     registry-url: 'https://registry.npmjs.org'
 
+            # Trusted publishing is OIDC, and npm only learned it in 11.5.1.
+            # setup-node ships whatever npm the Node release bundles — Node 22
+            # carries npm 10 — which has no OIDC support and no token to fall
+            # back on, so `npm publish` goes out unauthenticated and the
+            # registry answers 404 rather than 401, to avoid disclosing
+            # whether the package exists.
+            -   name: Install an npm that can do trusted publishing
+                run: |
+                    set -euo pipefail
+                    npm install -g npm@^11
+                    npm --version
+
             # The tag and the manifest are edited by different hands at
             # different times. Publishing 0.1.0 under the tag mcp-v0.2.0 would
             # ship an installer that downloads assets it does not name.
