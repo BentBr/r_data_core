@@ -25,6 +25,7 @@ description: SQLx repository implementations, query patterns, and migration serv
 | `workflow_versioning_repository.rs` | Workflow version tracking |
 | `admin_user_repository.rs` | Admin user CRUD |
 | `api_key_repository.rs` | API key management |
+| `identity_repository.rs` | `IdentityRepository` (trait `IdentityRepositoryTrait`): `admin_user_identities` keyed on `(provider, subject)`; idempotent link; email lookup excludes SSO accounts |
 | `refresh_token_repository.rs` | Refresh token persistence |
 | `role_repository.rs` | Role management |
 | `version_repository.rs` | Generic entity version tracking |
@@ -55,4 +56,5 @@ dynamic_entity_repository/
 - Trait-based repositories for testability
 - `PgPoolExtension` for shared pool utilities
 - Compile-time query verification via SQLx (requires running Postgres)
+- Runtime `sqlx::query*` (not the `query!` macros) is acceptable for small repositories such as `identity_repository.rs`; they get no compile-time schema check, so they need direct repository tests (`tests/repositories/identity_repository_tests.rs`)
 - After schema changes: `cargo sqlx prepare --workspace -- --all-targets`
