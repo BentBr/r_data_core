@@ -234,7 +234,29 @@ pub fn build_oidc_services(
     cache_manager: &Arc<CacheManager>,
     frontend_base_url: Option<String>,
 ) -> r_data_core_core::error::Result<Option<Arc<OidcServices>>> {
-    let Some(oidc_config) = r_data_core_core::oidc::OidcConfig::from_env()
+    build_oidc_services_from_map(
+        pool,
+        cache_manager,
+        frontend_base_url,
+        &std::env::vars().collect(),
+    )
+}
+
+/// Wire single sign-on from an explicit settings map.
+///
+/// Test harnesses use this so that a server trusting a mock provider is built
+/// from values passed in, not from variables another test may have set.
+///
+/// # Errors
+/// Returns `Error::Config` when the map holds an invalid `RDC_OIDC_*` block.
+#[allow(clippy::implicit_hasher)] // `OidcConfig::from_map` takes the default hasher
+pub fn build_oidc_services_from_map(
+    pool: &PgPool,
+    cache_manager: &Arc<CacheManager>,
+    frontend_base_url: Option<String>,
+    map: &std::collections::HashMap<String, String>,
+) -> r_data_core_core::error::Result<Option<Arc<OidcServices>>> {
+    let Some(oidc_config) = r_data_core_core::oidc::OidcConfig::from_map(map)
         .map_err(|e| r_data_core_core::error::Error::Config(e.to_string()))?
     else {
         return Ok(None);

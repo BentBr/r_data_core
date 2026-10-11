@@ -17,6 +17,7 @@ use r_data_core_services::{
 };
 use r_data_core_test_support::{create_test_admin_user, setup_test_db, test_queue_client_async};
 use r_data_core_workflow::data::WorkflowKind;
+use std::collections::HashMap;
 use std::sync::Arc;
 use uuid::Uuid;
 
@@ -44,7 +45,7 @@ pub async fn setup_app_with_entities() -> anyhow::Result<(
 }
 
 /// Build the application state a test server needs, without binding it to a
-/// transport.
+/// transport, with single sign-on disabled.
 ///
 /// Separated from `setup_app_with_entities` so the same state can back either
 /// an in-process `test::init_service` app or a real listener — the MCP client
@@ -52,12 +53,32 @@ pub async fn setup_app_with_entities() -> anyhow::Result<(
 ///
 /// # Errors
 /// Returns an error if test setup fails
+pub async fn build_app_state() -> anyhow::Result<(
+    web::Data<ApiStateWrapper>,
+    r_data_core_test_support::TestDatabase,
+    String, // JWT token
+    String, // API key value
+)> {
+    build_app_state_with_oidc(None).await
+}
+
+/// Build the application state, trusting the identity provider described by
+/// `oidc` when one is given.
+///
+/// Explicit rather than read from the environment: tests in this binary run
+/// in parallel, and a variable one test sets is a server another test gets.
+///
+/// # Errors
+/// Returns an error if test setup fails
 ///
 /// # Panics
-/// Panics if `RDC_OIDC_*` is set to something malformed. A test that
+/// Panics if `oidc` holds a malformed `RDC_OIDC_*` block. A test that
 /// configures single sign-on badly should say so loudly rather than quietly
 /// building a server with the feature off.
-pub async fn build_app_state() -> anyhow::Result<(
+#[allow(clippy::implicit_hasher)] // forwards to a map-typed bootstrap seam
+pub async fn build_app_state_with_oidc(
+    oidc: Option<&HashMap<String, String>>,
+) -> anyhow::Result<(
     web::Data<ApiStateWrapper>,
     r_data_core_test_support::TestDatabase,
     String, // JWT token
@@ -114,11 +135,10 @@ pub async fn build_app_state() -> anyhow::Result<(
         r_data_core_services::DashboardStatsService::new(Arc::new(dashboard_stats_repository));
 
     let jwt_secret = "test_secret".to_string();
-    // Built from the environment exactly as the binary does, so a test that
-    // sets RDC_OIDC_* gets a server that really trusts that provider. Every
-    // other test leaves those unset and gets `None`.
-    let oidc = r_data_core::bootstrap::build_oidc_services(&pool.pool, &cache_manager, None)
-        .expect("OIDC configuration should be valid");
+    let oidc = oidc.and_then(|map| {
+        r_data_core::bootstrap::build_oidc_services_from_map(&pool.pool, &cache_manager, None, map)
+            .expect("OIDC configuration should be valid")
+    });
 
     let api_state = ApiState {
         db_pool: pool.pool.clone(),

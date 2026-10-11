@@ -134,8 +134,8 @@ async fn a_role_made_super_admin_after_sign_in_is_dropped_on_refresh() {
 async fn an_adopted_accounts_refresh_keeps_the_mapped_roles_not_the_stored_ones() {
     // Adoption keeps `is_sso_provisioned = false`, so keying the snapshot on
     // that flag let the first refresh fall back to the stored roles.
-    std::env::set_var("RDC_OIDC_LINK_BY_EMAIL", "true");
-    let stack = OauthStack::start("rdc-ops:sso-editor").await;
+    let stack =
+        OauthStack::start_with("rdc-ops:sso-editor", &[("RDC_OIDC_LINK_BY_EMAIL", "true")]).await;
     stack
         .grant_permission("sso-editor", "Workflows", "Read")
         .await;
