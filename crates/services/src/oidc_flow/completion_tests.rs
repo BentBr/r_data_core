@@ -3,7 +3,7 @@
 //! A sign-in that goes all the way through: a signed ID token from the mock
 //! provider, verified against its real key, resolved to roles.
 //!
-//! `oidc_flow_tests.rs` stops at the provider's door. These tests are the
+//! `oidc_flow/tests` stops at the provider's door. These tests are the
 //! other half, and they exist because the bug they guard against — a
 //! completed sign-in that forgets which roles it mapped to — is invisible from
 //! anywhere short of the end.
