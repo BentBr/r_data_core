@@ -7,11 +7,13 @@ assistant can author, run and debug your data workflows.
 npx @rdatacore/mcp-server
 ```
 
-Installing downloads the binary for your platform from the project's GitHub
-releases and verifies it against the release's `SHA256SUMS` before making it
-executable. Supported platforms: Linux x64, macOS x64 and arm64, Windows x64.
-Anything else fails the install with a message rather than leaving a command
-that breaks later.
+Installing downloads the binaries for your platform from the GitHub release
+that matches **this package's version** (`mcp-v<version>`) — never "the
+newest release" — and verifies each one against the `SHA256SUMS` shipped
+inside this package before making it executable. A mismatch, a missing
+checksum, or an unsupported platform fails the install with a message rather
+than leaving a command that breaks later. Supported platforms: Linux x64 and
+arm64, macOS x64 and arm64, Windows x64.
 
 ## Local use (stdio)
 
@@ -72,7 +74,7 @@ the per-user permissions the design rests on.
 | `RDC_MCP_HEADER_TIMEOUT_SECS` | HTTP mode: seconds a client gets to finish its request headers. Defaults to 10. |
 | `RDC_MCP_IDLE_TIMEOUT_SECS` | HTTP mode: seconds a connection may stay open in total. Defaults to 120. |
 | `RDC_MCP_MAX_CONNECTIONS` | HTTP mode: open connections accepted at once; the rest are refused. Defaults to 1024. |
-| `RDATACORE_MCP_VERSION` | Install a specific release tag instead of the latest. |
+| `RDATACORE_MCP_VERSION` | Install a specific release tag instead of this package's own version. Normally unnecessary. |
 | `GITHUB_TOKEN` | Optional at install time, and only to raise the GitHub API rate limit. The repository is public, so no token is needed. |
 
 Full deployment guide: [`docs/MCP.md`](https://github.com/BentBr/r_data_core/blob/main/docs/MCP.md).

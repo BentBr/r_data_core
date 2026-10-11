@@ -6,11 +6,14 @@
         "rdatacore-mcp": "run.mjs"
     },
     "scripts": {
-        "postinstall": "node install.mjs"
+        "postinstall": "node install.mjs",
+        "test": "node --test"
     },
     "files": [
         "install.mjs",
         "run.mjs",
+        "lib/",
+        "SHA256SUMS",
         "README.md",
         "LICENSE"
     ],
