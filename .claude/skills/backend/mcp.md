@@ -6,8 +6,9 @@ Model Context Protocol. Package `r_data_core_mcp`; binary `r-data-core-mcp`
 
 ## Layering
 
-Depends on `core` (shared DTOs) and `workflow` (request types and DSL types)
-and **nothing else**. It must never reach `api`, `persistence` or `services`:
+Depends on `core` (shared DTOs, OIDC token validation), `workflow` (request
+types and DSL types) and `oidc-http` (discovery + JWKS over HTTP), and
+**nothing else**. It must never reach `api`, `persistence` or `services`:
 it is a client of the running server, not a part of it. `tests/architecture.rs`
 enforces this.
 
@@ -33,13 +34,19 @@ again.
 
 | Path | Role |
 |---|---|
-| `config.rs` | Environment parsing, and the combinations it refuses |
-| `auth/` | `AuthBackend` trait, `CallerContext`, `Permissions`, API-key backend |
+| `config.rs`, `config/` | Environment parsing (`RDC_BASE_URL`, `RDC_API_KEY`, `RDC_MCP_TRANSPORT`, `RDC_MCP_BIND`, `RDC_MCP_TIMEOUT_SECS`, `RDC_MCP_RESOURCE_URL`, `RDC_MCP_ALLOWED_HOSTS`, `RDC_MCP_ALLOWED_ORIGINS`, `RDC_MCP_HEADER_TIMEOUT_SECS`, `RDC_MCP_IDLE_TIMEOUT_SECS`, `RDC_MCP_MAX_CONNECTIONS`, `RDC_OIDC_*`), and the combinations it refuses; `credential.rs` (static key vs OIDC), `numbers.rs` (positive-integer parsing), `limits.rs` (HTTP server limits) |
+| `auth/` | `AuthBackend` trait, `CallerContext`, `Permissions`; `api_key` (stdio: key to local token), `oidc` (HTTP: caller's bearer to local token, per-caller cache), `metadata` (RFC 9728 protected-resource metadata) |
 | `client/` | Typed calls: `workflows`, `dsl`, `entities`, plus `error` |
-| `tools/` | `discover`, `author`, `execute`; registry and permission filtering |
+| `tools/` | `discover`, `author`, `execute`, `system`; registry and permission filtering (`handler.rs`) |
 | `resources/` | Renders the DSL catalogue for models |
 | `prompts/` | The authoring and debugging sequences |
-| `bin/stdio.rs` | The stdio server |
+| `http.rs`, `http/` | The streamable-HTTP transport: `server` (+ `server/lifetime`, connection lifetime and limits), `routes`, `guards` (bearer validation, Host/Origin checks) |
+| `bin/stdio.rs` | The stdio server (API-key backend) |
+| `bin/serve.rs` | The HTTP server (OIDC backend) |
+
+The HTTP transport takes a per-request identity from the OIDC backend: the
+caller's bearer token is validated, exchanged for a local token and cached per
+caller. Static-key configuration is refused for it.
 
 ## Things that will bite you
 
@@ -64,14 +71,14 @@ not `update`. A typo hides a tool from everyone and produces no error anywhere,
 so the vocabularies are pinned by test.
 
 **Tool bodies never construct a `CallerContext`.** They go through
-`self.caller()`, so the HTTP transport can supply a per-request identity later
-without touching a single tool.
+`self.caller()`, so the HTTP transport supplies a per-request identity without
+touching a single tool.
 
 ## Checks
 
 ```bash
 cargo test -p r_data_core_mcp
-cargo clippy -p r_data_core_mcp --all-targets -- \
+cargo +nightly clippy -p r_data_core_mcp --all-targets --all-features -- \
   -D clippy::all -D warnings -D clippy::pedantic -D clippy::nursery
 ```
 
