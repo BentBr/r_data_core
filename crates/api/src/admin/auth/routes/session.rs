@@ -5,7 +5,9 @@ use actix_web::{post, web, Responder};
 use uuid::Uuid;
 
 use crate::admin::auth::models::{LogoutRequest, RefreshTokenRequest, RefreshTokenResponse};
-use crate::admin::auth::routes::helpers::{build_refresh_response, load_user_roles};
+use crate::admin::auth::routes::helpers::{
+    build_refresh_response, load_user_roles, sso_roles_from_refresh,
+};
 use crate::api_state::{ApiStateTrait, ApiStateWrapper};
 use crate::auth::auth_enum::RequiredAuth;
 use crate::response::ApiResponse;
@@ -151,7 +153,18 @@ pub async fn admin_refresh_token(
     }
 
     // Load roles and generate tokens via TokenService
-    let roles = load_user_roles(&user, &data, &admin_repo).await;
+    // An SSO account stores no roles; its session continues with the ones
+    // the sign-in mapped to, snapshotted on the refresh token.
+    let roles = if user.is_sso_provisioned {
+        let Some(roles) = sso_roles_from_refresh(refresh_token.device_info.as_ref(), &data).await
+        else {
+            log::warn!("SSO refresh token carries no role snapshot; refusing");
+            return ApiResponse::unauthorized("Re-authentication required");
+        };
+        roles
+    } else {
+        load_user_roles(&user, &data, &admin_repo).await
+    };
     let token_service = TokenService::new(data.api_config());
     let token_pair = match token_service.generate_token_pair(&user, &roles) {
         Ok(pair) => pair,

@@ -236,15 +236,8 @@ pub async fn update_user(
 
     // Update roles if provided
     if let Some(role_uuids) = &req.role_uuids {
-        // An SSO account's roles are re-derived from its token on every
-        // sign-in and never stored (docs/SSO.md, "Roles are not stored").
-        // Accepting them here would create a second, silent authority that
-        // group removal at the provider could never narrow. Refuse loudly.
-        if user.is_sso_provisioned {
-            return ApiResponse::<()>::bad_request(
-                "This user signs in through single sign-on; roles come from the identity \
-                 provider's groups and cannot be assigned here.",
-            );
+        if let Some(refusal) = super::refuse_sso_role_assignment(&user) {
+            return refusal;
         }
         if let Err(e) = repo.update_user_roles(user_uuid, role_uuids).await {
             error!("Failed to update user roles: {e}");

@@ -4,5 +4,6 @@
 
 pub mod harness;
 pub mod login_flow_tests;
+pub mod refresh_tests;
 pub mod security_tests;
 pub mod validation_tests;

@@ -49,8 +49,17 @@ pub async fn get_user_roles(
     let repo = AdminUserRepository::new(pool);
 
     // Verify user exists
-    if matches!(repo.find_by_uuid(&user_uuid).await, Ok(None)) {
-        return ApiResponse::<()>::not_found("User not found");
+    match repo.find_by_uuid(&user_uuid).await {
+        Ok(None) => return ApiResponse::<()>::not_found("User not found"),
+        Ok(Some(user)) => {
+            if let Some(refusal) = super::refuse_sso_role_assignment(&user) {
+                return refusal;
+            }
+        }
+        Err(e) => {
+            error!("Failed to get user: {e}");
+            return ApiResponse::<()>::internal_error("Failed to assign roles");
+        }
     }
 
     match repo.get_user_roles(user_uuid).await {
@@ -75,6 +84,7 @@ pub async fn get_user_roles(
         (status = 200, description = "Roles assigned successfully"),
         (status = 401, description = "Unauthorized"),
         (status = 403, description = "Forbidden - insufficient permissions"),
+        (status = 400, description = "The user signs in through single sign-on"),
         (status = 404, description = "User not found"),
         (status = 500, description = "Internal server error")
     ),
@@ -101,8 +111,17 @@ pub async fn assign_roles_to_user(
     let repo = AdminUserRepository::new(pool);
 
     // Verify user exists
-    if matches!(repo.find_by_uuid(&user_uuid).await, Ok(None)) {
-        return ApiResponse::<()>::not_found("User not found");
+    match repo.find_by_uuid(&user_uuid).await {
+        Ok(None) => return ApiResponse::<()>::not_found("User not found"),
+        Ok(Some(user)) => {
+            if let Some(refusal) = super::refuse_sso_role_assignment(&user) {
+                return refusal;
+            }
+        }
+        Err(e) => {
+            error!("Failed to get user: {e}");
+            return ApiResponse::<()>::internal_error("Failed to assign roles");
+        }
     }
 
     match repo.update_user_roles(user_uuid, &req.into_inner()).await {

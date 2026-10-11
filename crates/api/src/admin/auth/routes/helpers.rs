@@ -129,6 +129,33 @@ pub async fn handle_password_failure(
     ApiResponse::unauthorized("Invalid credentials")
 }
 
+/// Key in a refresh token's `device_info` holding the role UUIDs an SSO
+/// sign-in mapped to.
+pub const SSO_ROLE_UUIDS: &str = "sso_role_uuids";
+
+/// The roles an SSO refresh token was issued with, still-existing ones only.
+///
+/// `None` when the token carries no snapshot, which the caller must treat as
+/// "sign in again" rather than mint an empty session.
+pub async fn sso_roles_from_refresh(
+    device_info: Option<&serde_json::Value>,
+    data: &ApiStateWrapper,
+) -> Option<Vec<r_data_core_core::permissions::role::Role>> {
+    let uuids = device_info?.get(SSO_ROLE_UUIDS)?.as_array()?;
+    let mut roles = Vec::new();
+    for uuid in uuids
+        .iter()
+        .filter_map(|v| v.as_str().and_then(|s| s.parse::<uuid::Uuid>().ok()))
+    {
+        match data.role_service().get_role(uuid).await {
+            Ok(Some(role)) => roles.push(role),
+            Ok(None) => log::debug!("Mapped role {uuid} no longer exists"),
+            Err(e) => log::warn!("Failed to load mapped role {uuid}: {e}"),
+        }
+    }
+    Some(roles)
+}
+
 /// The session artefacts a successful sign-in produces.
 pub struct IssuedSession {
     pub tokens: crate::token_service::TokenPair,
@@ -175,10 +202,17 @@ pub async fn issue_session_with_roles(
     };
 
     let refresh_repo = RefreshTokenRepository::new(data.db_pool().clone());
-    let device_info = Some(serde_json::json!({
+    let mut device_info = serde_json::json!({
         "user_agent": "login",
         "login_time": OffsetDateTime::now_utc()
-    }));
+    });
+    // An SSO account stores no roles, so the refresh token carries the mapped
+    // ones. Without them a refresh would mint an empty session.
+    if user.is_sso_provisioned {
+        device_info[SSO_ROLE_UUIDS] =
+            serde_json::json!(roles.iter().map(|r| r.base.uuid).collect::<Vec<_>>());
+    }
+    let device_info = Some(device_info);
     if let Err(e) = refresh_repo
         .create(
             user.uuid,
