@@ -22,7 +22,7 @@ on:
 # workflow is its own entry point.
 
 permissions:
-    contents: write
+    contents: read
 
 env:
     # The MCP crate compiles without a database, but the workspace's SQLx
@@ -68,6 +68,8 @@ jobs:
         name: ${{ matrix.target }}
         needs: guard
         runs-on: ${{ matrix.runner }}
+        permissions:
+            contents: read
         strategy:
             # One target failing should not hide whether the others work.
             fail-fast: false
@@ -169,6 +171,10 @@ jobs:
         # Required reviewers live on this environment (operator step D7);
         # npm's trusted publisher is bound to it as well.
         environment: release
+        permissions:
+            contents: write
+            id-token: write
+            attestations: write
         steps:
             -   name: Require the verified commit
                 env:
@@ -212,6 +218,46 @@ jobs:
                     ls -l dist
                     echo "── SHA256SUMS ──"
                     cat dist/SHA256SUMS
+
+            # Releases are immutable by policy (and by repository setting —
+            # operator step 3 in docs/MCP.md). A re-run against a tag that
+            # already carries assets must stop here, before anything is
+            # replaced, rather than quietly rewrite binaries and sums together.
+            -   name: Refuse to overwrite an existing release's assets
+                env:
+                    GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+                    TAG: ${{ inputs.tag || github.ref_name }}
+                shell: bash
+                run: |
+                    set -euo pipefail
+                    # A missing release is fine (nothing to overwrite); any
+                    # other failure must not be read as "no assets".
+                    if ! out="$(gh release view "$TAG" --repo "$GITHUB_REPOSITORY" --json assets -q '.assets | length' 2>&1)"; then
+                        case "$out" in
+                            *"release not found"*) out=0 ;;
+                            *) echo "::error::could not inspect release $TAG: $out" >&2; exit 1 ;;
+                        esac
+                    fi
+                    if [ "$out" != "0" ]; then
+                        echo "::error::release $TAG already has $out asset(s). Releases are immutable; cut a new version." >&2
+                        exit 1
+                    fi
+
+            # Signed statement that these exact bytes came from this workflow
+            # run of this commit. Verifiable with `gh attestation verify`.
+            -   name: Attest build provenance
+                uses: actions/attest-build-provenance@v4
+                with:
+                    subject-path: |
+                        dist/r-data-core-mcp-*
+                        dist/SHA256SUMS
+
+            -   name: Keep the checksums for the npm job
+                uses: actions/upload-artifact@v4
+                with:
+                    name: mcp-sha256sums
+                    path: dist/SHA256SUMS
+                    if-no-files-found: error
 
             # rdatacore.eu links download URLs and cannot resolve "the newest
             # mcp-v* release" itself: GitHub's `releases/latest` is the newest
@@ -309,6 +355,22 @@ jobs:
                 uses: actions/checkout@v7
                 with:
                     ref: ${{ needs.guard.outputs.tag_sha }}
+
+            # The installer verifies downloads against this copy, which npm's
+            # provenance covers. A checksum file fetched from the release would
+            # only prove it was uploaded alongside the binaries.
+            -   name: Download the release checksums
+                uses: actions/download-artifact@v4
+                with:
+                    name: mcp-sha256sums
+                    path: mcp-npm-package/
+
+            -   name: Refuse to publish without checksums
+                working-directory: mcp-npm-package
+                run: |
+                    set -euo pipefail
+                    test -s SHA256SUMS
+                    grep -c 'r-data-core-mcp-' SHA256SUMS
 
             # No registry-url, deliberately. setup-node always writes
             # //registry.npmjs.org/:_authToken=${NODE_AUTH_TOKEN} when it is
