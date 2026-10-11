@@ -177,6 +177,9 @@ impl AuthBackend for ApiKeyBackend {
 
         let (token, lifetime) = self.exchange().await?;
 
+        // `lifetime` is a token lifetime in seconds from the server, far below f64's
+        // 2^53 exact range, and `* 0.8` keeps it non-negative and no larger than
+        // `lifetime`, so the u64 cast neither loses precision, truncates, nor changes sign.
         #[allow(
             clippy::cast_precision_loss,
             clippy::cast_possible_truncation,
