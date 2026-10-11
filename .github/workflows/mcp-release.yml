@@ -330,24 +330,6 @@ jobs:
             # The tag and the manifest are edited by different hands at
             # different times. Publishing 0.1.0 under the tag mcp-v0.2.0 would
             # ship an installer that downloads assets it does not name.
-            # Diagnostic, not a gate. It exchanges the OIDC token, reports
-            # whether npm accepts this workflow, and throws the token away.
-            # `workflow-ref` is the claim npm matches the trusted publisher
-            # against — which is the open question now that this workflow is
-            # called by release-please rather than being the entry point.
-            -   name: Check npm accepts this workflow's OIDC token
-                id: oidc
-                continue-on-error: true
-                uses: mpyw/npm-oidc-check-action@v1
-                with:
-                    packages: '@rdatacore/mcp-server'
-
-            -   name: Report what npm saw
-                if: always()
-                run: |
-                    echo "accepted: ${{ steps.oidc.outcome }}"
-                    echo "workflow_ref: ${{ steps.oidc.outputs.workflow-ref }}"
-
             -   name: Refuse a version that disagrees with the tag
                 env:
                     TAG: ${{ inputs.tag || github.ref_name }}
