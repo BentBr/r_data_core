@@ -319,9 +319,10 @@ is; RDataCore says whether they may act.
   session at the provider; the next "Sign in with SSO" may complete without
   a prompt. Sign out at the provider as well where that matters.
 - **Group membership is not re-checked on refresh.** An SSO session re-mints
-  from the role set recorded at sign-in for the life of the refresh chain
-  (up to thirty days). Revoking a user at the provider therefore does not end
-  an existing RDataCore session: deactivate the user in RDataCore (or revoke
+  from the role set recorded at sign-in for the life of the refresh chain,
+  which lasts at most 30 days from the original sign-in, regardless of
+  refreshes. Revoking a user at the provider therefore does not end an
+  existing RDataCore session: deactivate the user in RDataCore (or revoke
   their sessions) to end access immediately.
 - **Cached resolution after a direct-database deactivation.** Bearer access
   tokens honour a cached resolution for up to `RDC_OIDC_RESOLUTION_CACHE_SECS`
@@ -331,6 +332,27 @@ is; RDataCore says whether they may act.
   rate limits fall back to a per-process store when Redis is unavailable. On
   a multi-instance deployment that makes the claim non-atomic across
   instances: sign-ins are refused rather than doubled, but they are refused.
+
+### Upgrading
+
+Releases before the SSO hardening minted SSO sessions from stored roles.
+Two things change on upgrade; no migration is needed.
+
+1. **Every SSO user signs in again once.** Refresh tokens issued before the
+   upgrade carry no role snapshot, and a federated account presenting one is
+   refused with a 401. The admin interface sends the user back to the login
+   page; one sign-in issues a new session.
+2. **Stored roles on SSO accounts are now inert for sessions, not gone.**
+   `user_roles` rows previously assigned to SSO-provisioned accounts no longer
+   affect their SSO sessions, but they still apply to API keys owned by those
+   accounts and are still listed by `GET /users/{uuid}/roles`. Clear them per
+   user with `PUT /admin/api/v1/users/{uuid}` and `"role_uuids": []`, or all at
+   once:
+
+   ```sql
+   DELETE FROM user_roles
+   WHERE user_uuid IN (SELECT uuid FROM admin_users WHERE is_sso_provisioned);
+   ```
 
 ### What the login flow protects against
 

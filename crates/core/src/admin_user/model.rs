@@ -103,7 +103,8 @@ impl<'r> FromRow<'r, PgRow> for AdminUser {
         let last_login: Option<OffsetDateTime> = row.try_get("last_login").ok().flatten();
 
         // Lockout fields (columns added in migration 20260611000000_admin_user_lockout).
-        // Fall back to defaults for any caller selecting a narrower column set.
+        // Fall back to defaults for any caller selecting a narrower column set,
+        // except `is_sso_provisioned`, which is a hard error.
         let status: UserStatus = row.try_get("status").unwrap_or(UserStatus::Active);
         let failed_login_attempts: i32 = row.try_get("failed_login_attempts").unwrap_or(0);
         let locked_until: Option<OffsetDateTime> = row.try_get("locked_until").ok().flatten();
