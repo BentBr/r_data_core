@@ -68,6 +68,7 @@
     import { useTranslations } from '@/composables/useTranslations'
     import SmartIcon from '@/components/common/SmartIcon.vue'
     import { getDialogMaxWidth } from '@/design-system/components'
+    import { copyText } from '@/utils/clipboard'
 
     const { t } = useTranslations()
 
@@ -83,20 +84,21 @@
     const emit = defineEmits<{
         'update:modelValue': [value: boolean]
         'copy-success': []
+        'copy-failure': []
     }>()
 
     // Methods
-    const copyApiKey = () => {
-        const apiKey = props.apiKey
+    const copyApiKey = async () => {
+        // navigator.clipboard is undefined outside a secure context, and the
+        // admin runs on plain HTTP locally. Reading .writeText off undefined
+        // threw synchronously, so the old .catch() never ran and the button
+        // failed silently. copyText falls back to execCommand.
+        const copied = await copyText(props.apiKey)
 
-        // Modern approach - all supported browsers have clipboard API
-        navigator.clipboard
-            .writeText(apiKey)
-            .then(() => {
-                emit('copy-success')
-            })
-            .catch(err => {
-                console.error('Failed to copy API key:', err)
-            })
+        if (copied) {
+            emit('copy-success')
+        } else {
+            emit('copy-failure')
+        }
     }
 </script>

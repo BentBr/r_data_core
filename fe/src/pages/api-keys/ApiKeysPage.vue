@@ -185,6 +185,7 @@
                 v-model="showCreatedKeyDialog"
                 :api-key="createdApiKey"
                 @copy-success="handleCopySuccess"
+                @copy-failure="handleCopyFailure"
             />
 
             <!-- Use DialogManager for revoke confirmation -->
@@ -226,7 +227,7 @@
     const authStore = useAuthStore()
     const route = useRoute()
     const { t } = useTranslations()
-    const { currentSnackbar, showSuccess } = useSnackbar()
+    const { currentSnackbar, showSuccess, showError } = useSnackbar()
     const { handleError } = useErrorHandler()
 
     // Permission check for create button
@@ -441,6 +442,12 @@
 
     const handleCopySuccess = () => {
         showSuccess(t('api_keys.created.copied'))
+    }
+
+    // The key is shown once, so a copy that quietly failed is the worst
+    // outcome: the user closes the dialog believing they have it.
+    const handleCopyFailure = () => {
+        showError(t('api_keys.created.copy_failed'))
     }
 
     const formatDate = (dateString: string | null): string => {
