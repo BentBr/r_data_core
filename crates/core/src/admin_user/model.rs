@@ -108,10 +108,12 @@ impl<'r> FromRow<'r, PgRow> for AdminUser {
         let failed_login_attempts: i32 = row.try_get("failed_login_attempts").unwrap_or(0);
         let locked_until: Option<OffsetDateTime> = row.try_get("locked_until").ok().flatten();
         let super_admin = row.try_get("super_admin").unwrap_or(false); // Default to false
-                                                                       // Added in 20260906120000_admin_user_identities. Defaults to false so
-                                                                       // a narrower column selection reads as a local account, which is the
-                                                                       // safe direction: it keeps password paths guarded by an explicit true.
-        let is_sso_provisioned = row.try_get("is_sso_provisioned").unwrap_or(false);
+
+        // Added in 20260906120000_admin_user_identities. Deliberately NOT
+        // defaulted: every password-path guard trips only on `true`, so a
+        // query that omitted this column and read `false` would turn a
+        // federated account back into a local one. Missing is an error.
+        let is_sso_provisioned: bool = row.try_get("is_sso_provisioned")?;
         let is_admin = false; // Default value
 
         Ok(Self {

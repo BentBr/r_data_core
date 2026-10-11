@@ -300,17 +300,37 @@ To convert someone to a local account, remove the identity link first.
 ### The revocation window
 
 A resolved identity is cached for `RDC_OIDC_RESOLUTION_CACHE_SECS` (60 by
-default). Deactivating an account in RDataCore therefore takes effect within
-that window rather than instantly.
+default). Bearer access tokens therefore honour a cached resolution for up to
+that long after an account is deactivated directly in the database. Admin user
+updates made through RDataCore evict the entry, so those take effect at once.
 
-The token itself is verified on **every** request — only the database lookup
-is cached — so an expired or revoked token stops working immediately. What the
+The token itself is verified on **every** request, only the database lookup
+is cached, so an expired or revoked token stops working immediately. What the
 window covers is a change made on the RDataCore side. Shorten it if you want
 faster revocation and can afford a database round trip per request.
 
 Note that an account deactivated in RDataCore is refused even while the
 provider keeps issuing perfectly valid tokens. The provider says who someone
 is; RDataCore says whether they may act.
+
+### Known gaps
+
+- **No RP-initiated logout.** Signing out of RDataCore does not end the
+  session at the provider; the next "Sign in with SSO" may complete without
+  a prompt. Sign out at the provider as well where that matters.
+- **Group membership is not re-checked on refresh.** An SSO session re-mints
+  from the role set recorded at sign-in for the life of the refresh chain
+  (up to thirty days). Revoking a user at the provider therefore does not end
+  an existing RDataCore session: deactivate the user in RDataCore (or revoke
+  their sessions) to end access immediately.
+- **Cached resolution after a direct-database deactivation.** Bearer access
+  tokens honour a cached resolution for up to `RDC_OIDC_RESOLUTION_CACHE_SECS`
+  (default 60s) after an account is deactivated directly in the database.
+  Admin user updates evict the entry.
+- **High availability needs Redis.** The single-use `state` claim and the
+  rate limits fall back to a per-process store when Redis is unavailable. On
+  a multi-instance deployment that makes the claim non-atomic across
+  instances: sign-ins are refused rather than doubled, but they are refused.
 
 ### What the login flow protects against
 
