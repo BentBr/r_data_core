@@ -84,6 +84,10 @@ struct TokenResponse {
 struct PendingLogin {
     /// The PKCE verifier. Never leaves this server until the code exchange.
     verifier: String,
+    /// Sent to the provider with the request and expected back inside the ID
+    /// token. Binds the token to this attempt: a token obtained any other way
+    /// does not carry it.
+    nonce: String,
     /// Where to land afterwards, already validated as a local path.
     return_to: Option<String>,
 }
@@ -170,12 +174,14 @@ impl OidcFlow {
         let verifier = random_token();
         let challenge = URL_SAFE_NO_PAD.encode(Sha256::digest(verifier.as_bytes()));
         let state = random_token();
+        let nonce = random_token();
 
         self.cache
             .set(
                 &format!("{STATE_PREFIX}{state}"),
                 &PendingLogin {
                     verifier,
+                    nonce: nonce.clone(),
                     // Anything that is not a local path is dropped rather than
                     // rejected: a stale bookmark should still log someone in,
                     // just to the default place.
@@ -194,6 +200,7 @@ impl OidcFlow {
             ("redirect_uri", redirect_uri.as_str()),
             ("scope", "openid profile email"),
             ("state", state.as_str()),
+            ("nonce", nonce.as_str()),
             ("code_challenge", challenge.as_str()),
             ("code_challenge_method", "S256"),
         ];
@@ -241,7 +248,10 @@ impl OidcFlow {
 
         let id_token = self.exchange_code(code, &pending.verifier).await?;
         let now = time::OffsetDateTime::now_utc().unix_timestamp();
-        let verified = self.runtime.verify(&id_token, now).await?;
+        let verified = self
+            .runtime
+            .verify_id_token(&id_token, now, Some(&pending.nonce))
+            .await?;
 
         // The same refusals as the bearer path: unmapped, deactivated, locked.
         // Reached through the shared tail so it cannot diverge — and the

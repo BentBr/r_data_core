@@ -59,6 +59,8 @@ pub enum ValidationError {
     MissingSubject,
     #[error("the token carries no expiry, which would make it a permanent credential")]
     MissingExpiry,
+    #[error("the token's nonce does not match the sign-in it was returned for")]
+    NonceMismatch,
 }
 
 /// Verify a token and extract the claims this system reads.
@@ -73,6 +75,7 @@ pub fn validate_token(
     keys: &JwkSet,
     config: &OidcConfig,
     now: i64,
+    expected_nonce: Option<&str>,
 ) -> Result<OidcClaims, ValidationError> {
     let header = decode_header(token).map_err(|e| ValidationError::Malformed(e.to_string()))?;
 
@@ -109,7 +112,28 @@ pub fn validate_token(
     let data = decode::<HashMap<String, Value>>(token, &key, &validation)
         .map_err(|e| classify(&e, config))?;
 
+    // The nonce ties this token to the sign-in attempt that asked for it.
+    // Only the browser flow sends one; when it did, the token must carry it
+    // back, and a token without one is a token obtained some other way.
+    if let Some(expected) = expected_nonce {
+        let found = data.claims.get("nonce").and_then(Value::as_str);
+        if !found.is_some_and(|nonce| constant_time_eq(nonce, expected)) {
+            return Err(ValidationError::NonceMismatch);
+        }
+    }
+
     claims_from(data.claims, config, now)
+}
+
+/// Compare two secrets without revealing where they first differ.
+fn constant_time_eq(left: &str, right: &str) -> bool {
+    if left.len() != right.len() {
+        return false;
+    }
+    left.bytes()
+        .zip(right.bytes())
+        .fold(0u8, |acc, (a, b)| acc | (a ^ b))
+        == 0
 }
 
 /// Turn a `jsonwebtoken` error into something a log can act on.
@@ -236,5 +260,7 @@ fn groups_from(raw: &HashMap<String, Value>, claim: &str) -> Vec<String> {
     }
 }
 
+#[cfg(test)]
+mod nonce_tests;
 #[cfg(test)]
 mod tests;

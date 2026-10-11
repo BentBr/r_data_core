@@ -137,6 +137,17 @@ fn flow(server: &MockServer, jwk: Jwk) -> OidcFlow {
     OidcFlow::new(runtime, cache, None).expect("flow")
 }
 
+/// The `nonce` the flow sent to the provider.
+fn nonce_of(url: &str) -> String {
+    url.split('?')
+        .nth(1)
+        .expect("a query")
+        .split('&')
+        .find_map(|pair| pair.strip_prefix("nonce="))
+        .expect("a nonce")
+        .to_string()
+}
+
 #[tokio::test]
 async fn a_completed_sign_in_carries_the_roles_its_groups_map_to() {
     let (key, jwk) = keypair();
@@ -144,7 +155,12 @@ async fn a_completed_sign_in_carries_the_roles_its_groups_map_to() {
     let flow = flow(&server, jwk);
 
     let redirect = flow.start(None).await.expect("start");
-    token_endpoint(&server, &id_token(&server.uri(), &key, "ada", &json!({}))).await;
+    let nonce = nonce_of(&redirect.url);
+    token_endpoint(
+        &server,
+        &id_token(&server.uri(), &key, "ada", &json!({ "nonce": nonce })),
+    )
+    .await;
 
     let completed = flow
         .complete(&redirect.state, "code", 1800)
@@ -161,5 +177,62 @@ async fn a_completed_sign_in_carries_the_roles_its_groups_map_to() {
             .collect::<Vec<_>>(),
         vec!["editor"],
         "the session must be minted from the mapped roles, not from user_roles"
+    );
+}
+
+#[tokio::test]
+async fn start_sends_a_nonce_and_stores_it_for_the_callback() {
+    let (_, jwk) = keypair();
+    let server = provider().await;
+    let redirect = flow(&server, jwk).start(None).await.expect("start");
+    assert!(
+        redirect.url.contains("&nonce="),
+        "the nonce must travel to the provider: {}",
+        redirect.url
+    );
+}
+
+#[tokio::test]
+async fn an_id_token_with_the_wrong_nonce_is_refused() {
+    let (key, jwk) = keypair();
+    let server = provider().await;
+    let flow = flow(&server, jwk);
+
+    let redirect = flow.start(None).await.expect("start");
+    token_endpoint(
+        &server,
+        &id_token(
+            &server.uri(),
+            &key,
+            "ada",
+            &json!({ "nonce": "not-the-one-we-sent" }),
+        ),
+    )
+    .await;
+
+    let outcome = flow.complete(&redirect.state, "code", 1800).await;
+    assert!(
+        matches!(
+            outcome,
+            Err(FlowError::Auth(OidcAuthError::Rejected(
+                r_data_core_core::oidc::ValidationError::NonceMismatch
+            )))
+        ),
+        "expected a nonce refusal, got {outcome:?}"
+    );
+}
+
+#[tokio::test]
+async fn an_id_token_without_a_nonce_is_refused() {
+    let (key, jwk) = keypair();
+    let server = provider().await;
+    let flow = flow(&server, jwk);
+
+    let redirect = flow.start(None).await.expect("start");
+    token_endpoint(&server, &id_token(&server.uri(), &key, "ada", &json!({}))).await;
+
+    assert!(
+        flow.complete(&redirect.state, "code", 1800).await.is_err(),
+        "a token obtained outside this attempt carries no nonce and must be refused"
     );
 }

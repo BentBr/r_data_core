@@ -141,11 +141,30 @@ impl OidcRuntime {
     /// Returns `OidcAuthError` when the token is not acceptable or the
     /// provider's keys cannot be fetched.
     pub async fn verify(&self, token: &str, now: i64) -> Result<OidcClaims, OidcAuthError> {
+        self.verify_id_token(token, now, None).await
+    }
+
+    /// [`Self::verify`], additionally requiring the token to carry `nonce`.
+    ///
+    /// # Errors
+    /// As [`Self::verify`], plus `Rejected(NonceMismatch)`.
+    pub async fn verify_id_token(
+        &self,
+        token: &str,
+        now: i64,
+        expected_nonce: Option<&str>,
+    ) -> Result<OidcClaims, OidcAuthError> {
         let keys = self.keys.keys().await?;
-        match validate_token(token, &keys, &self.config, now) {
+        match validate_token(token, &keys, &self.config, now, expected_nonce) {
             Err(ValidationError::UnknownKid { kid }) => {
                 let refreshed = self.keys.refresh_for_unknown_kid(&kid).await?;
-                Ok(validate_token(token, &refreshed, &self.config, now)?)
+                Ok(validate_token(
+                    token,
+                    &refreshed,
+                    &self.config,
+                    now,
+                    expected_nonce,
+                )?)
             }
             other => Ok(other?),
         }

@@ -42,7 +42,7 @@ pub struct OauthStack {
     pool_guard: TestDatabase,
     encoding: EncodingKey,
     issuer: String,
-    _idp: MockServer,
+    idp: MockServer,
     _rdc: ServerGuard,
     _mcp: ShutdownGuard,
     /// Declared last so it drops last, after everything that reads the
@@ -76,7 +76,13 @@ struct EnvGuard;
 
 impl Drop for EnvGuard {
     fn drop(&mut self) {
-        for key in ["RDC_OIDC_ISSUER", "RDC_OIDC_AUDIENCE", "RDC_OIDC_ROLE_MAP"] {
+        for key in [
+            "RDC_OIDC_ISSUER",
+            "RDC_OIDC_AUDIENCE",
+            "RDC_OIDC_ROLE_MAP",
+            "RDC_OIDC_CLIENT_ID",
+            "RDC_OIDC_REDIRECT_URI",
+        ] {
             std::env::remove_var(key);
         }
     }
@@ -110,12 +116,22 @@ impl OauthStack {
             .mount(&idp)
             .await;
 
+        let listener = std::net::TcpListener::bind("127.0.0.1:0").expect("an ephemeral port");
+        let rdc_port = listener.local_addr().expect("the bound port").port();
+        let rdc_url = format!("http://127.0.0.1:{rdc_port}");
+
         // RDataCore reads its OIDC settings from the process environment at
         // startup, so they must be set before the state is built. Tests using
         // this harness are serialised for that reason.
         std::env::set_var("RDC_OIDC_ISSUER", &issuer);
         std::env::set_var("RDC_OIDC_AUDIENCE", AUDIENCE);
         std::env::set_var("RDC_OIDC_ROLE_MAP", role_map);
+        // The browser flow too, so the callback can be driven end to end.
+        std::env::set_var("RDC_OIDC_CLIENT_ID", "rdc-browser");
+        std::env::set_var(
+            "RDC_OIDC_REDIRECT_URI",
+            format!("{rdc_url}/admin/api/v1/auth/oidc/callback"),
+        );
 
         let (app_data, pool, _token, _api_key) =
             build_app_state().await.expect("build application state");
@@ -142,8 +158,6 @@ impl OauthStack {
             .expect("create the mapped role");
         }
 
-        let listener = std::net::TcpListener::bind("127.0.0.1:0").expect("an ephemeral port");
-        let rdc_port = listener.local_addr().expect("the bound port").port();
         let server = HttpServer::new(move || {
             App::new()
                 .app_data(app_data.clone())
@@ -156,7 +170,6 @@ impl OauthStack {
         let rdc = ServerGuard(tokio::spawn(async move {
             let _ = server.await;
         }));
-        let rdc_url = format!("http://127.0.0.1:{rdc_port}");
 
         // The MCP server, pointed at both.
         let mcp_listener = http::bind("127.0.0.1:0").await.expect("an ephemeral port");
@@ -184,7 +197,7 @@ impl OauthStack {
             pool_guard: pool,
             encoding,
             issuer,
-            _idp: idp,
+            idp,
             _rdc: rdc,
             _mcp: ShutdownGuard(shutdown),
             _env: EnvGuard,
@@ -209,6 +222,32 @@ impl OauthStack {
         let mut header = Header::new(jsonwebtoken::Algorithm::RS256);
         header.kid = Some(KID.to_string());
         encode(&header, &claims, &self.encoding).expect("sign a token")
+    }
+
+    /// The mock provider, for mounting a token endpoint per test.
+    pub const fn idp(&self) -> &MockServer {
+        &self.idp
+    }
+
+    /// A signed ID token as the provider would return it from the token
+    /// endpoint: like [`Self::mint_token`], plus the `nonce` of the attempt.
+    pub fn mint_id_token(&self, subject: &str, groups: &[&str], nonce: &str) -> String {
+        let now = time::OffsetDateTime::now_utc().unix_timestamp();
+        let claims = json!({
+            "iss": self.issuer,
+            "aud": AUDIENCE,
+            "sub": subject,
+            "exp": now + 3600,
+            "iat": now,
+            "nonce": nonce,
+            "email": format!("{subject}@example.com"),
+            "email_verified": true,
+            "name": subject,
+            "groups": groups,
+        });
+        let mut header = Header::new(jsonwebtoken::Algorithm::RS256);
+        header.kid = Some(KID.to_string());
+        encode(&header, &claims, &self.encoding).expect("sign an id token")
     }
 
     /// The test database, for assertions about what a sign-in persisted.

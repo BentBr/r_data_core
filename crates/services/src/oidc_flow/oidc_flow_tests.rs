@@ -122,6 +122,7 @@ async fn start_sends_the_browser_to_the_provider_with_pkce_and_state() {
         "PKCE is mandatory, and plain is not PKCE"
     );
     assert!(q.contains_key("code_challenge"));
+    assert!(q.contains_key("nonce"));
     assert_eq!(
         q.get("state").map(String::as_str),
         Some(redirect.state.as_str())

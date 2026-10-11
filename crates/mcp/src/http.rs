@@ -161,14 +161,14 @@ impl ServerState {
             .map_err(|e| format!("could not obtain the provider's signing keys: {e}"))?;
 
         // A rotated key is normal, so an unknown key id earns one refresh.
-        let verified = match validate_token(token, &keys, &self.oidc, now) {
+        let verified = match validate_token(token, &keys, &self.oidc, now, None) {
             Err(r_data_core_core::oidc::ValidationError::UnknownKid { kid }) => {
                 let refreshed = self
                     .keys
                     .refresh_for_unknown_kid(&kid)
                     .await
                     .map_err(|e| format!("could not refresh the signing keys: {e}"))?;
-                validate_token(token, &refreshed, &self.oidc, now)
+                validate_token(token, &refreshed, &self.oidc, now, None)
             }
             other => other,
         }
