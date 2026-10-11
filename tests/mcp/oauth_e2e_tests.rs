@@ -247,3 +247,30 @@ async fn the_exchanged_token_carries_the_mapped_roles_permissions() {
     .expect("count");
     assert_eq!(stored, 0, "roles must not be persisted for an SSO account");
 }
+
+#[tokio::test]
+#[serial]
+async fn the_exchange_accepts_a_keycloak_shaped_token_for_another_client() {
+    // Keycloak mints `aud: [<audience>, "account"]` with `azp` naming the
+    // client that asked — the MCP client, not RDataCore's browser client.
+    // The `azp` rule belongs to the browser ID-token path only; applied here
+    // it would break MCP's OIDC mode against Keycloak.
+    let stack = OauthStack::start("rdc-admins:admin").await;
+    let mut claims = stack.claims_for("carol", &["rdc-admins"]);
+    claims["aud"] = serde_json::json!([claims["aud"].clone(), "account"]);
+    claims["azp"] = serde_json::json!("some-mcp-client");
+    let token = stack.sign(&claims);
+
+    let response = client()
+        .post(format!("{}/admin/api/v1/auth/oidc/exchange", stack.rdc_url))
+        .json(&serde_json::json!({ "token": token }))
+        .send()
+        .await
+        .expect("a response");
+
+    assert!(
+        response.status().is_success(),
+        "a multi-audience token for another client must be exchangeable, got {}",
+        response.status()
+    );
+}

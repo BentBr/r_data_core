@@ -124,9 +124,31 @@ pub fn validate_token(
         if !found.is_some_and(|nonce| constant_time_eq(nonce, expected)) {
             return Err(ValidationError::NonceMismatch);
         }
+        // The `azp` rule applies to the browser ID-token path only, and a
+        // nonce is how that path is recognised: the browser flow is the only
+        // caller that passes one. Access tokens on the bearer path and ID
+        // tokens presented to the exchange are routinely minted for another
+        // client (Keycloak: `aud: [<audience>, "account"]`, `azp: <the MCP
+        // client>`), and requiring `azp == client_id` there would refuse
+        // every one of them.
+        check_azp(&data.claims, config)?;
     }
 
     claims_from(data.claims, config, now)
+}
+
+/// With several audiences, `azp` names the client the token was issued to
+/// (OIDC Core 3.1.3.7). Required only when this instance has a client id: the
+/// bearer-only configuration has none to compare against.
+fn check_azp(raw: &HashMap<String, Value>, config: &OidcConfig) -> Result<(), ValidationError> {
+    if let (Some(Value::Array(audiences)), Some(client_id)) =
+        (raw.get("aud"), config.client_id.as_deref())
+    {
+        if audiences.len() > 1 && raw.get("azp").and_then(Value::as_str) != Some(client_id) {
+            return Err(ValidationError::AzpMismatch);
+        }
+    }
+    Ok(())
 }
 
 /// Compare two secrets without revealing where they first differ.
@@ -224,17 +246,6 @@ fn claims_from(
     if let Some(iat) = raw.get("iat").and_then(Value::as_i64) {
         if iat > now + skew {
             return Err(ValidationError::IssuedInFuture);
-        }
-    }
-
-    // With several audiences, `azp` names the client the token was issued
-    // to. Required only when this instance has a client id: the bearer-only
-    // configuration has none to compare against.
-    if let (Some(Value::Array(audiences)), Some(client_id)) =
-        (raw.get("aud"), config.client_id.as_deref())
-    {
-        if audiences.len() > 1 && raw.get("azp").and_then(Value::as_str) != Some(client_id) {
-            return Err(ValidationError::AzpMismatch);
         }
     }
 

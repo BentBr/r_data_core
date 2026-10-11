@@ -62,6 +62,9 @@ fn config_with_client() -> OidcConfig {
     .expect("enabled")
 }
 
+// The rule applies to the browser ID-token path only, recognised by the
+// nonce it passes, so these tests pass one.
+
 #[test]
 fn a_multi_audience_token_must_name_this_client_as_authorized_party() {
     // OIDC Core 3.1.3.7: with several audiences, `azp` says which client the
@@ -69,11 +72,13 @@ fn a_multi_audience_token_must_name_this_client_as_authorized_party() {
     // list this audience is not a token for this client.
     let (key, jwk) = keypair();
     let token = sign(
-        &claims(json!({ "aud": [super::tests::AUDIENCE, "other"], "azp": "other" })),
+        &claims(json!({
+            "aud": [super::tests::AUDIENCE, "other"], "azp": "other", "nonce": "n"
+        })),
         &key,
     );
     assert_eq!(
-        validate_token(&token, &key_set(jwk), &config_with_client(), NOW, None)
+        validate_token(&token, &key_set(jwk), &config_with_client(), NOW, Some("n"))
             .expect_err("wrong azp"),
         ValidationError::AzpMismatch
     );
@@ -83,11 +88,11 @@ fn a_multi_audience_token_must_name_this_client_as_authorized_party() {
 fn a_multi_audience_token_without_azp_is_rejected() {
     let (key, jwk) = keypair();
     let token = sign(
-        &claims(json!({ "aud": [super::tests::AUDIENCE, "other"] })),
+        &claims(json!({ "aud": [super::tests::AUDIENCE, "other"], "nonce": "n" })),
         &key,
     );
     assert_eq!(
-        validate_token(&token, &key_set(jwk), &config_with_client(), NOW, None)
+        validate_token(&token, &key_set(jwk), &config_with_client(), NOW, Some("n"))
             .expect_err("missing azp"),
         ValidationError::AzpMismatch
     );
@@ -97,17 +102,48 @@ fn a_multi_audience_token_without_azp_is_rejected() {
 fn a_multi_audience_token_naming_this_client_is_accepted() {
     let (key, jwk) = keypair();
     let token = sign(
-        &claims(json!({ "aud": [super::tests::AUDIENCE, "other"], "azp": "rdc" })),
+        &claims(json!({
+            "aud": [super::tests::AUDIENCE, "other"], "azp": "rdc", "nonce": "n"
+        })),
         &key,
     );
-    validate_token(&token, &key_set(jwk), &config_with_client(), NOW, None).expect("accepted");
+    validate_token(&token, &key_set(jwk), &config_with_client(), NOW, Some("n")).expect("accepted");
 }
 
 #[test]
 fn a_single_audience_token_needs_no_azp() {
     let (key, jwk) = keypair();
-    let token = sign(&claims(json!({})), &key);
-    validate_token(&token, &key_set(jwk), &config_with_client(), NOW, None).expect("accepted");
+    let token = sign(&claims(json!({ "nonce": "n" })), &key);
+    validate_token(&token, &key_set(jwk), &config_with_client(), NOW, Some("n")).expect("accepted");
+}
+
+#[test]
+fn a_foreign_azp_is_accepted_without_an_expected_nonce() {
+    // Access tokens and ID tokens presented to the exchange are minted for
+    // another client: Keycloak issues `aud: [<audience>, "account"]` with
+    // `azp` naming the MCP client. Applying the browser rule there would
+    // break MCP's OIDC mode.
+    let (key, jwk) = keypair();
+    let token = sign(
+        &claims(json!({
+            "aud": [super::tests::AUDIENCE, "account"], "azp": "some-mcp-client"
+        })),
+        &key,
+    );
+    validate_token(&token, &key_set(jwk), &config_with_client(), NOW, None)
+        .expect("not the browser path, so azp is not checked");
+}
+
+#[test]
+fn a_future_iat_is_rejected_without_an_expected_nonce_too() {
+    // `iat` is checked on every path, unlike `azp`.
+    let (key, jwk) = keypair();
+    let token = sign(&claims(json!({ "iat": NOW + 3600 })), &key);
+    assert_eq!(
+        validate_token(&token, &key_set(jwk), &config_with_client(), NOW, None)
+            .expect_err("future iat"),
+        ValidationError::IssuedInFuture
+    );
 }
 
 // ── iat ─────────────────────────────────────────────────────────────────────

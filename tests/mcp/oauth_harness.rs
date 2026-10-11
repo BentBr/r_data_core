@@ -204,10 +204,11 @@ impl OauthStack {
         }
     }
 
-    /// A signed identity token for a named person in named groups.
-    pub fn mint_token(&self, subject: &str, groups: &[&str]) -> String {
+    /// The claims a provider puts in a token for a named person in named
+    /// groups, issued now and valid for an hour.
+    pub fn claims_for(&self, subject: &str, groups: &[&str]) -> serde_json::Value {
         let now = time::OffsetDateTime::now_utc().unix_timestamp();
-        let claims = json!({
+        json!({
             "iss": self.issuer,
             "aud": AUDIENCE,
             "sub": subject,
@@ -217,11 +218,19 @@ impl OauthStack {
             "email_verified": true,
             "name": subject,
             "groups": groups,
-        });
+        })
+    }
 
+    /// Sign arbitrary claims with the provider's key.
+    pub fn sign(&self, claims: &serde_json::Value) -> String {
         let mut header = Header::new(jsonwebtoken::Algorithm::RS256);
         header.kid = Some(KID.to_string());
-        encode(&header, &claims, &self.encoding).expect("sign a token")
+        encode(&header, claims, &self.encoding).expect("sign a token")
+    }
+
+    /// A signed identity token for a named person in named groups.
+    pub fn mint_token(&self, subject: &str, groups: &[&str]) -> String {
+        self.sign(&self.claims_for(subject, groups))
     }
 
     /// The mock provider, for mounting a token endpoint per test.
@@ -232,22 +241,9 @@ impl OauthStack {
     /// A signed ID token as the provider would return it from the token
     /// endpoint: like [`Self::mint_token`], plus the `nonce` of the attempt.
     pub fn mint_id_token(&self, subject: &str, groups: &[&str], nonce: &str) -> String {
-        let now = time::OffsetDateTime::now_utc().unix_timestamp();
-        let claims = json!({
-            "iss": self.issuer,
-            "aud": AUDIENCE,
-            "sub": subject,
-            "exp": now + 3600,
-            "iat": now,
-            "nonce": nonce,
-            "email": format!("{subject}@example.com"),
-            "email_verified": true,
-            "name": subject,
-            "groups": groups,
-        });
-        let mut header = Header::new(jsonwebtoken::Algorithm::RS256);
-        header.kid = Some(KID.to_string());
-        encode(&header, &claims, &self.encoding).expect("sign an id token")
+        let mut claims = self.claims_for(subject, groups);
+        claims["nonce"] = json!(nonce);
+        self.sign(&claims)
     }
 
     /// The test database, for assertions about what a sign-in persisted.
