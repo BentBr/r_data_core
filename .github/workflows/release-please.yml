@@ -178,6 +178,18 @@ jobs:
     # Mirror the core tag into the mcp-v* series that mcp-release.yml listens
     # on.
     #
+    # Pushed with a GitHub App token rather than the default GITHUB_TOKEN:
+    # GitHub suppresses workflow runs for refs pushed by GITHUB_TOKEN to
+    # prevent recursion, so that tag would appear and mcp-release.yml would
+    # never start. An App-pushed tag is an ordinary push and does trigger it.
+    #
+    # The alternative — calling mcp-release.yml as a reusable workflow — was
+    # tried and breaks npm trusted publishing: the OIDC token of a called
+    # workflow carries the *caller* in its workflow_ref, so the claim reads
+    # release-please.yml while npm has mcp-release.yml registered, the token
+    # exchange is refused, and npm falls through to an anonymous publish that
+    # fails with ENEEDAUTH. mcp-release.yml has to be its own entry point.
+    #
     # release-please's rust strategy upgrades every Cargo workspace member and
     # offers no way to exclude one, so crates/mcp always carries the core
     # version — an attempt to register it as its own release-please package
@@ -192,13 +204,23 @@ jobs:
         needs: release-please
         if: ${{ needs.release-please.outputs.release_created == 'true' }}
         runs-on: ubuntu-latest
+        # The tag is pushed with the App token, not GITHUB_TOKEN, so the
+        # default token needs nothing beyond read here.
         permissions:
-            contents: write
+            contents: read
         steps:
+            -   name: Generate App token
+                id: app-token
+                uses: actions/create-github-app-token@v3
+                with:
+                    app-id: ${{ secrets.PR_APP_ID }}
+                    private-key: ${{ secrets.PR_APP_PRIVATE_KEY }}
+
             -   name: Checkout the release commit
                 uses: actions/checkout@v7
                 with:
                     ref: ${{ needs.release-please.outputs.tag_name }}
+                    token: ${{ steps.app-token.outputs.token }}
 
             -   name: Tag the MCP release
                 env:
@@ -218,20 +240,6 @@ jobs:
                     git tag -a "${tag}" -m "MCP server ${VERSION}"
                     git push origin "${tag}"
                     echo "pushed ${tag}"
-
-    # Build the MCP release for the tag mcp-tag just created.
-    #
-    # Called rather than left to mcp-release.yml's own push-on-tag trigger:
-    # that trigger never fires for a tag pushed with the default GITHUB_TOKEN,
-    # which is why mcp-v0.4.12 was created and nothing built. Same reason
-    # docker-publish is invoked this way.
-    mcp-release:
-        needs: [ release-please, mcp-tag ]
-        if: ${{ needs.release-please.outputs.release_created == 'true' }}
-        uses: ./.github/workflows/mcp-release.yml
-        with:
-            tag: mcp-v${{ needs.release-please.outputs.version }}
-        secrets: inherit
 
     # Build and publish Docker images when a release is created
     docker-publish:
