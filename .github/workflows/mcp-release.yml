@@ -33,9 +33,14 @@ env:
     CARGO_INCREMENTAL: '0'
 
 jobs:
-    # A tag can be pushed by anyone with write access, and this workflow
-    # publishes whatever it points at. So the tag must be a release commit on
-    # main — checked by script, so the same check runs in a local test.
+    # This workflow publishes whatever commit the tag points at, so the tag
+    # must be a release commit on main and the commit this run was started
+    # for — checked by script, so the same check runs in a local test. That
+    # stops a mistaken or misdirected tag. It is not what stops a malicious
+    # one: that is the mcp-v* tag ruleset (only the release App may create
+    # them), the App key being an environment secret of `release-tag`
+    # (readable from main only), and the `release` environment below being
+    # restricted to mcp-v* tags with required reviewers.
     guard:
         name: Validate the tag
         runs-on: ubuntu-latest
@@ -46,10 +51,24 @@ jobs:
         outputs:
             tag_sha: ${{ steps.verify.outputs.tag_sha }}
         steps:
+            # Before anything fetches it: the dispatch input is free text.
+            -   name: Refuse a malformed tag name
+                env:
+                    REQUESTED: ${{ inputs.tag || github.ref_name }}
+                run: |
+                    set -euo pipefail
+                    if ! printf '%s' "$REQUESTED" | grep -Eq '^mcp-v[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$'; then
+                        echo "::error::refusing '$REQUESTED': expected mcp-vX.Y.Z" >&2
+                        exit 1
+                    fi
+
+            # The run's own commit, not the requested name: the guard below
+            # insists they are the same, so a dispatch only works when started
+            # from the tag ref itself.
             -   name: Checkout with history
                 uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7
                 with:
-                    ref: ${{ inputs.tag || github.ref }}
+                    ref: ${{ github.sha }}
                     fetch-depth: 0
                     persist-credentials: false
 
@@ -57,12 +76,13 @@ jobs:
                 id: verify
                 env:
                     REQUESTED: ${{ inputs.tag || github.ref_name }}
+                    EXPECTED_SHA: ${{ github.sha }}
                 run: |
                     set -euo pipefail
                     git fetch --no-tags origin main:refs/remotes/origin/main
-                    git fetch origin "refs/tags/${REQUESTED}:refs/tags/${REQUESTED}" || true
+                    git fetch --no-tags origin "+refs/tags/${REQUESTED}:refs/tags/${REQUESTED}"
                     ./.github/scripts/check-release-tag.sh "$REQUESTED"
-                    echo "tag_sha=$(git rev-parse "refs/tags/${REQUESTED}^{commit}")" >> "$GITHUB_OUTPUT"
+                    echo "tag_sha=${EXPECTED_SHA}" >> "$GITHUB_OUTPUT"
 
     build:
         name: ${{ matrix.target }}
@@ -303,6 +323,9 @@ jobs:
                 uses: softprops/action-gh-release@3bb12739c298aeb8a4eeaf626c5b8d85266b0e65  # v2
                 with:
                     tag_name: ${{ inputs.tag || github.ref_name }}
+                    # Only used if the release has to be created; names the
+                    # commit the guard verified rather than the default branch.
+                    target_commitish: ${{ needs.guard.outputs.tag_sha }}
                     files: dist/*
                     fail_on_unmatched_files: true
 
