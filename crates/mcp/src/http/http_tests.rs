@@ -361,3 +361,22 @@ async fn a_bare_allowlist_entry_matches_any_port() {
 
     assert_eq!(response.status(), 200);
 }
+
+#[tokio::test]
+async fn metadata_is_served_under_the_resource_path_and_at_the_root() {
+    let server = start(&[("RDC_MCP_RESOURCE_URL", "https://mcp.example.com/rdc-mcp")]).await;
+
+    for path in [
+        "/.well-known/oauth-protected-resource/rdc-mcp",
+        "/.well-known/oauth-protected-resource",
+    ] {
+        let response = client()
+            .get(format!("{}{path}", server.base))
+            .send()
+            .await
+            .expect("response");
+        assert_eq!(response.status(), 200, "{path}");
+        let body: serde_json::Value = response.json().await.expect("json");
+        assert_eq!(body["resource"], "https://mcp.example.com/rdc-mcp");
+    }
+}

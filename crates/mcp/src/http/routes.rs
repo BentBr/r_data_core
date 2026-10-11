@@ -38,7 +38,7 @@ pub(super) async fn route(
         return text_response(StatusCode::FORBIDDEN, "host not allowed");
     }
 
-    if path == metadata::METADATA_PATH {
+    if path == metadata::METADATA_PATH || path == metadata::metadata_path(config) {
         return json_response(
             StatusCode::OK,
             &metadata::protected_resource_document(config),

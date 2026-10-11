@@ -223,7 +223,7 @@ fn split_list(raw: &str) -> Vec<String> {
 }
 
 /// The `scheme://host[:port]` of a URL.
-fn origin_of(raw: Option<&str>) -> Option<String> {
+pub(crate) fn origin_of(raw: Option<&str>) -> Option<String> {
     let parsed = Url::parse(raw?).ok()?;
     let host = parsed.host_str()?;
     let scheme = parsed.scheme();

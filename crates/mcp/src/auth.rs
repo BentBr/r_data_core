@@ -13,7 +13,7 @@ pub mod metadata;
 pub mod oidc;
 
 pub use api_key::ApiKeyBackend;
-pub use metadata::{challenge_header, protected_resource_document, METADATA_PATH};
+pub use metadata::{challenge_header, metadata_path, protected_resource_document, METADATA_PATH};
 pub use oidc::OidcBackend;
 
 use thiserror::Error;
