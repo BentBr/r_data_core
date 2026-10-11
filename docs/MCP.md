@@ -87,40 +87,53 @@ so a given version's asset list stays verifiable after it is superseded.
 A release is cut by release-please on `main`; its `mcp-tag` job pushes the
 matching `mcp-v*` tag with the **release App**'s token, which starts
 `mcp-release.yml`. That workflow refuses any tag whose commit is not a
-release commit on `main` (`.github/scripts/check-release-tag.sh`), builds five
-targets, attests their provenance, uploads them once (an existing release's
-assets are never overwritten), and publishes the npm package. The package
-carries the release's `SHA256SUMS` inside the tarball, so an install verifies
-against sums covered by npm's provenance rather than by the release it is
-verifying.
+release commit on `main`, or is not the commit the run was started for
+(`.github/scripts/check-release-tag.sh`), builds five targets, attests their
+provenance, uploads them once (an existing release's assets are never
+overwritten), and publishes the npm package. The package carries the
+release's `SHA256SUMS` inside the tarball, so an install verifies against
+sums covered by npm's provenance rather than by the release it is verifying.
+
+That guard stops a mistaken or misdirected tag. It is not what stops a
+malicious one — it constrains which commit is published, not who may start a
+release. The boundary is the GitHub configuration below: the tag ruleset, the
+release App's key being readable only from `main` (an environment secret of
+`release-tag`), and the `release` environment that the publishing jobs run
+in being limited to `mcp-v*` tags with required reviewers.
 
 Settings that live on GitHub and npm rather than in this repository have to be
-in place for the guards above to mean anything. **`RELEASE_APP_ID` and
-`RELEASE_APP_PRIVATE_KEY` must exist before this change merges**, or the next
-core release fails to tag the MCP.
+in place for any of this to mean anything. **Both environments, and the two
+secrets in `release-tag`, must exist before this change merges.** If
+`release-tag` is missing, GitHub creates it on first use with no secrets, and
+the next core release fails to tag the MCP (it fails closed, but it fails).
 
 1. **Create the release App** with repository permission `contents: write`
-   and nothing else, install it on this repository, and add its credentials
-   as the secrets `RELEASE_APP_ID` and `RELEASE_APP_PRIVATE_KEY`. Only
-   `release-please.yml` may read them (`check-app-secret-scope.sh` fails CI
-   otherwise).
+   and nothing else, and install it on this repository. Create the
+   environment **`release-tag`**: deployment branches `main` only, **no**
+   required reviewers (tagging runs unattended). Store the App's ID and
+   private key as **environment secrets of `release-tag`** named
+   `RELEASE_APP_ID` and `RELEASE_APP_PRIVATE_KEY` — never as repository
+   secrets, which any branch's workflow can read. Only `release-please.yml`'s
+   `mcp-tag` job, which declares `environment: release-tag`, may name them
+   (`check-app-secret-scope.sh` fails CI otherwise).
 2. **Reduce the PR-management App** (`PR_APP_*`, used by `pr-management.yml`
    on every branch push) to `pull-requests: write`, `contents: read` and
-   `metadata: read`, so it can no longer push a tag.
+   `metadata: read`, so it can no longer push a tag. The workflow also asks
+   for only those permissions when it mints the token.
 3. **Tag ruleset.** A repository ruleset on `refs/tags/mcp-v*` and
    `refs/tags/v*` restricting creation and update to the release App.
 4. **Immutable releases.** Enable them in the repository's release settings,
    so a published asset cannot be replaced even by a maintainer.
-5. **`release` environment.** Create it with required reviewers (the
-   `publish` and `npm` jobs use it), and register the npm trusted publisher
-   for `@rdatacore/mcp-server` with workflow `mcp-release.yml` **and**
+5. **`release` environment.** Create it with required reviewers and
+   deployment refs limited to tags matching `mcp-v*` (the `publish`, `pages`
+   and `npm` jobs use it), and register the npm trusted publisher for
+   `@rdatacore/mcp-server` with workflow `mcp-release.yml` **and**
    environment `release`.
 
 `check-app-secret-scope.sh` is a drift detector, not a boundary: it greps for
 the name of the key, so it does not catch `secrets: inherit` or
-`toJSON(secrets)`. The real enforcement is step 5 taken further: store the
-release App's two values as environment secrets of `release`, with a
-deployment policy that allows `main` only.
+`toJSON(secrets)`. What makes the key unreadable from a branch is step 1's
+environment and its `main`-only deployment policy.
 
 ---
 

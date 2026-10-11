@@ -7,7 +7,9 @@ on:
     push:
         tags:
             - 'mcp-v*'
-    # So a release can be rehearsed without pushing a tag.
+    # To re-run a release for an existing tag. Start it from that tag's ref
+    # (`gh workflow run mcp-release.yml --ref mcp-vX.Y.Z -f tag=mcp-vX.Y.Z`):
+    # the guard refuses a run whose own commit is not the tag's.
     workflow_dispatch:
         inputs:
             tag:
@@ -189,8 +191,9 @@ jobs:
         name: Publish release
         needs: [guard, build]
         runs-on: ubuntu-latest
-        # Required reviewers live on this environment (operator step D7);
-        # npm's trusted publisher is bound to it as well.
+        # Required reviewers and an mcp-v* tags-only deployment policy live on
+        # this environment (docs/MCP.md, "Releasing", step 5); npm's trusted
+        # publisher is bound to it as well.
         environment: release
         permissions:
             contents: write
@@ -356,8 +359,9 @@ jobs:
         name: Publish to npm
         needs: [guard, publish]
         runs-on: ubuntu-latest
-        # Required reviewers live on this environment (operator step D7);
-        # npm's trusted publisher is bound to it as well.
+        # Required reviewers and an mcp-v* tags-only deployment policy live on
+        # this environment (docs/MCP.md, "Releasing", step 5); npm's trusted
+        # publisher is bound to it as well.
         environment: release
         permissions:
             contents: read

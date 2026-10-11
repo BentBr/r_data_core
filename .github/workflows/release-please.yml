@@ -188,9 +188,12 @@ jobs:
     # on.
     #
     # Pushed with the *release* App's token — an App that holds `contents: write`
-    # and is read by this workflow only (see
-    # .github/scripts/check-app-secret-scope.sh). The PR-management App is a
-    # different App with no write access to contents.
+    # and that the mcp-v* tag ruleset trusts. Its ID and key are environment
+    # secrets of `release-tag`, whose deployment policy allows `main` only, so
+    # a workflow run on any other branch cannot read them even if it names
+    # them (check-app-secret-scope.sh additionally keeps the key's name in
+    # this one job). The PR-management App is a different App with no write
+    # access to contents.
     #
     # An App token is used rather than the default GITHUB_TOKEN:
     # GitHub suppresses workflow runs for refs pushed by GITHUB_TOKEN to
@@ -218,6 +221,10 @@ jobs:
         needs: release-please
         if: ${{ needs.release-please.outputs.release_created == 'true' }}
         runs-on: ubuntu-latest
+        # Holds the release App's secrets. Deployment branches: main only; no
+        # reviewers, so tagging stays unattended. If the environment does not
+        # exist GitHub creates it empty and this job fails closed.
+        environment: release-tag
         # The tag is pushed with the App token, not GITHUB_TOKEN, so the
         # default token needs nothing beyond read here.
         permissions:
