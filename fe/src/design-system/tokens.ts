@@ -305,6 +305,10 @@ export const dialogTokens = {
         small: '400px',
         default: '600px',
         form: '800px',
+        // Between `form` and `wide`: a form that also has to show something —
+        // the email template editor pairs fields with a live body preview and
+        // is cramped at 800 but adrift at 1200.
+        editor: '900px',
         wide: '1200px',
     },
     padding: {

@@ -1,7 +1,7 @@
 <template>
     <v-dialog
         :model-value="modelValue"
-        max-width="900px"
+        :max-width="getDialogMaxWidth('editor')"
         persistent
         @update:model-value="$emit('update:modelValue', $event)"
     >
@@ -169,6 +169,7 @@
 </template>
 
 <script setup lang="ts">
+    import { getDialogMaxWidth } from '@/design-system/components'
     import { ref, watch, computed } from 'vue'
     import { useTranslations } from '@/composables/useTranslations'
     import { useSnackbar } from '@/composables/useSnackbar'

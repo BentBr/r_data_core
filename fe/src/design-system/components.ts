@@ -142,9 +142,18 @@ export const iconSizes = {
     xl: 32,
 } as const
 
+/** The dialog sizes the design system defines. */
+export type DialogSize = keyof typeof dialogConfigs.maxWidths
+
 /**
- * Standard dialog max widths based on content type
+ * Standard dialog max widths based on content type.
+ *
+ * The parameter type is derived from the tokens rather than written out, so
+ * adding a size to `dialogTokens.maxWidths` makes it callable here with no
+ * second edit. The hand-maintained union this replaces is why a component
+ * wanting 900px hardcoded `max-width="900px"` instead: the size it needed was
+ * not offered, and nothing pointed at where to add it.
  */
-export function getDialogMaxWidth(type: 'small' | 'default' | 'form' | 'wide' = 'default'): string {
+export function getDialogMaxWidth(type: DialogSize = 'default'): string {
     return dialogConfigs.maxWidths[type]
 }
