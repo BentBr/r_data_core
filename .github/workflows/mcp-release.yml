@@ -41,6 +41,10 @@ jobs:
         runs-on: ubuntu-latest
         permissions:
             contents: read
+        # Every later checkout uses this commit, not the tag name: a tag moved
+        # after this job passed must not change what gets built and published.
+        outputs:
+            tag_sha: ${{ steps.verify.outputs.tag_sha }}
         steps:
             -   name: Checkout with history
                 uses: actions/checkout@v7
@@ -50,6 +54,7 @@ jobs:
                     persist-credentials: false
 
             -   name: Refuse a tag that is not a release commit on main
+                id: verify
                 env:
                     REQUESTED: ${{ inputs.tag || github.ref_name }}
                 run: |
@@ -57,6 +62,7 @@ jobs:
                     git fetch --no-tags origin main:refs/remotes/origin/main
                     git fetch origin "refs/tags/${REQUESTED}:refs/tags/${REQUESTED}" || true
                     ./.github/scripts/check-release-tag.sh "$REQUESTED"
+                    echo "tag_sha=$(git rev-parse "refs/tags/${REQUESTED}^{commit}")" >> "$GITHUB_OUTPUT"
 
     build:
         name: ${{ matrix.target }}
@@ -87,7 +93,7 @@ jobs:
             -   name: Checkout
                 uses: actions/checkout@v7
                 with:
-                    ref: ${{ inputs.tag || github.ref }}
+                    ref: ${{ needs.guard.outputs.tag_sha }}
 
             -   name: Install Rust (nightly)
                 uses: dtolnay/rust-toolchain@master
@@ -161,7 +167,7 @@ jobs:
             -   name: Checkout
                 uses: actions/checkout@v7
                 with:
-                    ref: ${{ inputs.tag || github.ref }}
+                    ref: ${{ needs.guard.outputs.tag_sha }}
 
             # Scoped to this workflow's own artefacts. Without the pattern
             # it downloads everything in the run, and since release-please
@@ -278,7 +284,7 @@ jobs:
             -   name: Checkout
                 uses: actions/checkout@v7
                 with:
-                    ref: ${{ inputs.tag || github.ref }}
+                    ref: ${{ needs.guard.outputs.tag_sha }}
 
             # No registry-url, deliberately. setup-node always writes
             # //registry.npmjs.org/:_authToken=${NODE_AUTH_TOKEN} when it is

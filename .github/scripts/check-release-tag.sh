@@ -6,7 +6,8 @@
 # release version — with valid provenance, since the workflow itself is the
 # publisher. Two checks close that: the tagged commit must already be on the
 # base branch, and the release-please manifest at that commit must name the
-# tag's version, which only a release-please commit does.
+# tag's version. The manifest proves the version is the one released from main
+# at that commit; it does not prove the commit is release-please's own.
 #
 # Usage: check-release-tag.sh <tag>
 # Env:   BASE_REF  (default origin/main)

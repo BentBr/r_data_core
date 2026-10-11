@@ -116,6 +116,12 @@ core release fails to tag the MCP.
    for `@rdatacore/mcp-server` with workflow `mcp-release.yml` **and**
    environment `release`.
 
+`check-app-secret-scope.sh` is a drift detector, not a boundary: it greps for
+the name of the key, so it does not catch `secrets: inherit` or
+`toJSON(secrets)`. The real enforcement is step 5 taken further: store the
+release App's two values as environment secrets of `release`, with a
+deployment policy that allows `main` only.
+
 ---
 
 ## Local (stdio)
