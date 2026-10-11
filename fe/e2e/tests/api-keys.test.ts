@@ -96,3 +96,82 @@ test.describe('API Keys', () => {
         }
     })
 })
+
+// Regressions the specs above could not catch. They use .fill(), which sets a
+// value programmatically; the form bug only appeared on a real focus change,
+// and the copy bug only outside a secure context — which is exactly how the
+// admin is served locally (http on a named host, so navigator.clipboard is
+// undefined).
+test.describe('API Keys — dialog regressions', () => {
+    test.beforeEach(async ({ authenticatedPage }) => {
+        const nav = new NavigationComponent(authenticatedPage)
+        await nav.navigateTo('/api-keys')
+    })
+
+    test('typing a name survives tabbing to the next field', async ({ authenticatedPage }) => {
+        const apiKeys = new ApiKeysPage(authenticatedPage)
+        await apiKeys.expectCreateBtnVisible()
+        await apiKeys.clickCreate()
+
+        const dialog = authenticatedPage.locator('.v-overlay--active .v-card')
+        await expect(dialog).toBeVisible()
+
+        const keyName = `e2e_tab_${Date.now()}`
+        const nameField = dialog.getByLabel(/name/i)
+
+        // Typed, not filled: the value used to vanish when focus left the
+        // field, because the template ref and the form data shared a name and
+        // Vue overwrote the data with the VForm instance.
+        await nameField.click()
+        await nameField.pressSequentially(keyName)
+        await authenticatedPage.keyboard.press('Tab')
+        await dialog.getByLabel(/description/i).pressSequentially('new field')
+
+        await expect(nameField).toHaveValue(keyName)
+    })
+
+    test('the name survives losing focus by clicking elsewhere', async ({ authenticatedPage }) => {
+        const apiKeys = new ApiKeysPage(authenticatedPage)
+        await apiKeys.clickCreate()
+
+        const dialog = authenticatedPage.locator('.v-overlay--active .v-card')
+        await expect(dialog).toBeVisible()
+
+        const keyName = `e2e_blur_${Date.now()}`
+        const nameField = dialog.getByLabel(/name/i)
+        await nameField.click()
+        await nameField.pressSequentially(keyName)
+
+        await dialog.getByLabel(/description/i).click()
+
+        await expect(nameField).toHaveValue(keyName)
+    })
+
+    test('copying the generated key reports success', async ({ authenticatedPage }) => {
+        const apiKeys = new ApiKeysPage(authenticatedPage)
+        await apiKeys.clickCreate()
+
+        const dialog = authenticatedPage.locator('.v-overlay--active .v-card')
+        await expect(dialog).toBeVisible()
+        await dialog.getByLabel(/name/i).fill(`e2e_copy_${Date.now()}`)
+        await dialog.getByRole('button', { name: /create/i }).click()
+
+        const createdDialog = authenticatedPage.locator('.v-overlay--active .v-card')
+        await expect(createdDialog.locator('#apiKey')).toBeVisible({ timeout: 10_000 })
+
+        // The copy button sits in the field's append slot and carries only an
+        // icon, so it is addressed positionally rather than by name.
+        await createdDialog
+            .locator('#apiKey')
+            .locator('xpath=ancestor::*[contains(@class,"v-input")]')
+            .getByRole('button')
+            .first()
+            .click()
+
+        // Success is reported through the page snackbar. Before the fix the
+        // click threw before any promise existed and nothing appeared at all.
+        await expect(authenticatedPage.locator('.v-snackbar__content')).toBeVisible({
+            timeout: 5_000,
+        })
+    })
+})

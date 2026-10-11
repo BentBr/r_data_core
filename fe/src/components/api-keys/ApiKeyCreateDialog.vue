@@ -9,7 +9,7 @@
             <v-card-title class="pa-6">{{ t('api_keys.create.title') }}</v-card-title>
             <v-card-text class="pa-6">
                 <v-form
-                    ref="createForm"
+                    ref="formRef"
                     v-model="createFormValid"
                 >
                     <v-text-field
@@ -88,8 +88,12 @@
         expires_in_days: undefined,
     })
 
-    // Refs for form validation
-    const nameField = ref<HTMLInputElement | null>(null)
+    // `formRef`, not `createForm`: in <script setup> a template ref binds by
+    // variable name, so naming it after the data ref made Vue overwrite the
+    // form object with the VForm instance on mount — which is why typing in
+    // one field and leaving it discarded the value.
+    const formRef = ref<{ resetValidation: () => void } | null>(null)
+    const nameField = ref<{ focus: () => void } | null>(null)
 
     // Watch for dialog state changes
     watch(
@@ -110,6 +114,10 @@
             expires_in_days: undefined,
         }
         createFormValid.value = false
+        // Clearing the model does not clear Vuetify's validation state, so a
+        // reopened dialog would show "name is required" over an empty field
+        // the user has not touched yet.
+        formRef.value?.resetValidation()
     }
 
     const validateForm = () => {
