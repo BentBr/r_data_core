@@ -144,16 +144,22 @@ pub async fn read_capped(
             "{url}: body exceeds {max} bytes"
         )));
     }
-    let body = response
-        .bytes()
+    // Stream, so a hostile response with no length is never held whole.
+    let mut response = response;
+    let mut body = Vec::new();
+    while let Some(chunk) = response
+        .chunk()
         .await
-        .map_err(|e| KeySourceError::Unreachable(format!("{url}: {e}")))?;
-    if body.len() > max {
-        return Err(KeySourceError::Malformed(format!(
-            "{url}: body exceeds {max} bytes"
-        )));
+        .map_err(|e| KeySourceError::Unreachable(format!("{url}: {e}")))?
+    {
+        if body.len() + chunk.len() > max {
+            return Err(KeySourceError::Malformed(format!(
+                "{url}: body exceeds {max} bytes"
+            )));
+        }
+        body.extend_from_slice(&chunk);
     }
-    Ok(body.to_vec())
+    Ok(body)
 }
 
 /// A discovery document, reused for [`DISCOVERY_TTL`].

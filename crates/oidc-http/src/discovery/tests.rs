@@ -161,3 +161,58 @@ async fn the_cache_fetches_once_within_its_ttl() {
         "both legs of one sign-in must see the same document"
     );
 }
+
+#[tokio::test]
+async fn userinfo_cannot_disguise_a_remote_endpoint_as_loopback() {
+    let server = MockServer::start().await;
+    let uri = server.uri();
+    let mut document = doc(&uri, &uri);
+    document["token_endpoint"] = json!("http://localhost:a@evil.example/token");
+    Mock::given(method("GET"))
+        .and(path("/.well-known/openid-configuration"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(document))
+        .mount(&server)
+        .await;
+
+    let error = fetch(&client().expect("client"), &uri, false)
+        .await
+        .expect_err("refused");
+    assert!(matches!(error, KeySourceError::Malformed(_)), "{error}");
+}
+
+#[tokio::test]
+async fn the_streaming_cap_trips_without_a_content_length() {
+    // Whatever the server declares, the bytes actually read are what count.
+    // A tiny cap exercises the per-chunk branch directly.
+    let server = MockServer::start().await;
+    Mock::given(method("GET"))
+        .and(path("/body"))
+        .respond_with(ResponseTemplate::new(200).set_body_string("x".repeat(64)))
+        .mount(&server)
+        .await;
+    let http = client().expect("client");
+    let url = format!("{}/body", server.uri());
+
+    let error = read_capped(http.get(&url), 16, &url)
+        .await
+        .expect_err("refused");
+    assert!(matches!(error, KeySourceError::Malformed(_)), "{error}");
+    let ok = read_capped(http.get(&url), 64, &url).await.expect("fits");
+    assert_eq!(ok.len(), 64);
+}
+
+#[tokio::test]
+async fn an_oversized_key_set_is_refused() {
+    let server = MockServer::start().await;
+    Mock::given(method("GET"))
+        .and(path("/jwks"))
+        .respond_with(ResponseTemplate::new(200).set_body_string("x".repeat(JWKS_MAX_BYTES + 1)))
+        .mount(&server)
+        .await;
+    let url = format!("{}/jwks", server.uri());
+
+    let error = read_capped(client().expect("client").get(&url), JWKS_MAX_BYTES, &url)
+        .await
+        .expect_err("refused");
+    assert!(matches!(error, KeySourceError::Malformed(_)), "{error}");
+}

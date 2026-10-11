@@ -123,9 +123,9 @@ services:
             # them unconditionally would give every developer a login button
             # leading to a provider that is not running.
             RDC_OIDC_ISSUER: ${RDC_OIDC_ISSUER:-}
-            # The local Keycloak is reached over plain HTTP. Production must
-            # never set this; see docs/SSO.md "Configuration".
-            RDC_OIDC_ALLOW_INSECURE_ISSUER: ${RDC_OIDC_ALLOW_INSECURE_ISSUER:-}
+            # Dev stack only: the local Keycloak speaks plain HTTP. Production
+            # must not set this; see docs/SSO.md "Configuration".
+            RDC_OIDC_ALLOW_INSECURE_ISSUER: ${RDC_OIDC_ALLOW_INSECURE_ISSUER:-true}
             RDC_OIDC_AUDIENCE: ${RDC_OIDC_AUDIENCE:-}
             RDC_OIDC_CLIENT_ID: ${RDC_OIDC_CLIENT_ID:-}
             RDC_OIDC_REDIRECT_URI: ${RDC_OIDC_REDIRECT_URI:-}

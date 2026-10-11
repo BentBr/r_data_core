@@ -238,6 +238,11 @@ pub fn is_loopback_issuer(issuer: &str) -> bool {
         return false;
     };
     let authority = rest.split(['/', '?', '#']).next().unwrap_or("");
+    // An issuer or endpoint never carries userinfo, and `http://localhost:x@evil.com`
+    // would otherwise read as host `localhost` while connecting to `evil.com`.
+    if authority.contains('@') {
+        return false;
+    }
     let host = authority.strip_prefix('[').map_or_else(
         || authority.split(':').next().unwrap_or(""),
         |bracketed| bracketed.split(']').next().unwrap_or(""),

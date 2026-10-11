@@ -296,3 +296,24 @@ fn a_loopback_issuer_needs_no_override() {
     assert!(!is_loopback_issuer("http://auth.rdatacore.docker:8081"));
     assert!(!is_loopback_issuer("http://localhost.evil.example"));
 }
+
+#[test]
+fn userinfo_cannot_smuggle_a_remote_host_past_the_loopback_exemption() {
+    // `http://localhost:x@evil.com/` connects to evil.com.
+    for issuer in [
+        "http://localhost:x@evil.com/",
+        "http://127.0.0.1:1@evil.com",
+        "http://[::1]:1@evil.com",
+        "http://localhost@evil.com",
+    ] {
+        assert!(!is_loopback_issuer(issuer), "{issuer}");
+        let result = OidcConfig::from_map(&env(&[
+            ("RDC_OIDC_ISSUER", issuer),
+            ("RDC_OIDC_AUDIENCE", "a"),
+        ]));
+        assert!(
+            matches!(result, Err(OidcConfigError::InsecureIssuer(_))),
+            "{issuer}: {result:?}"
+        );
+    }
+}

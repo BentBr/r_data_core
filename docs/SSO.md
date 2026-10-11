@@ -58,6 +58,7 @@ Add this to `.env`:
 COMPOSE_PROFILES=sso
 
 RDC_OIDC_ISSUER=http://auth.rdatacore.docker:8081/realms/rdatacore
+RDC_OIDC_ALLOW_INSECURE_ISSUER=true  # dev only: Keycloak in compose speaks plain HTTP
 RDC_OIDC_AUDIENCE=r-data-core
 RDC_OIDC_CLIENT_ID=r-data-core
 RDC_OIDC_REDIRECT_URI=http://rdatacore.docker/admin/api/v1/auth/oidc/callback
