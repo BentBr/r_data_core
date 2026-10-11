@@ -41,7 +41,8 @@ jobs:
                     persist-credentials: false
             -   uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6
                 with:
-                    go-version: '1.24'
+                    # actionlint v1.7.12 requires Go >= 1.25 (GOTOOLCHAIN=local)
+                    go-version: '1.25'
             # Installed through the Go module proxy, so the binary is pinned by
             # version and verified by the checksum database — rather than a
             # curl | bash in the one workflow that lints the others.
