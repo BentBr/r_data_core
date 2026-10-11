@@ -151,3 +151,37 @@ fn a_stdio_server_advertises_nothing() {
     assert_eq!(protected_resource_document(&config), serde_json::json!({}));
     assert_eq!(challenge_header(&config), "Bearer");
 }
+
+#[test]
+fn a_resource_url_with_a_path_moves_the_document_under_it() {
+    // RFC 9728 §3.1: for https://host/rdc-mcp the document lives at
+    // https://host/.well-known/oauth-protected-resource/rdc-mcp. A client
+    // that follows the specification looks there, and a challenge naming the
+    // root path sends it to a 404.
+    let config = http_config(
+        "https://mcp.example.com/rdc-mcp/",
+        "https://auth.example.com",
+        "rdc-mcp",
+    );
+
+    assert_eq!(
+        metadata_path(&config),
+        "/.well-known/oauth-protected-resource/rdc-mcp"
+    );
+    assert!(
+        challenge_header(&config)
+            .contains("\"https://mcp.example.com/.well-known/oauth-protected-resource/rdc-mcp\""),
+        "{}",
+        challenge_header(&config)
+    );
+}
+
+#[test]
+fn a_resource_url_without_a_path_keeps_the_root_document() {
+    let config = http_config(
+        "https://mcp.example.com",
+        "https://auth.example.com",
+        "rdc-mcp",
+    );
+    assert_eq!(metadata_path(&config), METADATA_PATH);
+}

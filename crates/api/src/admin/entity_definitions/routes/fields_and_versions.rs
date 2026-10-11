@@ -61,7 +61,10 @@ pub async fn list_entity_fields_by_type(
         Err(r_data_core_core::error::Error::NotFound(_)) => {
             ApiResponse::<()>::not_found("Entity definition")
         }
-        Err(e) => ApiResponse::<()>::internal_error(&format!("Failed to load fields: {e}")),
+        Err(e) => {
+            log::error!("Failed to load fields: {e}");
+            ApiResponse::<()>::internal_error("Failed to load fields")
+        }
     }
 }
 

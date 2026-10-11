@@ -87,6 +87,37 @@ blockers with the exact lines to add — never attempt a bypass.
 `.github/workflows/` mirrors the pre-push gate plus `generate-ts-check` and the
 structural guards: `check-sql-boundary.sh`, `check-file-length.sh`, the
 `architecture` layering test, `cargo-deny`, `cargo-machete`, and MSRV.
+`lint-workflows.yml` runs `zizmor`, `actionlint` and
+`.github/scripts/check-app-secret-scope.sh` (plus the bash fixture tests in
+`.github/scripts/tests/`) on any change under `.github/`.
+
+### Release trust anchors
+
+Not in the repo; all must be set on GitHub/npm (details in `docs/MCP.md`
+"Releasing"). Both environments and the release App's two secrets must exist
+before the branch adding them merges, or the next core release cannot tag the
+MCP (an auto-created environment has no secrets, so the job fails closed).
+
+1. Release App: `contents: write` only. Its ID and key (`RELEASE_APP_ID` and
+   its private-key counterpart) are **environment secrets of `release-tag`**
+   (deployment branches: `main` only; no reviewers, so tagging is
+   unattended) — never repository secrets. Only `release-please.yml`'s
+   `mcp-tag` job names them, and it declares `environment: release-tag`
+   (`check-app-secret-scope.sh` enforces both). `PR_APP_*`
+   (pr-management.yml) is reduced to `pull-requests: write` +
+   `contents: read`, and the workflow requests only those.
+2. Tag ruleset on `refs/tags/mcp-v*` and `refs/tags/v*`: only the release App
+   may create/update.
+3. Immutable releases enabled.
+4. `release` environment (`publish`, `pages`, `npm`): required reviewers,
+   deployment refs limited to `mcp-v*` tags; npm trusted publisher bound to
+   `mcp-release.yml` + environment `release`.
+
+`mcp-release.yml`'s `guard` job runs `check-release-tag.sh`: the tag must be
+well-formed, point at the run's own commit (`github.sha`, so a dispatch only
+works from the tag ref), be on `origin/main`, and the release-please manifest
+there must name the tag's version. That stops mistaken or misdirected tags;
+the boundary against a malicious tag is items 1, 2 and 4.
 
 ## Security env vars
 

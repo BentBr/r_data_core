@@ -16,7 +16,7 @@
 
 use serde_json::{json, Value};
 
-use crate::config::Config;
+use crate::config::{origin_of, Config};
 
 /// The path RFC 9728 reserves for this document.
 pub const METADATA_PATH: &str = "/.well-known/oauth-protected-resource";
@@ -48,17 +48,36 @@ pub fn protected_resource_document(config: &Config) -> Value {
     })
 }
 
+/// The path this server serves its metadata document on.
+///
+/// RFC 9728 §3.1 puts the document for a resource with a path component
+/// *under* the well-known prefix: `https://host/rdc-mcp` is described at
+/// `/.well-known/oauth-protected-resource/rdc-mcp`. A resource at the root
+/// keeps the bare prefix.
+#[must_use]
+pub fn metadata_path(config: &Config) -> String {
+    let suffix = config
+        .resource_url
+        .as_deref()
+        .and_then(|raw| url::Url::parse(raw).ok())
+        .map(|parsed| parsed.path().trim_end_matches('/').to_string())
+        .unwrap_or_default();
+    format!("{METADATA_PATH}{suffix}")
+}
+
 /// The `WWW-Authenticate` value for an unauthenticated request.
 ///
 /// The `resource_metadata` parameter is the part that matters. Without it a
 /// client knows only that it needs a bearer token, not where to get one.
 #[must_use]
 pub fn challenge_header(config: &Config) -> String {
-    config.resource_url.as_ref().map_or_else(
+    origin_of(config.resource_url.as_deref()).map_or_else(
         || "Bearer".to_string(),
-        |resource| {
-            let base = resource.trim_end_matches('/');
-            format!("Bearer resource_metadata=\"{base}{METADATA_PATH}\"")
+        |origin| {
+            format!(
+                "Bearer resource_metadata=\"{origin}{}\"",
+                metadata_path(config)
+            )
         },
     )
 }

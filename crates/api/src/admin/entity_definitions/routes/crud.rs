@@ -272,7 +272,7 @@ pub async fn create_entity_definition(
             debug!("Class definition details: {entity_def:#?}");
             debug!("Error details: {e:#?}");
 
-            ApiResponse::<()>::internal_error(&format!("Failed to create entity definition: {e}"))
+            ApiResponse::<()>::internal_error("Failed to create entity definition")
         }
     }
 }
@@ -333,9 +333,8 @@ pub async fn update_entity_definition(
             }));
         }
         Err(e) => {
-            return HttpResponse::InternalServerError().json(json!({
-                "error": format!("Failed to retrieve entity definition: {e}")
-            }));
+            error!("Failed to retrieve entity definition: {e}");
+            return ApiResponse::<()>::internal_error("Failed to retrieve entity definition");
         }
     };
 
@@ -370,7 +369,7 @@ pub async fn update_entity_definition(
         }
         Err(e) => {
             error!("Failed to update entity definition: {e}");
-            ApiResponse::<()>::internal_error(&format!("Failed to update entity definition: {e}"))
+            ApiResponse::<()>::internal_error("Failed to update entity definition")
         }
     }
 }
@@ -423,7 +422,7 @@ pub async fn delete_entity_definition(
         }
         Err(e) => {
             error!("Failed to delete entity definition: {e}");
-            ApiResponse::<()>::internal_error(&format!("Failed to delete entity definition: {e}"))
+            ApiResponse::<()>::internal_error("Failed to delete entity definition")
         }
     }
 }
@@ -467,9 +466,8 @@ pub async fn apply_entity_definition_schema(
                         }))
                     } else {
                         let (entity_type, _uuid, error) = &failed[0];
-                        ApiResponse::<()>::internal_error(&format!(
-                            "Failed to apply schema for {entity_type}: {error}"
-                        ))
+                        error!("Failed to apply schema for {entity_type}: {error}");
+                        ApiResponse::<()>::internal_error("Failed to apply schema")
                     }
                 },
                 |uuid| {
@@ -481,9 +479,8 @@ pub async fn apply_entity_definition_schema(
                         }))
                     } else {
                         let (entity_type, _uuid, error) = &failed[0];
-                        ApiResponse::<()>::internal_error(&format!(
-                            "Failed to apply schema for {entity_type}: {error}"
-                        ))
+                        error!("Failed to apply schema for {entity_type}: {error}");
+                        ApiResponse::<()>::internal_error("Failed to apply schema")
                     }
                 },
             )
@@ -493,7 +490,7 @@ pub async fn apply_entity_definition_schema(
         }
         Err(e) => {
             error!("Failed to apply schema: {e}");
-            ApiResponse::<()>::internal_error(&format!("Failed to apply schema: {e}"))
+            ApiResponse::<()>::internal_error("Failed to apply schema")
         }
     }
 }

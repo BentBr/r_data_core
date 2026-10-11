@@ -24,7 +24,7 @@ pub enum ClientError {
     #[error("cannot reach RDataCore at {url}")]
     Unreachable { url: String },
     #[error("credential invalid or expired")]
-    Unauthorized,
+    Unauthorized { hint: String },
     #[error("permission denied")]
     Forbidden { permission: Option<String> },
     #[error("not found: {what}")]
@@ -63,7 +63,9 @@ impl ClientError {
             .to_string();
 
         match status {
-            401 => Self::Unauthorized,
+            401 => Self::Unauthorized {
+                hint: String::new(),
+            },
             403 => Self::Forbidden {
                 permission: extract_permission(&message),
             },
@@ -130,11 +132,7 @@ impl ClientError {
             Self::Unreachable { url } => format!(
                 "Cannot reach RDataCore at {url}. Verify the URL and that the server is running."
             ),
-            Self::Unauthorized => {
-                "Credential invalid or expired. Create a new one in the admin panel under \
-                 API Keys."
-                    .to_string()
-            }
+            Self::Unauthorized { hint } => format!("Credential invalid or expired. {hint}"),
             Self::Forbidden { permission } => permission.as_ref().map_or_else(
                 || {
                     "Permission denied. Your account does not hold the permission this \

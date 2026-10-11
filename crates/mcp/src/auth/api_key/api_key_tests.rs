@@ -67,8 +67,8 @@ async fn exchanges_the_key_for_an_admin_token() {
     let rdc = MockServer::start().await;
     mock_exchange(&rdc, "an-admin-token", 1800).await;
 
-    let backend =
-        ApiKeyBackend::new(&config_for(&rdc.uri()), "secret-value".to_string()).expect("backend");
+    let backend = ApiKeyBackend::new(&config_for(&rdc.uri()), Credential::new("secret-value"))
+        .expect("backend");
     let headers = backend
         .outbound_headers(&CallerContext::default())
         .await
@@ -84,8 +84,8 @@ async fn the_key_never_goes_to_an_admin_endpoint() {
     let rdc = MockServer::start().await;
     mock_exchange(&rdc, "an-admin-token", 1800).await;
 
-    let backend =
-        ApiKeyBackend::new(&config_for(&rdc.uri()), "secret-value".to_string()).expect("backend");
+    let backend = ApiKeyBackend::new(&config_for(&rdc.uri()), Credential::new("secret-value"))
+        .expect("backend");
     let headers = backend
         .outbound_headers(&CallerContext::default())
         .await
@@ -108,8 +108,8 @@ async fn attaches_nothing_else() {
     let rdc = MockServer::start().await;
     mock_exchange(&rdc, "an-admin-token", 1800).await;
 
-    let backend =
-        ApiKeyBackend::new(&config_for(&rdc.uri()), "secret-value".to_string()).expect("backend");
+    let backend = ApiKeyBackend::new(&config_for(&rdc.uri()), Credential::new("secret-value"))
+        .expect("backend");
     let headers = backend
         .outbound_headers(&CallerContext::default())
         .await
@@ -123,8 +123,8 @@ async fn the_token_is_reused_rather_than_re_exchanged() {
     let rdc = MockServer::start().await;
     mock_exchange(&rdc, "an-admin-token", 1800).await;
 
-    let backend =
-        ApiKeyBackend::new(&config_for(&rdc.uri()), "secret-value".to_string()).expect("backend");
+    let backend = ApiKeyBackend::new(&config_for(&rdc.uri()), Credential::new("secret-value"))
+        .expect("backend");
     for _ in 0..5 {
         backend
             .outbound_headers(&CallerContext::default())
@@ -147,7 +147,7 @@ async fn a_stale_token_is_exchanged_again() {
     let clock = TestClock::new();
     let backend = ApiKeyBackend::with_clock(
         &config_for(&rdc.uri()),
-        "secret-value".to_string(),
+        Credential::new("secret-value"),
         clock.clone(),
     )
     .expect("backend");
@@ -178,8 +178,8 @@ async fn a_revoked_key_is_reported_as_such() {
         .mount(&rdc)
         .await;
 
-    let backend =
-        ApiKeyBackend::new(&config_for(&rdc.uri()), "secret-value".to_string()).expect("backend");
+    let backend = ApiKeyBackend::new(&config_for(&rdc.uri()), Credential::new("secret-value"))
+        .expect("backend");
     let error = backend
         .outbound_headers(&CallerContext::default())
         .await

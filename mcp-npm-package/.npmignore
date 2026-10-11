@@ -3,3 +3,4 @@
 # user needs.
 bin/
 *.tgz
+test/

@@ -297,7 +297,12 @@ services:
         ports:
             # The port the stdio default already uses, so one number serves
             # both transports in documentation and in muscle memory.
-            - '8931:80'
+            #
+            # Loopback only, matching the justification above: the resource
+            # URL is http://localhost:8931 precisely because localhost is the
+            # one place a bearer token may cross plaintext. Publishing on every
+            # interface would hand the same plaintext endpoint to the LAN.
+            - '127.0.0.1:8931:80'
         networks:
             default:
                 aliases:
