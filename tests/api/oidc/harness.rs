@@ -60,6 +60,7 @@ impl Idp {
         Mock::given(method("GET"))
             .and(path("/.well-known/openid-configuration"))
             .respond_with(ResponseTemplate::new(200).set_body_json(json!({
+                "issuer": server.uri(),
                 "jwks_uri": format!("{}/jwks", server.uri()),
                 "authorization_endpoint": format!("{}/authorize", server.uri()),
                 "token_endpoint": format!("{}/token", server.uri()),

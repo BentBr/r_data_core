@@ -56,6 +56,12 @@ pub enum OidcConfigError {
          login endpoint an open redirect, which is a phishing primitive."
     )]
     UnsafePostLoginPath(String),
+    #[error(
+        "RDC_OIDC_ISSUER '{0}' is not https. Over plain HTTP anyone on the network path can \
+         substitute the provider's signing keys and read the client secret. Set \
+         RDC_OIDC_ALLOW_INSECURE_ISSUER=true only for a local development provider."
+    )]
+    InsecureIssuer(String),
 }
 
 /// A configured secret that does not print itself.
@@ -106,6 +112,9 @@ pub struct OidcConfig {
     pub redirect_uri: Option<String>,
     /// Path within this application to land on after a successful sign-in.
     pub post_login_path: String,
+    /// Whether a non-https issuer was explicitly allowed. Logged loudly at
+    /// startup; never set in production.
+    pub allow_insecure_issuer: bool,
 }
 
 impl OidcConfig {
@@ -123,6 +132,13 @@ impl OidcConfig {
         };
 
         let audience = get(map, "RDC_OIDC_AUDIENCE").ok_or(OidcConfigError::MissingAudience)?;
+
+        let allow_insecure_issuer = get(map, "RDC_OIDC_ALLOW_INSECURE_ISSUER")
+            .is_some_and(|v| v.eq_ignore_ascii_case("true"));
+        if !issuer.starts_with("https://") && !allow_insecure_issuer && !is_loopback_issuer(issuer)
+        {
+            return Err(OidcConfigError::InsecureIssuer(issuer.to_string()));
+        }
 
         let jwks_ttl = duration(map, "RDC_OIDC_JWKS_TTL_SECS", DEFAULT_JWKS_TTL_SECS)?;
         let resolution_cache_ttl = duration(
@@ -163,6 +179,7 @@ impl OidcConfig {
             client_secret: get(map, "RDC_OIDC_CLIENT_SECRET").map(|s| ClientSecret(s.to_string())),
             redirect_uri,
             post_login_path,
+            allow_insecure_issuer,
         }))
     }
 
@@ -206,6 +223,26 @@ pub fn is_local_redirect_path(value: &str) -> bool {
     !value
         .chars()
         .any(|c| c == '\\' || c.is_control() || c.is_whitespace())
+}
+
+/// Whether an issuer URL points at this host.
+///
+/// Loopback is exempt from the https rule: traffic to it never crosses a
+/// network, and every mock provider in this repository's tests lives there.
+#[must_use]
+pub fn is_loopback_issuer(issuer: &str) -> bool {
+    let Some(rest) = issuer
+        .strip_prefix("http://")
+        .or_else(|| issuer.strip_prefix("https://"))
+    else {
+        return false;
+    };
+    let authority = rest.split(['/', '?', '#']).next().unwrap_or("");
+    let host = authority.strip_prefix('[').map_or_else(
+        || authority.split(':').next().unwrap_or(""),
+        |bracketed| bracketed.split(']').next().unwrap_or(""),
+    );
+    matches!(host, "localhost" | "127.0.0.1" | "::1")
 }
 
 /// Read a duration in seconds, falling back to a default when unset.

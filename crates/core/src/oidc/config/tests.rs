@@ -254,3 +254,45 @@ fn the_client_secret_does_not_print_itself() {
         "redaction must not lose the value"
     );
 }
+
+// ── transport ───────────────────────────────────────────────────────────────
+
+#[test]
+fn a_plain_http_issuer_is_refused() {
+    // Over plain HTTP anyone on the path can hand this server a key set of
+    // their own choosing, and read the client secret on the way out.
+    let result = OidcConfig::from_map(&env(&[
+        ("RDC_OIDC_ISSUER", "http://auth.example.com/realms/main"),
+        ("RDC_OIDC_AUDIENCE", "r-data-core"),
+    ]));
+    assert!(
+        matches!(result, Err(OidcConfigError::InsecureIssuer(_))),
+        "got {result:?}"
+    );
+}
+
+#[test]
+fn a_plain_http_issuer_is_allowed_only_with_the_explicit_override() {
+    let config = config_from(&[
+        ("RDC_OIDC_ISSUER", "http://auth.example.com/realms/main"),
+        ("RDC_OIDC_AUDIENCE", "r-data-core"),
+        ("RDC_OIDC_ALLOW_INSECURE_ISSUER", "true"),
+    ]);
+    assert!(config.allow_insecure_issuer);
+}
+
+#[test]
+fn a_loopback_issuer_needs_no_override() {
+    // Loopback cannot be intercepted from another host, and every test
+    // provider in this repository lives there.
+    for issuer in [
+        "http://127.0.0.1:43123",
+        "http://localhost:8081/realms/x",
+        "http://[::1]:9/",
+    ] {
+        assert!(is_loopback_issuer(issuer), "{issuer}");
+        config_from(&[("RDC_OIDC_ISSUER", issuer), ("RDC_OIDC_AUDIENCE", "a")]);
+    }
+    assert!(!is_loopback_issuer("http://auth.rdatacore.docker:8081"));
+    assert!(!is_loopback_issuer("http://localhost.evil.example"));
+}

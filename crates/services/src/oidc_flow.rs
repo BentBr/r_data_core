@@ -117,6 +117,7 @@ pub struct OidcFlow {
     runtime: Arc<OidcRuntime>,
     cache: Arc<CacheManager>,
     http: reqwest::Client,
+    discovery: oidc_discovery::DiscoveryCache,
     /// Where the admin interface is served, when it is not the same origin as
     /// the API. The callback runs on the API's origin, so redirecting to a
     /// bare path would land the browser on a host that serves no interface —
@@ -138,6 +139,7 @@ impl OidcFlow {
             runtime,
             cache,
             http: oidc_discovery::client().map_err(|e| FlowError::Provider(e.to_string()))?,
+            discovery: oidc_discovery::DiscoveryCache::new(),
             frontend_base_url: frontend_base_url.filter(|base| !base.is_empty()),
         })
     }
@@ -164,7 +166,13 @@ impl OidcFlow {
             return Err(FlowError::NotConfigured);
         };
 
-        let discovery = oidc_discovery::fetch(&self.http, &self.config().issuer)
+        let discovery = self
+            .discovery
+            .get(
+                &self.http,
+                &self.config().issuer,
+                self.config().allow_insecure_issuer,
+            )
             .await
             .map_err(|e| FlowError::Provider(e.to_string()))?;
         let authorize = discovery
@@ -275,7 +283,13 @@ impl OidcFlow {
             return Err(FlowError::NotConfigured);
         };
 
-        let discovery = oidc_discovery::fetch(&self.http, &self.config().issuer)
+        let discovery = self
+            .discovery
+            .get(
+                &self.http,
+                &self.config().issuer,
+                self.config().allow_insecure_issuer,
+            )
             .await
             .map_err(|e| FlowError::Provider(e.to_string()))?;
         let token_endpoint = discovery

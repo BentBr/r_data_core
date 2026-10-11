@@ -30,6 +30,7 @@ async fn provider() -> MockServer {
     Mock::given(method("GET"))
         .and(path("/.well-known/openid-configuration"))
         .respond_with(ResponseTemplate::new(200).set_body_json(json!({
+            "issuer": uri,
             "jwks_uri": format!("{uri}/jwks"),
             "authorization_endpoint": format!("{uri}/authorize"),
             "token_endpoint": format!("{uri}/token"),
@@ -322,6 +323,7 @@ async fn provider_without_token_endpoint() -> MockServer {
     Mock::given(method("GET"))
         .and(path("/.well-known/openid-configuration"))
         .respond_with(ResponseTemplate::new(200).set_body_json(json!({
+            "issuer": uri,
             "jwks_uri": format!("{uri}/jwks"),
             "authorization_endpoint": format!("{uri}/authorize"),
         })))

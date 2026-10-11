@@ -24,6 +24,7 @@ Two things are enabled separately, and you may want only the first:
 | Variable | Required | Default | What it does |
 |---|---|---|---|
 | `RDC_OIDC_ISSUER` | — | unset | The provider's issuer URL. **Setting this is what turns single sign-on on.** Leaving it unset disables the feature entirely. |
+| `RDC_OIDC_ALLOW_INSECURE_ISSUER` | no | `false` | Permit a plain-HTTP issuer. Startup refuses one otherwise, because over HTTP anyone on the path can substitute the provider's signing keys and read the client secret. Loopback issuers are exempt. For local development only. |
 | `RDC_OIDC_AUDIENCE` | when the issuer is set | — | The audience RDataCore's tokens are minted for. Startup fails without it; see [Why the audience is required](#why-the-audience-is-required). |
 | `RDC_OIDC_ROLE_MAP` | no | empty | `idp-group:rdc-role,other-group:other-role`. A malformed entry fails startup rather than being skipped. |
 | `RDC_OIDC_ROLES_CLAIM` | no | `groups` | Which claim carries group membership. |
@@ -313,6 +314,13 @@ is; RDataCore says whether they may act.
 - **Redirect targets must be paths inside this application.** An open redirect
   on a login endpoint is a phishing primitive, and here the response carries
   session tokens in its fragment, so it would hand those tokens away too.
+- **The ID token carries a `nonce`** minted for this attempt. A token obtained
+  any other way — injected at the token endpoint, replayed from another
+  sign-in — does not carry it and is refused.
+- **The discovery document is checked** before any URL in it is followed: it
+  must name the configured issuer, and its endpoints must be `https` (or the
+  insecure override must be set). It is cached for five minutes so both legs
+  of a sign-in see the same document.
 
 ---
 
