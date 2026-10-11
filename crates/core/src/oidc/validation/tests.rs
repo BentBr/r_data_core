@@ -12,8 +12,8 @@ use serde_json::json;
 use super::*;
 use crate::oidc::keys::Jwk;
 
-const ISSUER: &str = "https://auth.example.com";
-const AUDIENCE: &str = "r-data-core";
+pub(super) const ISSUER: &str = "https://auth.example.com";
+pub(super) const AUDIENCE: &str = "r-data-core";
 const KID: &str = "test-key-1";
 pub(super) const NOW: i64 = 1_700_000_000;
 

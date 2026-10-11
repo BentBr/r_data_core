@@ -61,6 +61,10 @@ pub enum ValidationError {
     MissingExpiry,
     #[error("the token's nonce does not match the sign-in it was returned for")]
     NonceMismatch,
+    #[error("the token lists several audiences but its authorized party is not this client")]
+    AzpMismatch,
+    #[error("the token claims to have been issued in the future")]
+    IssuedInFuture,
 }
 
 /// Verify a token and extract the claims this system reads.
@@ -212,6 +216,25 @@ fn claims_from(
     if let Some(nbf) = raw.get("nbf").and_then(Value::as_i64) {
         if now + skew < nbf {
             return Err(ValidationError::NotYetValid);
+        }
+    }
+
+    // A token "issued" after now is either a clock far wrong or a forgery
+    // that got the expiry right and nothing else. Skew applies as for `exp`.
+    if let Some(iat) = raw.get("iat").and_then(Value::as_i64) {
+        if iat > now + skew {
+            return Err(ValidationError::IssuedInFuture);
+        }
+    }
+
+    // With several audiences, `azp` names the client the token was issued
+    // to. Required only when this instance has a client id: the bearer-only
+    // configuration has none to compare against.
+    if let (Some(Value::Array(audiences)), Some(client_id)) =
+        (raw.get("aud"), config.client_id.as_deref())
+    {
+        if audiences.len() > 1 && raw.get("azp").and_then(Value::as_str) != Some(client_id) {
+            return Err(ValidationError::AzpMismatch);
         }
     }
 
