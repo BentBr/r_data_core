@@ -240,3 +240,20 @@ fn a_zero_or_non_numeric_limit_is_rejected() {
         );
     }
 }
+
+#[test]
+fn debug_output_never_contains_the_credential() {
+    let cfg = Config::from_map(&env(&[
+        ("RDC_BASE_URL", "https://rdc.example.com"),
+        ("RDC_API_KEY", "rdc_live_do_not_print_me"),
+    ]))
+    .expect("valid");
+
+    let rendered = format!("{cfg:?}");
+    assert!(!rendered.contains("do_not_print_me"), "{rendered}");
+    assert!(rendered.contains("Credential(\"***\")"), "{rendered}");
+    assert_eq!(
+        cfg.credential.as_ref().map(Credential::expose),
+        Some("rdc_live_do_not_print_me")
+    );
+}

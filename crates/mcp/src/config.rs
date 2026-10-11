@@ -62,12 +62,39 @@ pub enum Transport {
     Http { bind: String },
 }
 
+/// A secret read from the environment.
+///
+/// `Debug` prints a placeholder. Nothing prints `Config` today, but the one
+/// time someone adds `{config:?}` to a startup log is the one time it would
+/// matter, and this makes that line safe before it is written.
+#[derive(Clone, PartialEq, Eq)]
+pub struct Credential(String);
+
+impl Credential {
+    #[must_use]
+    pub fn new(raw: impl Into<String>) -> Self {
+        Self(raw.into())
+    }
+
+    /// The secret itself, for the one place that sends it.
+    #[must_use]
+    pub fn expose(&self) -> &str {
+        &self.0
+    }
+}
+
+impl std::fmt::Debug for Credential {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str("Credential(\"***\")")
+    }
+}
+
 #[derive(Debug, Clone)]
 pub struct Config {
     pub base_url: Url,
     pub transport: Transport,
     /// Static credential for stdio mode. Never set in OIDC mode.
-    pub credential: Option<String>,
+    pub credential: Option<Credential>,
     pub oidc_issuer: Option<String>,
     pub oidc_audience: Option<String>,
     /// This server's own public URL, for OAuth protected-resource metadata.
@@ -116,7 +143,7 @@ impl Config {
             Some(other) => return Err(ConfigError::InvalidTransport(other.to_string())),
         };
 
-        let credential = get(map, "RDC_API_KEY").map(str::to_string);
+        let credential = get(map, "RDC_API_KEY").map(Credential::new);
         let oidc_issuer = get(map, "RDC_OIDC_ISSUER").map(str::to_string);
         let oidc_audience = get(map, "RDC_OIDC_AUDIENCE").map(str::to_string);
 

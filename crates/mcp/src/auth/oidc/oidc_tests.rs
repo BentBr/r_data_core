@@ -179,7 +179,7 @@ async fn never_falls_back_to_a_static_credential() {
     // The guarantee the whole permission model rests on: with no valid caller
     // the backend produces nothing — it does not reach for a configured key.
     let mut cfg = config();
-    cfg.credential = Some("a-service-key".to_string());
+    cfg.credential = Some(crate::config::Credential::new("a-service-key"));
     let backend = OidcBackend::new(&cfg).expect("backend");
 
     let result = backend.outbound_headers(&CallerContext::default()).await;
