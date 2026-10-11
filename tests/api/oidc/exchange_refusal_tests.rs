@@ -3,7 +3,7 @@
 //! The machine door, closed: `/auth/oidc/exchange` must refuse a bad token or
 //! a barred account, and must hand back nothing a caller could use.
 //!
-//! Serialised: the harness builds a full `RDataCore` and mock provider.
+//! Serialised: resource-heavy stacks (full server + MCP + migrated schema).
 
 use serial_test::serial;
 

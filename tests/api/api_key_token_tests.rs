@@ -261,14 +261,16 @@ async fn a_mint_is_audited_without_key_material() {
     let body: serde_json::Value = test::read_body_json(resp).await;
     let token = body["data"]["access_token"].as_str().unwrap().to_string();
 
-    let (actor, details): (Option<Uuid>, Option<serde_json::Value>) = sqlx::query_as(
+    let rows: Vec<(Option<Uuid>, Option<serde_json::Value>)> = sqlx::query_as(
         "SELECT created_by, details FROM system_logs \
          WHERE log_type = 'auth_event' AND resource_uuid = $1",
     )
     .bind(key_uuid)
-    .fetch_one(&pool.pool)
+    .fetch_all(&pool.pool)
     .await
-    .expect("exactly one audit row for this key");
+    .expect("audit rows for this key");
+    assert_eq!(rows.len(), 1, "exactly one audit row for this key");
+    let (actor, details) = rows.into_iter().next().unwrap();
     assert_eq!(actor, Some(owner));
     let details = details.expect("details");
     assert_eq!(

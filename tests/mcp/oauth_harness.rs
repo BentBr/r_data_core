@@ -30,7 +30,7 @@ use r_data_core_mcp::config::Config;
 use r_data_core_mcp::http::{self, ServerState};
 use r_data_core_test_support::TestDatabase;
 
-use crate::api::workflows::common::build_app_state_with_oidc;
+use crate::api::workflows::common::build_app_state_with_oidc_and_audit;
 
 const KID: &str = "mcp-e2e-key";
 const AUDIENCE: &str = "rdc-mcp";
@@ -81,6 +81,15 @@ impl OauthStack {
     /// # Panics
     /// As [`Self::start`].
     pub async fn start_with(role_map: &str, extra: &[(&str, &str)]) -> Self {
+        Self::start_with_audit(role_map, extra, false).await
+    }
+
+    /// Like [`Self::start_with`], optionally with the system-log service
+    /// wired so routes that write audit rows do so.
+    ///
+    /// # Panics
+    /// As [`Self::start`].
+    pub async fn start_with_audit(role_map: &str, extra: &[(&str, &str)], audit: bool) -> Self {
         let (encoding, jwk) = keypair();
         let idp = MockServer::start().await;
         let issuer = idp.uri();
@@ -123,9 +132,10 @@ impl OauthStack {
         for (key, value) in extra {
             oidc.insert((*key).to_string(), (*value).to_string());
         }
-        let (app_data, pool, _token, _api_key) = build_app_state_with_oidc(Some(&oidc))
-            .await
-            .expect("build application state");
+        let (app_data, pool, _token, _api_key) =
+            build_app_state_with_oidc_and_audit(Some(&oidc), audit)
+                .await
+                .expect("build application state");
 
         // Nothing seeds roles, and a mapping naming a role that does not exist
         // has no effect — every identity would then map to nothing and be

@@ -6,7 +6,7 @@
 //! database. These drive `start` → provider → `callback` with one, and assert
 //! what the resulting session can do — which is the part that was wrong.
 //!
-//! Serialised: the harness sets `RDC_OIDC_*` in the process environment.
+//! Serialised: resource-heavy stacks (full server + MCP + migrated schema).
 
 use base64::Engine as _;
 use serial_test::serial;

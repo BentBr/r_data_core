@@ -9,9 +9,8 @@
 //! ends up acting as is the human who presented the token, not a service
 //! account.
 //!
-//! Serialised, because the harness sets `RDC_OIDC_*` in the process
-//! environment: `RDataCore` reads those at startup, and two of these running
-//! at once would configure each other's servers.
+//! Serialised because these are resource-heavy stacks (full server + MCP +
+//! migrated schema).
 
 use base64::Engine as _;
 use serial_test::serial;

@@ -84,6 +84,27 @@ pub async fn build_app_state_with_oidc(
     String, // JWT token
     String, // API key value
 )> {
+    build_app_state_with_oidc_and_audit(oidc, false).await
+}
+
+/// Like [`build_app_state_with_oidc`], optionally with the system-log service
+/// wired so routes that write audit rows do so.
+///
+/// # Errors
+/// Returns an error if test setup fails
+///
+/// # Panics
+/// As [`build_app_state_with_oidc`].
+#[allow(clippy::implicit_hasher)] // forwards to a map-typed bootstrap seam
+pub async fn build_app_state_with_oidc_and_audit(
+    oidc: Option<&HashMap<String, String>>,
+    audit: bool,
+) -> anyhow::Result<(
+    web::Data<ApiStateWrapper>,
+    r_data_core_test_support::TestDatabase,
+    String, // JWT token
+    String, // API key value
+)> {
     let pool = setup_test_db().await;
 
     let cache_config = CacheConfig {
@@ -167,7 +188,11 @@ pub async fn build_app_state_with_oidc(
         queue,
         license_service,
         password_reset_service: None,
-        system_log_service: None,
+        system_log_service: audit.then(|| {
+            Arc::new(r_data_core_services::SystemLogService::new(Arc::new(
+                r_data_core_persistence::SystemLogRepository::new(pool.pool.clone()),
+            )))
+        }),
         oidc,
     };
 

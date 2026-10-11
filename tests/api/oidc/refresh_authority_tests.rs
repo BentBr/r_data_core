@@ -1,4 +1,5 @@
 #![allow(clippy::expect_used, clippy::unwrap_used)]
+#![allow(clippy::missing_panics_doc, clippy::must_use_candidate)]
 // The Actix test service is Rc-based, so futures holding it are not Send.
 #![allow(clippy::future_not_send)]
 
@@ -24,7 +25,7 @@ use crate::api::workflows::common::build_app_state;
 use crate::mcp::oauth_harness::OauthStack;
 
 /// The claims of an access token.
-fn claims_of(access: &str) -> serde_json::Value {
+pub fn claims_of(access: &str) -> serde_json::Value {
     let payload = access.split('.').nth(1).expect("a payload segment");
     let decoded = base64::engine::general_purpose::URL_SAFE_NO_PAD
         .decode(payload)
@@ -32,7 +33,7 @@ fn claims_of(access: &str) -> serde_json::Value {
     serde_json::from_slice(&decoded).expect("json")
 }
 
-fn permissions_of(claims: &serde_json::Value) -> Vec<String> {
+pub fn permissions_of(claims: &serde_json::Value) -> Vec<String> {
     claims["permissions"]
         .as_array()
         .expect("permissions")
@@ -42,7 +43,7 @@ fn permissions_of(claims: &serde_json::Value) -> Vec<String> {
 }
 
 /// Undo the callback's fragment encoding (`%XX` only).
-fn percent_decode(value: &str) -> String {
+pub fn percent_decode(value: &str) -> String {
     let bytes = value.as_bytes();
     let mut out = Vec::with_capacity(bytes.len());
     let mut i = 0;

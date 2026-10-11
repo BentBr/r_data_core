@@ -3,8 +3,8 @@
 //! The identity table's two promises: an identity resolves to exactly one
 //! account, and a subject already linked keeps its owner no matter who asks.
 //!
-//! Every test uses its own issuer so the tests can share one database and run
-//! in parallel.
+//! `setup_test_db` gives each test its own schema; every test also uses its
+//! own issuer, as belt-and-braces against any future shared state.
 
 use r_data_core_persistence::{IdentityRepository, IdentityRepositoryTrait};
 use r_data_core_test_support::{create_test_admin_user, setup_test_db};
