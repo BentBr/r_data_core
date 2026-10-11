@@ -333,9 +333,8 @@ pub async fn update_entity_definition(
             }));
         }
         Err(e) => {
-            return HttpResponse::InternalServerError().json(json!({
-                "error": format!("Failed to retrieve entity definition: {e}")
-            }));
+            error!("Failed to retrieve entity definition: {e}");
+            return ApiResponse::<()>::internal_error("Failed to retrieve entity definition");
         }
     };
 
