@@ -275,11 +275,19 @@ jobs:
                 with:
                     ref: ${{ inputs.tag || github.ref }}
 
+            # No registry-url, deliberately. setup-node always writes
+            # //registry.npmjs.org/:_authToken=${NODE_AUTH_TOKEN} when it is
+            # given one, and with trusted publishing there is no token — so it
+            # expands to empty, npm decides auth is already configured, skips
+            # the OIDC exchange and publishes anonymously. The registry then
+            # answers 404 rather than 403, to avoid disclosing whether the
+            # package exists, which is the error this spent three releases on.
+            # npm defaults to registry.npmjs.org regardless.
+            # See actions/setup-node#1551 and npm/documentation#1960.
             -   name: Setup Node.js
                 uses: actions/setup-node@v7
                 with:
                     node-version: '22'
-                    registry-url: 'https://registry.npmjs.org'
 
             # Trusted publishing is OIDC, and npm only learned it in 11.5.1.
             # setup-node ships whatever npm the Node release bundles — Node 22
@@ -291,7 +299,33 @@ jobs:
                 run: |
                     set -euo pipefail
                     npm install -g npm@^11
-                    npm --version
+                    version="$(npm --version)"
+                    echo "npm ${version}"
+                    # Trusted publishing is OIDC, which npm learned in 11.5.1.
+                    # Asserted rather than assumed: an older npm does not fail,
+                    # it publishes anonymously and 404s, which reads like a
+                    # permissions problem and is not.
+                    major="${version%%.*}"
+                    rest="${version#*.}"
+                    minor="${rest%%.*}"
+                    if [ "$major" -lt 11 ] || { [ "$major" -eq 11 ] && [ "$minor" -lt 5 ]; }; then
+                        echo "npm ${version} cannot do trusted publishing; need >= 11.5.1" >&2
+                        exit 1
+                    fi
+
+            -   name: Leave no credential for npm to prefer over OIDC
+                run: |
+                    set -euo pipefail
+                    # Belt and braces: if registry-url is ever restored above,
+                    # or a runner image ships an .npmrc, this keeps the OIDC
+                    # path open rather than silently falling back.
+                    for f in "${NPM_CONFIG_USERCONFIG:-}" "$HOME/.npmrc"; do
+                        [ -n "$f" ] && [ -f "$f" ] || continue
+                        sed -i '/_authToken/d' "$f"
+                        echo "stripped any _authToken from $f"
+                    done
+                env:
+                    NODE_AUTH_TOKEN: ''
 
             # The tag and the manifest are edited by different hands at
             # different times. Publishing 0.1.0 under the tag mcp-v0.2.0 would
