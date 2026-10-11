@@ -240,6 +240,13 @@ pub fn build_oidc_services(
         return Ok(None);
     };
 
+    if oidc_config.allow_insecure_issuer {
+        log::warn!(
+            "RDC_OIDC_ALLOW_INSECURE_ISSUER is set: the identity provider is contacted over \
+             plain HTTP. Never run this way outside local development."
+        );
+    }
+
     let issuer = &oidc_config.issuer;
     info!("Single sign-on enabled, trusting issuer {issuer}");
 

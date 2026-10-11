@@ -70,6 +70,9 @@ pub struct Config {
     pub credential: Option<String>,
     pub oidc_issuer: Option<String>,
     pub oidc_audience: Option<String>,
+    /// Raw `RDC_OIDC_ALLOW_INSECURE_ISSUER`, passed through so the MCP server
+    /// accepts the same development provider `RDataCore` does.
+    pub oidc_allow_insecure_issuer: Option<String>,
     /// This server's own public URL, for OAuth protected-resource metadata.
     pub resource_url: Option<String>,
     /// Browser origins permitted to reach the MCP endpoint.
@@ -117,6 +120,8 @@ impl Config {
         let credential = get(map, "RDC_API_KEY").map(str::to_string);
         let oidc_issuer = get(map, "RDC_OIDC_ISSUER").map(str::to_string);
         let oidc_audience = get(map, "RDC_OIDC_AUDIENCE").map(str::to_string);
+        let oidc_allow_insecure_issuer =
+            get(map, "RDC_OIDC_ALLOW_INSECURE_ISSUER").map(str::to_string);
 
         // Exhaustive on purpose — see the module comment.
         match (&transport, credential.is_some(), oidc_issuer.is_some()) {
@@ -185,6 +190,7 @@ impl Config {
             credential,
             oidc_issuer,
             oidc_audience,
+            oidc_allow_insecure_issuer,
             resource_url,
             allowed_origins,
             allowed_hosts,
@@ -204,12 +210,15 @@ impl Config {
         let (Some(issuer), Some(audience)) = (&self.oidc_issuer, &self.oidc_audience) else {
             return None;
         };
-        let pairs: HashMap<String, String> = [
+        let mut pairs: HashMap<String, String> = [
             ("RDC_OIDC_ISSUER".to_string(), issuer.clone()),
             ("RDC_OIDC_AUDIENCE".to_string(), audience.clone()),
         ]
         .into_iter()
         .collect();
+        if let Some(allow) = &self.oidc_allow_insecure_issuer {
+            pairs.insert("RDC_OIDC_ALLOW_INSECURE_ISSUER".to_string(), allow.clone());
+        }
         r_data_core_core::oidc::OidcConfig::from_map(&pairs)
             .ok()
             .flatten()

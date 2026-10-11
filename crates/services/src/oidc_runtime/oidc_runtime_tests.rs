@@ -257,3 +257,39 @@ async fn forgetting_an_account_evicts_every_identity_it_owns() {
          cache window; got {after:?}"
     );
 }
+
+// ── roles travel with the resolution ────────────────────────────────────────
+
+#[tokio::test]
+async fn a_resolution_carries_the_roles_the_groups_map_to() {
+    let rt = runtime(
+        Arc::new(FakeIdentities::default()),
+        Arc::new(FakeUsers::default()),
+    );
+
+    let resolved = rt
+        .resolve(&claims("ada", &["rdc-ops"], true), 1800)
+        .await
+        .expect("should resolve");
+
+    assert_eq!(resolved.roles.len(), 1);
+    assert_eq!(resolved.roles[0].name, "editor");
+    assert_eq!(resolved.claims.name, "ada");
+}
+
+#[tokio::test]
+async fn a_cached_resolution_still_carries_its_roles() {
+    // The session is minted from these roles on every sign-in, cached or
+    // not. A cache entry that dropped them would mint a powerless session
+    // for the second request — the very bug this exists to prevent.
+    let rt = runtime(
+        Arc::new(FakeIdentities::default()),
+        Arc::new(FakeUsers::default()),
+    );
+    let identity = claims("ada", &["rdc-ops"], true);
+
+    rt.resolve(&identity, 1800).await.expect("first");
+    let second = rt.resolve(&identity, 1800).await.expect("second");
+
+    assert_eq!(second.roles[0].name, "editor");
+}

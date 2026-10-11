@@ -223,6 +223,34 @@ describe('UserDialog', () => {
         expect(payload.email).toBe('bob@example.com')
     })
 
+    it('omits role_uuids from the update payload for an SSO user', () => {
+        // The server refuses stored roles for a federated account; sending
+        // the (hidden) list would make every edit, including deactivation, fail.
+        const user = makeUser({ is_sso_provisioned: true, role_uuids: ['role-1'] })
+        const wrapper = mountDialog({ modelValue: true, editingUser: user, loading: false })
+        const vm = wrapper.vm as any
+        vm.formValid = true
+        vm.formData.is_active = false
+
+        vm.handleSave()
+
+        const payload = wrapper.emitted('save')?.[0]?.[0] as Record<string, unknown>
+        expect(payload).not.toHaveProperty('role_uuids')
+        expect(payload.is_active).toBe(false)
+    })
+
+    it('keeps role_uuids in the update payload for a local user', () => {
+        const user = makeUser()
+        const wrapper = mountDialog({ modelValue: true, editingUser: user, loading: false })
+        const vm = wrapper.vm as any
+        vm.formValid = true
+
+        vm.handleSave()
+
+        const payload = wrapper.emitted('save')?.[0]?.[0] as Record<string, unknown>
+        expect(payload.role_uuids).toEqual(['role-1'])
+    })
+
     it('includes the password in the update payload when provided', () => {
         const user = makeUser()
         const wrapper = mountDialog({ modelValue: true, editingUser: user, loading: false })

@@ -19,5 +19,5 @@
 pub mod discovery;
 pub mod keys;
 
-pub use discovery::{client, fetch, Discovery, FETCH_TIMEOUT};
+pub use discovery::{client, fetch, Discovery, DiscoveryCache, FETCH_TIMEOUT};
 pub use keys::HttpKeySource;

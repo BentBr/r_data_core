@@ -39,10 +39,10 @@ pub struct OauthStack {
     pub mcp_url: String,
     /// Held, not read: dropping it tears down the test database out from
     /// under the servers still pointing at it.
-    _pool: TestDatabase,
+    pool_guard: TestDatabase,
     encoding: EncodingKey,
     issuer: String,
-    _idp: MockServer,
+    idp: MockServer,
     _rdc: ServerGuard,
     _mcp: ShutdownGuard,
     /// Declared last so it drops last, after everything that reads the
@@ -76,7 +76,14 @@ struct EnvGuard;
 
 impl Drop for EnvGuard {
     fn drop(&mut self) {
-        for key in ["RDC_OIDC_ISSUER", "RDC_OIDC_AUDIENCE", "RDC_OIDC_ROLE_MAP"] {
+        for key in [
+            "RDC_OIDC_ISSUER",
+            "RDC_OIDC_AUDIENCE",
+            "RDC_OIDC_ROLE_MAP",
+            "RDC_OIDC_CLIENT_ID",
+            "RDC_OIDC_REDIRECT_URI",
+            "RDC_OIDC_LINK_BY_EMAIL",
+        ] {
             std::env::remove_var(key);
         }
     }
@@ -110,12 +117,22 @@ impl OauthStack {
             .mount(&idp)
             .await;
 
+        let listener = std::net::TcpListener::bind("127.0.0.1:0").expect("an ephemeral port");
+        let rdc_port = listener.local_addr().expect("the bound port").port();
+        let rdc_url = format!("http://127.0.0.1:{rdc_port}");
+
         // RDataCore reads its OIDC settings from the process environment at
         // startup, so they must be set before the state is built. Tests using
         // this harness are serialised for that reason.
         std::env::set_var("RDC_OIDC_ISSUER", &issuer);
         std::env::set_var("RDC_OIDC_AUDIENCE", AUDIENCE);
         std::env::set_var("RDC_OIDC_ROLE_MAP", role_map);
+        // The browser flow too, so the callback can be driven end to end.
+        std::env::set_var("RDC_OIDC_CLIENT_ID", "rdc-browser");
+        std::env::set_var(
+            "RDC_OIDC_REDIRECT_URI",
+            format!("{rdc_url}/admin/api/v1/auth/oidc/callback"),
+        );
 
         let (app_data, pool, _token, _api_key) =
             build_app_state().await.expect("build application state");
@@ -142,8 +159,6 @@ impl OauthStack {
             .expect("create the mapped role");
         }
 
-        let listener = std::net::TcpListener::bind("127.0.0.1:0").expect("an ephemeral port");
-        let rdc_port = listener.local_addr().expect("the bound port").port();
         let server = HttpServer::new(move || {
             App::new()
                 .app_data(app_data.clone())
@@ -156,7 +171,6 @@ impl OauthStack {
         let rdc = ServerGuard(tokio::spawn(async move {
             let _ = server.await;
         }));
-        let rdc_url = format!("http://127.0.0.1:{rdc_port}");
 
         // The MCP server, pointed at both.
         let mcp_listener = http::bind("127.0.0.1:0").await.expect("an ephemeral port");
@@ -181,20 +195,21 @@ impl OauthStack {
         Self {
             rdc_url,
             mcp_url,
-            _pool: pool,
+            pool_guard: pool,
             encoding,
             issuer,
-            _idp: idp,
+            idp,
             _rdc: rdc,
             _mcp: ShutdownGuard(shutdown),
             _env: EnvGuard,
         }
     }
 
-    /// A signed identity token for a named person in named groups.
-    pub fn mint_token(&self, subject: &str, groups: &[&str]) -> String {
+    /// The claims a provider puts in a token for a named person in named
+    /// groups, issued now and valid for an hour.
+    pub fn claims_for(&self, subject: &str, groups: &[&str]) -> serde_json::Value {
         let now = time::OffsetDateTime::now_utc().unix_timestamp();
-        let claims = json!({
+        json!({
             "iss": self.issuer,
             "aud": AUDIENCE,
             "sub": subject,
@@ -204,11 +219,56 @@ impl OauthStack {
             "email_verified": true,
             "name": subject,
             "groups": groups,
-        });
+        })
+    }
 
+    /// Sign arbitrary claims with the provider's key.
+    pub fn sign(&self, claims: &serde_json::Value) -> String {
         let mut header = Header::new(jsonwebtoken::Algorithm::RS256);
         header.kid = Some(KID.to_string());
-        encode(&header, &claims, &self.encoding).expect("sign a token")
+        encode(&header, claims, &self.encoding).expect("sign a token")
+    }
+
+    /// A signed identity token for a named person in named groups.
+    pub fn mint_token(&self, subject: &str, groups: &[&str]) -> String {
+        self.sign(&self.claims_for(subject, groups))
+    }
+
+    /// The mock provider, for mounting a token endpoint per test.
+    pub const fn idp(&self) -> &MockServer {
+        &self.idp
+    }
+
+    /// A signed ID token as the provider would return it from the token
+    /// endpoint: like [`Self::mint_token`], plus the `nonce` of the attempt.
+    pub fn mint_id_token(&self, subject: &str, groups: &[&str], nonce: &str) -> String {
+        let mut claims = self.claims_for(subject, groups);
+        claims["nonce"] = json!(nonce);
+        self.sign(&claims)
+    }
+
+    /// The test database, for assertions about what a sign-in persisted.
+    pub const fn pool(&self) -> &sqlx::PgPool {
+        &self.pool_guard.pool
+    }
+
+    /// Give a harness-created role one permission.
+    ///
+    /// The harness seeds mapped roles with no permissions, which is enough
+    /// for "was a session issued" and useless for "what can it do".
+    pub async fn grant_permission(&self, role: &str, resource: &str, permission_type: &str) {
+        sqlx::query("UPDATE roles SET permissions = $2::jsonb WHERE name = $1")
+            .bind(role)
+            .bind(serde_json::json!([{
+                "resource_type": resource,
+                "permission_type": permission_type,
+                "access_level": "All",
+                "resource_uuids": [],
+                "constraints": null,
+            }]))
+            .execute(&self.pool_guard.pool)
+            .await
+            .expect("grant a permission to the mapped role");
     }
 }
 

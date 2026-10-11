@@ -98,6 +98,9 @@ impl IdentityRepositoryTrait for FakeIdentities {
 pub struct FakeUsers {
     pub users: Mutex<Vec<AdminUser>>,
     pub created: Mutex<Vec<String>>,
+    /// Addresses `create_admin_user` must refuse with a unique violation, as
+    /// the real table does.
+    pub taken_emails: Mutex<Vec<String>>,
 }
 
 impl FakeUsers {
@@ -105,6 +108,7 @@ impl FakeUsers {
         Self {
             users: Mutex::new(users),
             created: Mutex::new(Vec::new()),
+            taken_emails: Mutex::new(Vec::new()),
         }
     }
     /// Deactivate an account, as an operator would.
@@ -144,6 +148,12 @@ pub fn user(uuid: Uuid, username: &str, active: bool) -> AdminUser {
     }
 }
 
+pub fn super_admin(uuid: Uuid, username: &str) -> AdminUser {
+    let mut user = user(uuid, username, true);
+    user.super_admin = true;
+    user
+}
+
 #[async_trait]
 impl AdminUserRepositoryTrait for FakeUsers {
     async fn find_by_username_or_email(&self, needle: &str) -> Result<Option<AdminUser>> {
@@ -171,15 +181,26 @@ impl AdminUserRepositoryTrait for FakeUsers {
     }
 
     async fn create_admin_user<'a>(&self, params: &CreateAdminUserParams<'a>) -> Result<Uuid> {
+        if self
+            .taken_emails
+            .lock()
+            .expect("lock")
+            .iter()
+            .any(|taken| taken.eq_ignore_ascii_case(params.email))
+        {
+            // What sqlx reports for a unique violation on admin_users.email.
+            return Err(r_data_core_core::error::Error::Database(
+                sqlx::Error::Database(Box::new(FakeUniqueViolation)),
+            ));
+        }
         let uuid = Uuid::now_v7();
         self.created
             .lock()
             .expect("lock")
             .push(params.username.to_string());
-        self.users
-            .lock()
-            .expect("lock")
-            .push(user(uuid, params.username, params.is_active));
+        let mut account = user(uuid, params.username, params.is_active);
+        account.email = params.email.to_string();
+        self.users.lock().expect("lock").push(account);
         Ok(uuid)
     }
 
@@ -211,6 +232,8 @@ impl AdminUserRepositoryTrait for FakeUsers {
 
 pub struct FakeRoles {
     pub roles: Vec<Role>,
+    /// Stored `user_roles`, as `(user, role)` pairs.
+    pub user_roles: Vec<(Uuid, Role)>,
 }
 
 #[async_trait]
@@ -241,6 +264,14 @@ impl RoleRepositoryTrait for FakeRoles {
     }
     async fn count_all(&self) -> Result<i64> {
         Ok(i64::try_from(self.roles.len()).unwrap_or(0))
+    }
+    async fn list_for_user(&self, user_uuid: Uuid) -> Result<Vec<Role>> {
+        Ok(self
+            .user_roles
+            .iter()
+            .filter(|(user, _)| *user == user_uuid)
+            .map(|(_, role)| role.clone())
+            .collect())
     }
 }
 
@@ -281,6 +312,15 @@ pub fn config(default_role: Option<&str>, link_by_email: bool) -> OidcConfig {
 }
 
 pub fn service(identities: Arc<FakeIdentities>, users: Arc<FakeUsers>) -> OidcProvisioningService {
+    service_with_user_roles(identities, users, Vec::new())
+}
+
+/// [`service`], with roles already stored for some users.
+pub fn service_with_user_roles(
+    identities: Arc<FakeIdentities>,
+    users: Arc<FakeUsers>,
+    user_roles: Vec<(Uuid, Role)>,
+) -> OidcProvisioningService {
     OidcProvisioningService::new(
         identities,
         users,
@@ -289,6 +329,40 @@ pub fn service(identities: Arc<FakeIdentities>, users: Arc<FakeUsers>) -> OidcPr
                 Role::new("editor".to_string()),
                 Role::new("viewer".to_string()),
             ],
+            user_roles,
         }),
     )
+}
+
+/// A `23505` as the driver would surface it.
+#[derive(Debug)]
+pub struct FakeUniqueViolation;
+
+impl std::fmt::Display for FakeUniqueViolation {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str("duplicate key value violates unique constraint")
+    }
+}
+
+impl std::error::Error for FakeUniqueViolation {}
+
+impl sqlx::error::DatabaseError for FakeUniqueViolation {
+    fn message(&self) -> &'static str {
+        "duplicate key value violates unique constraint"
+    }
+    fn code(&self) -> Option<std::borrow::Cow<'_, str>> {
+        Some("23505".into())
+    }
+    fn kind(&self) -> sqlx::error::ErrorKind {
+        sqlx::error::ErrorKind::UniqueViolation
+    }
+    fn as_error(&self) -> &(dyn std::error::Error + Send + Sync + 'static) {
+        self
+    }
+    fn as_error_mut(&mut self) -> &mut (dyn std::error::Error + Send + Sync + 'static) {
+        self
+    }
+    fn into_error(self: Box<Self>) -> Box<dyn std::error::Error + Send + Sync + 'static> {
+        self
+    }
 }

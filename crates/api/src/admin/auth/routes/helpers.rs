@@ -5,6 +5,8 @@ use time::OffsetDateTime;
 
 use crate::admin::auth::models::{AdminLoginResponse, RefreshTokenResponse};
 use crate::admin::auth::rate_limit;
+pub use crate::admin::auth::routes::sso_session::SessionOrigin;
+use crate::admin::auth::routes::sso_session::{mark_sso, LOGIN_TIME};
 use crate::api_state::{ApiStateTrait, ApiStateWrapper};
 use crate::response::ApiResponse;
 use crate::token_service::TokenService;
@@ -113,7 +115,7 @@ pub async fn handle_password_failure(
     {
         log::error!("Failed to persist lockout state: {e:?}");
     }
-    rate_limit::record_failure(data.cache_manager(), rl_key).await;
+    rate_limit::record_failure(data.cache_manager(), rate_limit::Bucket::Login, rl_key).await;
     log::debug!("Password verification failed for user: {username}");
     if let Some(log_svc) = data.system_log_service() {
         log_svc
@@ -142,10 +144,21 @@ pub struct IssuedSession {
 /// produces. That is what lets refresh, logout and revoke-all work with no
 /// SSO-specific branches anywhere in the session code.
 ///
+/// `roles` is what the access token is minted from. A password login passes
+/// the account's stored roles; a single-sign-on login passes the roles its
+/// token's groups mapped to, because those are never stored.
+///
+/// `origin` decides what the refresh token carries. An [`SessionOrigin::Sso`]
+/// session snapshots the mapped roles and is marked as SSO, whatever the
+/// account's `is_sso_provisioned` flag says — an email-adopted account is a
+/// local account by flag, and must still not fall back to stored roles.
+///
 /// Returns `None` when something internal failed; the reason is logged, and
 /// callers should answer with a generic failure rather than say more.
-pub async fn issue_session(
+pub async fn issue_session_with_roles(
     user: &mut AdminUser,
+    roles: &[r_data_core_core::permissions::role::Role],
+    origin: SessionOrigin,
     repo: &AdminUserRepository,
     data: &ApiStateWrapper,
 ) -> Option<IssuedSession> {
@@ -160,9 +173,8 @@ pub async fn issue_session(
         log::error!("Failed to update last login: {e:?}");
     }
 
-    let roles = load_user_roles(user, data, repo).await;
     let token_service = TokenService::new(data.api_config());
-    let token_pair = match token_service.generate_token_pair(user, &roles) {
+    let token_pair = match token_service.generate_token_pair(user, roles) {
         Ok(pair) => pair,
         Err(e) => {
             log::error!("Failed to generate tokens: {e:?}");
@@ -171,10 +183,16 @@ pub async fn issue_session(
     };
 
     let refresh_repo = RefreshTokenRepository::new(data.db_pool().clone());
-    let device_info = Some(serde_json::json!({
+    let mut device_info = serde_json::json!({
         "user_agent": "login",
-        "login_time": OffsetDateTime::now_utc()
-    }));
+        LOGIN_TIME: OffsetDateTime::now_utc()
+    });
+    // An SSO session's authority is the mapped roles, so the refresh token
+    // carries them; a refresh never reads the account's stored roles.
+    if origin == SessionOrigin::Sso {
+        mark_sso(&mut device_info, roles);
+    }
+    let device_info = Some(device_info);
     if let Err(e) = refresh_repo
         .create(
             user.uuid,
@@ -211,6 +229,16 @@ pub async fn issue_session(
         tokens: token_pair,
         using_default_password,
     })
+}
+
+/// [`issue_session_with_roles`] for an account whose roles are stored.
+pub async fn issue_session(
+    user: &mut AdminUser,
+    repo: &AdminUserRepository,
+    data: &ApiStateWrapper,
+) -> Option<IssuedSession> {
+    let roles = load_user_roles(user, data, repo).await;
+    issue_session_with_roles(user, &roles, SessionOrigin::Local, repo, data).await
 }
 
 /// Issue a session and answer with the standard login response.
