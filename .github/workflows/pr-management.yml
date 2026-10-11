@@ -44,6 +44,10 @@ jobs:
                 with:
                     app-id: ${{ secrets.PR_APP_ID }}
                     private-key: ${{ secrets.PR_APP_PRIVATE_KEY }}
+                    # Opens/updates PRs and sets their labels and assignees.
+                    # Never contents: write — this runs on every branch push.
+                    permission-pull-requests: write
+                    permission-contents: read
 
             -   name: Resolve branch name
                 env:

@@ -137,11 +137,10 @@ jobs:
             -   name: Show rustc version
                 run: rustc -Vv
 
-            -   name: Cache cargo registry + build
-                uses: swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6  # v2
-                with:
-                    workspaces: .
-                    key: mcp-release-${{ matrix.target }}
+            # No build cache, deliberately. The cache is shared with every
+            # branch's runs, so restoring it here would let a branch seed the
+            # artefacts a release is linked from (cache poisoning). A release
+            # build is rare enough to pay for a cold compile.
 
             -   name: Build
                 run: cargo build --release -p r_data_core_mcp --target ${{ matrix.target }}
@@ -446,6 +445,8 @@ jobs:
                 uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1  # v7
                 with:
                     node-version: '22'
+                    # Nothing to install, and a restored cache is a way in.
+                    package-manager-cache: false
 
             # Trusted publishing is OIDC, and npm only learned it in 11.5.1.
             # setup-node ships whatever npm the Node release bundles — Node 22

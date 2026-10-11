@@ -40,11 +40,15 @@ on:
 env:
     REGISTRY: ghcr.io
 
+# Nothing by default; every job below declares what it needs.
+permissions: {}
+
 jobs:
     # Determine build configuration (shared by all jobs)
     prepare:
         if: ${{ github.event_name != 'workflow_call' || inputs.build_backend != false }}
         runs-on: ubuntu-latest
+        permissions: {}
         outputs:
             tag: ${{ steps.tag.outputs.tag }}
             is_release: ${{ steps.tag.outputs.is_release }}
@@ -325,6 +329,7 @@ jobs:
         needs: [ prepare, merge-backend-manifests, build-frontend ]
         runs-on: ubuntu-latest
         if: always() && (needs.merge-backend-manifests.result == 'success' || needs.build-frontend.result == 'success')
+        permissions: {}
         steps:
             -   name: Summary
                 env:
@@ -384,13 +389,9 @@ jobs:
                 uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1  # v7
                 with:
                     node-version: '22'
-            -   name: Cache pnpm store
-                uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9  # v6
-                with:
-                    path: fe/.pnpm-store
-                    key: ${{ runner.os }}-pnpm-store-${{ hashFiles('fe/pnpm-lock.yaml') }}
-                    restore-keys: |
-                        ${{ runner.os }}-pnpm-store-
+                    # Release-only job: a cache restored from a branch's run
+                    # could seed the ZIP attached to the release.
+                    package-manager-cache: false
             -   name: Install dependencies
                 working-directory: fe
                 run: pnpm install --frozen-lockfile

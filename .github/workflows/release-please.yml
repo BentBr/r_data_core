@@ -236,8 +236,13 @@ jobs:
                 with:
                     app-id: ${{ secrets.RELEASE_APP_ID }}
                     private-key: ${{ secrets.RELEASE_APP_PRIVATE_KEY }}
+                    # Pushing a tag is all this token is for.
+                    permission-contents: write
 
-            -   name: Checkout the release commit
+            # The App token is persisted on purpose: the next step pushes the
+            # tag with it. Nothing in this job uploads an artefact, and the
+            # token is scoped to contents and expires within the hour.
+            -   name: Checkout the release commit  # zizmor: ignore[artipacked]
                 uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7
                 with:
                     ref: ${{ needs.release-please.outputs.tag_name }}
@@ -277,4 +282,6 @@ jobs:
             tag_name: ${{ needs.release-please.outputs.tag_name }}
             build_backend: true
             build_frontend: true
-        secrets: inherit
+        # No secrets: docker-publish.yml only uses GITHUB_TOKEN, which a
+        # called workflow receives regardless. `secrets: inherit` would hand
+        # it every repository secret as well.

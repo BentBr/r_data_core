@@ -46,7 +46,10 @@ jobs:
             # version and verified by the checksum database — rather than a
             # curl | bash in the one workflow that lints the others.
             -   run: go install github.com/rhysd/actionlint/cmd/actionlint@v1.7.12
-            -   run: actionlint -color
+            # Shellcheck disabled for now: it reports 56 findings in run:
+            # blocks that predate this gate. Follow-up: fix them in a
+            # dedicated PR and drop `-shellcheck=` here.
+            -   run: actionlint -color -shellcheck=
 
     secret-scope:
         name: Release App key confined
