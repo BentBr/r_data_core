@@ -423,7 +423,6 @@ pub async fn delete_entity_definition(
         }
         Err(e) => {
             error!("Failed to delete entity definition: {e}");
-            error!("Failed to delete entity definition: {e}");
             ApiResponse::<()>::internal_error("Failed to delete entity definition")
         }
     }
