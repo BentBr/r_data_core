@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.4.16](https://github.com/BentBr/r_data_core/compare/core-v0.4.15...core-v0.4.16) (2026-10-11)
+
+
+### Bug Fixes
+
+* **ci:** let npm actually use OIDC when publishing ([491364c](https://github.com/BentBr/r_data_core/commit/491364c0c60b7596ac8b0f0372da29604e1cf2ea))
+
 ## [0.4.15](https://github.com/BentBr/r_data_core/compare/core-v0.4.14...core-v0.4.15) (2026-10-11)
 
 
