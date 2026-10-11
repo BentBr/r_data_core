@@ -194,3 +194,56 @@ async fn a_readonly_caller_is_refused_by_rdatacore_not_merely_hidden_from() {
         created.status()
     );
 }
+
+#[tokio::test]
+#[serial]
+async fn the_exchanged_token_carries_the_mapped_roles_permissions() {
+    // The IdP's group → RDataCore role mapping is the whole point of SSO.
+    // A token minted from `user_roles` instead would be empty for every
+    // provisioned account — and nothing short of decoding it shows that.
+    let stack = OauthStack::start("rdc-ops:sso-editor").await;
+    stack
+        .grant_permission("sso-editor", "Workflows", "Read")
+        .await;
+    let token = stack.mint_token("bob", &["rdc-ops"]);
+
+    let response = client()
+        .post(format!("{}/admin/api/v1/auth/oidc/exchange", stack.rdc_url))
+        .json(&serde_json::json!({ "token": token }))
+        .send()
+        .await
+        .expect("a response");
+    assert!(response.status().is_success(), "got {}", response.status());
+
+    let body: serde_json::Value = response.json().await.expect("json");
+    let access = body["data"]["access_token"]
+        .as_str()
+        .expect("an access token");
+    let payload = access.split('.').nth(1).expect("a payload segment");
+    let decoded = base64::engine::general_purpose::URL_SAFE_NO_PAD
+        .decode(payload)
+        .expect("base64");
+    let claims: serde_json::Value = serde_json::from_slice(&decoded).expect("json");
+
+    let permissions: Vec<&str> = claims["permissions"]
+        .as_array()
+        .expect("permissions")
+        .iter()
+        .filter_map(serde_json::Value::as_str)
+        .collect();
+    assert_eq!(
+        permissions,
+        vec!["workflows:read"],
+        "the session must carry exactly what the mapped role grants"
+    );
+
+    // And nothing was written to user_roles: the IdP stays the authority.
+    let stored: i64 = sqlx::query_scalar(
+        "SELECT count(*) FROM user_roles ur JOIN admin_users u ON u.uuid = ur.user_uuid \
+         WHERE u.email = 'bob@example.com'",
+    )
+    .fetch_one(stack.pool())
+    .await
+    .expect("count");
+    assert_eq!(stored, 0, "roles must not be persisted for an SSO account");
+}

@@ -39,7 +39,7 @@ pub struct OauthStack {
     pub mcp_url: String,
     /// Held, not read: dropping it tears down the test database out from
     /// under the servers still pointing at it.
-    _pool: TestDatabase,
+    pool_guard: TestDatabase,
     encoding: EncodingKey,
     issuer: String,
     _idp: MockServer,
@@ -181,7 +181,7 @@ impl OauthStack {
         Self {
             rdc_url,
             mcp_url,
-            _pool: pool,
+            pool_guard: pool,
             encoding,
             issuer,
             _idp: idp,
@@ -209,6 +209,30 @@ impl OauthStack {
         let mut header = Header::new(jsonwebtoken::Algorithm::RS256);
         header.kid = Some(KID.to_string());
         encode(&header, &claims, &self.encoding).expect("sign a token")
+    }
+
+    /// The test database, for assertions about what a sign-in persisted.
+    pub const fn pool(&self) -> &sqlx::PgPool {
+        &self.pool_guard.pool
+    }
+
+    /// Give a harness-created role one permission.
+    ///
+    /// The harness seeds mapped roles with no permissions, which is enough
+    /// for "was a session issued" and useless for "what can it do".
+    pub async fn grant_permission(&self, role: &str, resource: &str, permission_type: &str) {
+        sqlx::query("UPDATE roles SET permissions = $2::jsonb WHERE name = $1")
+            .bind(role)
+            .bind(serde_json::json!([{
+                "resource_type": resource,
+                "permission_type": permission_type,
+                "access_level": "All",
+                "resource_uuids": [],
+                "constraints": null,
+            }]))
+            .execute(&self.pool_guard.pool)
+            .await
+            .expect("grant a permission to the mapped role");
     }
 }
 

@@ -30,7 +30,7 @@ use serde::Deserialize;
 use std::sync::Arc;
 
 use crate::admin::auth::rate_limit;
-use crate::admin::auth::routes::helpers::issue_session;
+use crate::admin::auth::routes::helpers::issue_session_with_roles;
 use crate::api_state::{ApiStateTrait, ApiStateWrapper};
 use crate::response::ApiResponse;
 use r_data_core_core::admin_jwt::ACCESS_TOKEN_EXPIRY_SECONDS;
@@ -148,30 +148,38 @@ pub async fn oidc_callback(
         return failed_login(&flow.landing_path(None), "unbound_state");
     }
 
-    let (claims, return_to) = match flow
+    let completed = match flow
         .complete(state, code, ACCESS_TOKEN_EXPIRY_SECONDS)
         .await
     {
-        Ok(done) => (done.identity, done.return_to),
+        Ok(done) => done,
         Err(e) => {
             log::warn!("Single-sign-on callback failed: {e}");
             return failed_login(&flow.landing_path(None), reason_for(&e));
         }
     };
 
-    let landing = flow.landing_path(return_to.as_deref());
+    let landing = flow.landing_path(completed.return_to.as_deref());
 
     // The identity is good. Turn it into the same session a password login
-    // produces, so nothing downstream has to know how it began.
+    // produces, so nothing downstream has to know how it began — minted
+    // from the roles the token mapped to, which is the only place they live.
     let repo = AdminUserRepository::new(Arc::new(data.db_pool().clone()));
-    let Some(uuid) = resolved_user_uuid(&data, &claims.issuer, &claims.subject).await else {
+    let Some(uuid) = resolved_user_uuid(
+        &data,
+        &completed.identity.issuer,
+        &completed.identity.subject,
+    )
+    .await
+    else {
         return failed_login(&landing, "unresolved_identity");
     };
     let Ok(Some(mut user)) = repo.find_by_uuid(&uuid).await else {
         return failed_login(&landing, "unresolved_identity");
     };
 
-    let Some(session) = issue_session(&mut user, &repo, &data).await else {
+    let Some(session) = issue_session_with_roles(&mut user, &completed.roles, &repo, &data).await
+    else {
         return failed_login(&landing, "session_failed");
     };
 
@@ -244,14 +252,16 @@ pub async fn oidc_exchange(
     };
 
     // Resolve through the shared tail, so an unmapped or deactivated identity
-    // is refused here on exactly the terms the bearer path uses.
-    if let Err(e) = oidc
+    // is refused here on exactly the terms the bearer path uses — and the
+    // mapped roles come back from it, because the token is minted from them.
+    let resolution = match oidc
         .runtime()
-        .session_claims(&claims, ACCESS_TOKEN_EXPIRY_SECONDS)
+        .resolve(&claims, ACCESS_TOKEN_EXPIRY_SECONDS)
         .await
     {
-        return refusal(&e);
-    }
+        Ok(resolution) => resolution,
+        Err(e) => return refusal(&e),
+    };
 
     let repo = AdminUserRepository::new(Arc::new(data.db_pool().clone()));
     let Some(uuid) = resolved_user_uuid(&data, &claims.issuer, &claims.subject).await else {
@@ -261,11 +271,10 @@ pub async fn oidc_exchange(
         return ApiResponse::internal_error("Authentication failed");
     };
 
-    let roles = crate::admin::auth::routes::helpers::load_user_roles(&user, &data, &repo).await;
     let access_token = match r_data_core_core::admin_jwt::generate_access_token(
         &user,
         data.api_config(),
-        &roles,
+        &resolution.roles,
     ) {
         Ok(token) => token,
         Err(e) => {

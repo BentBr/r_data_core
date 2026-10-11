@@ -250,3 +250,42 @@ async fn a_local_account_is_unaffected_by_any_of_this() {
 
     assert_eq!(response.status(), StatusCode::OK);
 }
+
+#[actix_web::test]
+async fn a_provisioned_user_cannot_be_given_stored_roles() {
+    // Roles for an SSO account come from the identity provider on every
+    // sign-in and are never stored. Accepting `role_uuids` here would make
+    // the stored set a second, silent authority that group removal at the
+    // provider could never narrow.
+    let (app, pool, admin_uuid) = setup_test_app().await.expect("test app");
+    let federated = federated_account(&pool, "federated-roles").await;
+    let token = get_auth_token(&app, &pool).await;
+
+    let role_uuid: Uuid = sqlx::query_scalar(
+        "INSERT INTO roles (name, created_by, published) VALUES ('sso-stored', $1, true) \
+         RETURNING uuid",
+    )
+    .bind(admin_uuid)
+    .fetch_one(&pool.pool)
+    .await
+    .expect("a role");
+
+    let response = test::call_service(
+        &app,
+        test::TestRequest::put()
+            .uri(&format!("/admin/api/v1/users/{federated}"))
+            .insert_header(("Authorization", format!("Bearer {token}")))
+            .set_json(serde_json::json!({ "role_uuids": [role_uuid] }))
+            .to_request(),
+    )
+    .await;
+
+    assert_eq!(response.status(), StatusCode::BAD_REQUEST);
+
+    let stored: i64 = sqlx::query_scalar("SELECT count(*) FROM user_roles WHERE user_uuid = $1")
+        .bind(federated)
+        .fetch_one(&pool.pool)
+        .await
+        .expect("count");
+    assert_eq!(stored, 0, "a refused assignment must leave nothing behind");
+}

@@ -142,10 +142,15 @@ pub struct IssuedSession {
 /// produces. That is what lets refresh, logout and revoke-all work with no
 /// SSO-specific branches anywhere in the session code.
 ///
+/// `roles` is what the access token is minted from. A password login passes
+/// the account's stored roles; a single-sign-on login passes the roles its
+/// token's groups mapped to, because those are never stored.
+///
 /// Returns `None` when something internal failed; the reason is logged, and
 /// callers should answer with a generic failure rather than say more.
-pub async fn issue_session(
+pub async fn issue_session_with_roles(
     user: &mut AdminUser,
+    roles: &[r_data_core_core::permissions::role::Role],
     repo: &AdminUserRepository,
     data: &ApiStateWrapper,
 ) -> Option<IssuedSession> {
@@ -160,9 +165,8 @@ pub async fn issue_session(
         log::error!("Failed to update last login: {e:?}");
     }
 
-    let roles = load_user_roles(user, data, repo).await;
     let token_service = TokenService::new(data.api_config());
-    let token_pair = match token_service.generate_token_pair(user, &roles) {
+    let token_pair = match token_service.generate_token_pair(user, roles) {
         Ok(pair) => pair,
         Err(e) => {
             log::error!("Failed to generate tokens: {e:?}");
@@ -211,6 +215,16 @@ pub async fn issue_session(
         tokens: token_pair,
         using_default_password,
     })
+}
+
+/// [`issue_session_with_roles`] for an account whose roles are stored.
+pub async fn issue_session(
+    user: &mut AdminUser,
+    repo: &AdminUserRepository,
+    data: &ApiStateWrapper,
+) -> Option<IssuedSession> {
+    let roles = load_user_roles(user, data, repo).await;
+    issue_session_with_roles(user, &roles, repo, data).await
 }
 
 /// Issue a session and answer with the standard login response.
