@@ -33,24 +33,30 @@ env:
     CARGO_INCREMENTAL: '0'
 
 jobs:
-    # A dispatched run can name any ref, and this workflow holds
-    # `contents: write`. Only someone with write access can dispatch it, so
-    # this is a guard rail rather than a boundary — but a typo that checks out
-    # an unexpected ref and publishes binaries from it is worth making
-    # impossible rather than unlikely.
+    # A tag can be pushed by anyone with write access, and this workflow
+    # publishes whatever it points at. So the tag must be a release commit on
+    # main — checked by script, so the same check runs in a local test.
     guard:
         name: Validate the tag
         runs-on: ubuntu-latest
+        permissions:
+            contents: read
         steps:
-            -   name: Check the tag looks like an MCP release tag
+            -   name: Checkout with history
+                uses: actions/checkout@v7
+                with:
+                    ref: ${{ inputs.tag || github.ref }}
+                    fetch-depth: 0
+                    persist-credentials: false
+
+            -   name: Refuse a tag that is not a release commit on main
                 env:
                     REQUESTED: ${{ inputs.tag || github.ref_name }}
                 run: |
                     set -euo pipefail
-                    if ! printf '%s' "$REQUESTED" | grep -Eq '^mcp-v[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$'; then
-                        echo "Refusing to build '$REQUESTED': expected mcp-vX.Y.Z" >&2
-                        exit 1
-                    fi
+                    git fetch --no-tags origin main:refs/remotes/origin/main
+                    git fetch origin "refs/tags/${REQUESTED}:refs/tags/${REQUESTED}" || true
+                    ./.github/scripts/check-release-tag.sh "$REQUESTED"
 
     build:
         name: ${{ matrix.target }}
@@ -146,6 +152,9 @@ jobs:
         name: Publish release
         needs: build
         runs-on: ubuntu-latest
+        # Required reviewers live on this environment (operator step D7);
+        # npm's trusted publisher is bound to it as well.
+        environment: release
         steps:
             # Needed for .github/scripts/publish-to-pages.sh; the build jobs
             # check out for their own reasons, this job otherwise would not.
@@ -254,6 +263,9 @@ jobs:
         name: Publish to npm
         needs: publish
         runs-on: ubuntu-latest
+        # Required reviewers live on this environment (operator step D7);
+        # npm's trusted publisher is bound to it as well.
+        environment: release
         permissions:
             contents: read
             # Trusted publishing: npm mints a short-lived credential from this
