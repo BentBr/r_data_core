@@ -47,7 +47,7 @@ jobs:
             tag_sha: ${{ steps.verify.outputs.tag_sha }}
         steps:
             -   name: Checkout with history
-                uses: actions/checkout@v7
+                uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7
                 with:
                     ref: ${{ inputs.tag || github.ref }}
                     fetch-depth: 0
@@ -101,12 +101,13 @@ jobs:
                     [ -n "$TAG_SHA" ] || { echo "guard produced no tag_sha" >&2; exit 1; }
 
             -   name: Checkout
-                uses: actions/checkout@v7
+                uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7
                 with:
+                    persist-credentials: false
                     ref: ${{ needs.guard.outputs.tag_sha }}
 
             -   name: Install Rust (nightly)
-                uses: dtolnay/rust-toolchain@master
+                uses: dtolnay/rust-toolchain@e2a55d2ffb04f378e9626c28d38b36d230d1e12f  # master (Dependabot refreshes this pin)
                 with:
                     toolchain: nightly
                     targets: ${{ matrix.target }}
@@ -115,7 +116,7 @@ jobs:
                 run: rustc -Vv
 
             -   name: Cache cargo registry + build
-                uses: swatinem/rust-cache@v2
+                uses: swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6  # v2
                 with:
                     workspaces: .
                     key: mcp-release-${{ matrix.target }}
@@ -158,7 +159,7 @@ jobs:
                     cat "SHA256SUMS-${{ matrix.target }}"
 
             -   name: Upload artefacts
-                uses: actions/upload-artifact@v4
+                uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02  # v4
                 with:
                     name: mcp-${{ matrix.target }}
                     path: dist/
@@ -187,8 +188,9 @@ jobs:
             # Needed for .github/scripts/publish-to-pages.sh; the build jobs
             # check out for their own reasons, this job otherwise would not.
             -   name: Checkout
-                uses: actions/checkout@v7
+                uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7
                 with:
+                    persist-credentials: false
                     ref: ${{ needs.guard.outputs.tag_sha }}
 
             # Scoped to this workflow's own artefacts. Without the pattern
@@ -197,7 +199,7 @@ jobs:
             # contains docker/build-push-action's *.dockerbuild records —
             # which is what failed the download after five retries.
             -   name: Download every target's artefacts
-                uses: actions/download-artifact@v4
+                uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093  # v4
                 with:
                     path: staged
                     pattern: mcp-*
@@ -246,14 +248,14 @@ jobs:
             # Signed statement that these exact bytes came from this workflow
             # run of this commit. Verifiable with `gh attestation verify`.
             -   name: Attest build provenance
-                uses: actions/attest-build-provenance@v4
+                uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8  # v4
                 with:
                     subject-path: |
                         dist/r-data-core-mcp-*
                         dist/SHA256SUMS
 
             -   name: Keep the checksums for the npm job
-                uses: actions/upload-artifact@v4
+                uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02  # v4
                 with:
                     name: mcp-sha256sums
                     path: dist/SHA256SUMS
@@ -298,7 +300,7 @@ jobs:
                     cat dist/mcp-latest.json
 
             -   name: Attach to the release
-                uses: softprops/action-gh-release@v2
+                uses: softprops/action-gh-release@3bb12739c298aeb8a4eeaf626c5b8d85266b0e65  # v2
                 with:
                     tag_name: ${{ inputs.tag || github.ref_name }}
                     files: dist/*
@@ -352,15 +354,16 @@ jobs:
                     [ -n "$TAG_SHA" ] || { echo "guard produced no tag_sha" >&2; exit 1; }
 
             -   name: Checkout
-                uses: actions/checkout@v7
+                uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7
                 with:
+                    persist-credentials: false
                     ref: ${{ needs.guard.outputs.tag_sha }}
 
             # The installer verifies downloads against this copy, which npm's
             # provenance covers. A checksum file fetched from the release would
             # only prove it was uploaded alongside the binaries.
             -   name: Download the release checksums
-                uses: actions/download-artifact@v4
+                uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093  # v4
                 with:
                     name: mcp-sha256sums
                     path: mcp-npm-package/
@@ -382,7 +385,7 @@ jobs:
             # npm defaults to registry.npmjs.org regardless.
             # See actions/setup-node#1551 and npm/documentation#1960.
             -   name: Setup Node.js
-                uses: actions/setup-node@v7
+                uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1  # v7
                 with:
                     node-version: '22'
 
