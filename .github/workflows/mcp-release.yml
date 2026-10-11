@@ -13,20 +13,13 @@ on:
             tag:
                 description: 'Tag to build and attach assets to (e.g. mcp-v0.1.0)'
                 required: true
-    # Called by release-please once it has cut the core release and tagged
-    # the matching mcp-v*.
-    #
-    # The push trigger above cannot serve that case: a tag created with the
-    # default GITHUB_TOKEN does not start another workflow — GitHub suppresses
-    # it to prevent recursion — so the tag would appear and nothing would
-    # build. release-please.yml already calls docker-publish.yml this way for
-    # the same reason.
-    workflow_call:
-        inputs:
-            tag:
-                description: 'Tag to build and attach assets to'
-                required: true
-                type: string
+
+# Deliberately NOT exposed as a reusable workflow. release-please pushes the
+# mcp-v* tag with a GitHub App token so the push trigger above fires, rather
+# than calling this file: npm trusted publishing matches the OIDC token's
+# workflow_ref against the registered publisher, and for a called workflow
+# that claim names the caller. Publishing therefore only works while this
+# workflow is its own entry point.
 
 permissions:
     contents: write
