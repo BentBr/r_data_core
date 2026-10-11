@@ -15,11 +15,15 @@ pub use write::*;
 /// never stored (docs/SSO.md, "Roles are not stored"). Accepting them would
 /// create a second, silent authority that group removal at the provider could
 /// never narrow, so every path that writes `user_roles` asks this first.
+///
+/// An empty list is allowed: it clears any stored roles, which only removes
+/// that second authority (and is what an edit dialog sends for an SSO user).
 #[must_use]
 pub fn refuse_sso_role_assignment(
     user: &r_data_core_core::admin_user::AdminUser,
+    role_uuids: &[uuid::Uuid],
 ) -> Option<actix_web::HttpResponse> {
-    user.is_sso_provisioned.then(|| {
+    (user.is_sso_provisioned && !role_uuids.is_empty()).then(|| {
         crate::response::ApiResponse::<()>::bad_request(
             "This user signs in through single sign-on; roles come from the identity \
              provider's groups and cannot be assigned here.",

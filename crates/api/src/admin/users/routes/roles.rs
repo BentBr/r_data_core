@@ -95,6 +95,7 @@ pub async fn assign_roles_to_user(
     path: web::Path<Uuid>,
     req: web::Json<Vec<Uuid>>,
 ) -> impl Responder {
+    let role_uuids = req.into_inner();
     // Check permission - need Users:Update to assign roles to users
     if let Err(resp) =
         auth.require_permission(&ResourceNamespace::Users, &PermissionType::Update, None)
@@ -110,7 +111,7 @@ pub async fn assign_roles_to_user(
     match repo.find_by_uuid(&user_uuid).await {
         Ok(None) => return ApiResponse::<()>::not_found("User not found"),
         Ok(Some(user)) => {
-            if let Some(refusal) = super::refuse_sso_role_assignment(&user) {
+            if let Some(refusal) = super::refuse_sso_role_assignment(&user, &role_uuids) {
                 return refusal;
             }
         }
@@ -120,7 +121,7 @@ pub async fn assign_roles_to_user(
         }
     }
 
-    match repo.update_user_roles(user_uuid, &req.into_inner()).await {
+    match repo.update_user_roles(user_uuid, &role_uuids).await {
         Ok(()) => {
             // Invalidate cached permissions for this user
             state

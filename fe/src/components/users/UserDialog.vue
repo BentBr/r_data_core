@@ -281,9 +281,13 @@
                 email: formData.value.email,
                 first_name: formData.value.first_name,
                 last_name: formData.value.last_name,
-                role_uuids: formData.value.role_uuids ?? undefined,
                 is_active: formData.value.is_active,
                 super_admin: formData.value.super_admin,
+            }
+            // An SSO user's roles come from the identity provider; the server
+            // refuses a non-empty list for them, so never send one.
+            if (!isSsoUser.value) {
+                updateData.role_uuids = formData.value.role_uuids ?? undefined
             }
             // Only include password if provided
             if (formData.value.password) {
