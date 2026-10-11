@@ -74,7 +74,6 @@ the per-user permissions the design rests on.
 | `RDC_MCP_HEADER_TIMEOUT_SECS` | HTTP mode: seconds a client gets to finish its request headers. Defaults to 10. |
 | `RDC_MCP_IDLE_TIMEOUT_SECS` | HTTP mode: seconds a connection may stay open in total. Defaults to 120. |
 | `RDC_MCP_MAX_CONNECTIONS` | HTTP mode: open connections accepted at once; the rest are refused. Defaults to 1024. |
-| `RDATACORE_MCP_VERSION` | Install a specific release tag instead of this package's own version. Normally unnecessary. |
 | `GITHUB_TOKEN` | Optional at install time, and only to raise the GitHub API rate limit. The repository is public, so no token is needed. |
 
 Full deployment guide: [`docs/MCP.md`](https://github.com/BentBr/r_data_core/blob/main/docs/MCP.md).

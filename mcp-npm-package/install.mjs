@@ -32,7 +32,6 @@ async function main() {
     await install({
         fetch: globalThis.fetch,
         version,
-        pinnedTag: process.env.RDATACORE_MCP_VERSION,
         platform: process.platform,
         arch: process.arch,
         binDir: join(HERE, 'bin'),

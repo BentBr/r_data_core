@@ -48,9 +48,10 @@ test('releasePath pins to the package version, never to a listing', () => {
         releasePath({ version: '0.4.16' }),
         `https://api.github.com/repos/${REPO}/releases/tags/mcp-v0.4.16`
     )
+    // There is no override: an extra tag argument is ignored.
     assert.equal(
         releasePath({ version: '0.4.16', pinnedTag: 'mcp-v0.3.0' }),
-        `https://api.github.com/repos/${REPO}/releases/tags/mcp-v0.3.0`
+        `https://api.github.com/repos/${REPO}/releases/tags/mcp-v0.4.16`
     )
 })
 

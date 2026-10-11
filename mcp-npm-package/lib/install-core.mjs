@@ -44,18 +44,19 @@ export function targetTriple(platform, arch) {
 }
 
 /**
- * The release to install: this package's own version, or an explicit pin.
+ * The release to install: this package's own version, and only that.
  *
- * Never a listing. "Newest mcp-v*" would let a later release — or a
- * tampered one — replace what `npm install` of a given version downloads.
+ * There is no override: the packaged SHA256SUMS describes exactly one
+ * release, so any other tag could never verify. Never a listing either:
+ * "newest mcp-v*" would let a later release — or a tampered one — replace
+ * what `npm install` of a given version downloads.
  */
-export function releasePath({ version, pinnedTag }) {
-    const tag = pinnedTag || `${TAG_PREFIX}${version}`
-    return `https://api.github.com/repos/${REPO}/releases/tags/${tag}`
+export function releasePath({ version }) {
+    return `https://api.github.com/repos/${REPO}/releases/tags/${TAG_PREFIX}${version}`
 }
 
-export async function fetchRelease({ fetch, version, pinnedTag, token }) {
-    const url = releasePath({ version, pinnedTag })
+export async function fetchRelease({ fetch, version, token }) {
+    const url = releasePath({ version })
     const headers = { Accept: 'application/vnd.github+json' }
     if (token) {
         headers.Authorization = `Bearer ${token}`
@@ -66,7 +67,7 @@ export async function fetchRelease({ fetch, version, pinnedTag, token }) {
             `Could not read release ${url.split('/').pop()} from GitHub (${response.status}).\n` +
                 `URL: ${url}\n` +
                 (response.status === 404
-                    ? 'The release for this package version does not exist. The npm package is published only after its binaries, so this usually means a mismatched RDATACORE_MCP_VERSION.'
+                    ? 'The release for this package version does not exist. The npm package is published only after its binaries, so this usually means the release was removed or never finished.'
                     : response.status === 403
                       ? 'This is usually the unauthenticated API rate limit. Set GITHUB_TOKEN and retry.'
                       : 'Check your network and retry.')
@@ -129,7 +130,7 @@ export function verify(name, bytes, sums) {
  * `sumsText` is the content of the `SHA256SUMS` shipped in this package. Its
  * absence is an error, not a reason to trust the release's copy.
  */
-export async function install({ fetch, version, pinnedTag, platform, arch, binDir, sumsText, log, token }) {
+export async function install({ fetch, version, platform, arch, binDir, sumsText, log, token }) {
     const target = targetTriple(platform, arch)
     const suffix = platform === 'win32' ? '.exe' : ''
 
@@ -141,7 +142,7 @@ export async function install({ fetch, version, pinnedTag, platform, arch, binDi
     }
     const sums = parseChecksums(sumsText)
 
-    const release = await fetchRelease({ fetch, version, pinnedTag, token })
+    const release = await fetchRelease({ fetch, version, token })
     await mkdir(binDir, { recursive: true })
 
     for (const binary of BINARIES) {
