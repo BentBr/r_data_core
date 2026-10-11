@@ -82,6 +82,7 @@ impl Drop for EnvGuard {
             "RDC_OIDC_ROLE_MAP",
             "RDC_OIDC_CLIENT_ID",
             "RDC_OIDC_REDIRECT_URI",
+            "RDC_OIDC_LINK_BY_EMAIL",
         ] {
             std::env::remove_var(key);
         }

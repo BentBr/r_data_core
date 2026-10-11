@@ -31,7 +31,7 @@ use std::sync::Arc;
 
 use super::oidc_log::safe_reason;
 use crate::admin::auth::rate_limit;
-use crate::admin::auth::routes::helpers::issue_session_with_roles;
+use crate::admin::auth::routes::helpers::{issue_session_with_roles, SessionOrigin};
 use crate::api_state::{ApiStateTrait, ApiStateWrapper};
 use crate::response::ApiResponse;
 use r_data_core_core::admin_jwt::ACCESS_TOKEN_EXPIRY_SECONDS;
@@ -200,7 +200,14 @@ pub async fn oidc_callback(
         return failed_login(&landing, "not_permitted");
     }
 
-    let Some(session) = issue_session_with_roles(&mut user, &completed.roles, &repo, &data).await
+    let Some(session) = issue_session_with_roles(
+        &mut user,
+        &completed.roles,
+        SessionOrigin::Sso,
+        &repo,
+        &data,
+    )
+    .await
     else {
         return failed_login(&landing, "session_failed");
     };

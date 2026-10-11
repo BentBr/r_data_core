@@ -29,7 +29,10 @@ fn client() -> reqwest::Client {
 
 /// Begin a sign-in. Returns the state, the nonce sent to the provider, and
 /// the binding cookie.
-async fn start(stack: &OauthStack) -> (String, String, String) {
+///
+/// # Panics
+/// Panics if `start` does not redirect with a state, nonce and cookie.
+pub async fn start(stack: &OauthStack) -> (String, String, String) {
     let response = client()
         .get(format!("{}/admin/api/v1/auth/oidc/start", stack.rdc_url))
         .send()
@@ -71,7 +74,10 @@ async fn start(stack: &OauthStack) -> (String, String, String) {
 }
 
 /// Complete a sign-in with `id_token` waiting at the provider.
-async fn callback(stack: &OauthStack, state: &str, cookie: &str, id_token: &str) -> String {
+///
+/// # Panics
+/// Panics if the callback does not answer with a redirect.
+pub async fn callback(stack: &OauthStack, state: &str, cookie: &str, id_token: &str) -> String {
     Mock::given(method("POST"))
         .and(path("/token"))
         .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
@@ -97,7 +103,11 @@ async fn callback(stack: &OauthStack, state: &str, cookie: &str, id_token: &str)
 }
 
 /// The `permissions` claim of the access token in a landing fragment.
-fn permissions_in(location: &str) -> Vec<String> {
+///
+/// # Panics
+/// Panics if the location carries no decodable access token.
+#[must_use]
+pub fn permissions_in(location: &str) -> Vec<String> {
     let fragment = location.split('#').nth(1).expect("a fragment");
     let access = fragment
         .split('&')

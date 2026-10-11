@@ -5,6 +5,8 @@ use time::OffsetDateTime;
 
 use crate::admin::auth::models::{AdminLoginResponse, RefreshTokenResponse};
 use crate::admin::auth::rate_limit;
+pub use crate::admin::auth::routes::sso_session::SessionOrigin;
+use crate::admin::auth::routes::sso_session::{mark_sso, LOGIN_TIME};
 use crate::api_state::{ApiStateTrait, ApiStateWrapper};
 use crate::response::ApiResponse;
 use crate::token_service::TokenService;
@@ -129,33 +131,6 @@ pub async fn handle_password_failure(
     ApiResponse::unauthorized("Invalid credentials")
 }
 
-/// Key in a refresh token's `device_info` holding the role UUIDs an SSO
-/// sign-in mapped to.
-pub const SSO_ROLE_UUIDS: &str = "sso_role_uuids";
-
-/// The roles an SSO refresh token was issued with, still-existing ones only.
-///
-/// `None` when the token carries no snapshot, which the caller must treat as
-/// "sign in again" rather than mint an empty session.
-pub async fn sso_roles_from_refresh(
-    device_info: Option<&serde_json::Value>,
-    data: &ApiStateWrapper,
-) -> Option<Vec<r_data_core_core::permissions::role::Role>> {
-    let uuids = device_info?.get(SSO_ROLE_UUIDS)?.as_array()?;
-    let mut roles = Vec::new();
-    for uuid in uuids
-        .iter()
-        .filter_map(|v| v.as_str().and_then(|s| s.parse::<uuid::Uuid>().ok()))
-    {
-        match data.role_service().get_role(uuid).await {
-            Ok(Some(role)) => roles.push(role),
-            Ok(None) => log::debug!("Mapped role {uuid} no longer exists"),
-            Err(e) => log::warn!("Failed to load mapped role {uuid}: {e}"),
-        }
-    }
-    Some(roles)
-}
-
 /// The session artefacts a successful sign-in produces.
 pub struct IssuedSession {
     pub tokens: crate::token_service::TokenPair,
@@ -173,11 +148,17 @@ pub struct IssuedSession {
 /// the account's stored roles; a single-sign-on login passes the roles its
 /// token's groups mapped to, because those are never stored.
 ///
+/// `origin` decides what the refresh token carries. An [`SessionOrigin::Sso`]
+/// session snapshots the mapped roles and is marked as SSO, whatever the
+/// account's `is_sso_provisioned` flag says — an email-adopted account is a
+/// local account by flag, and must still not fall back to stored roles.
+///
 /// Returns `None` when something internal failed; the reason is logged, and
 /// callers should answer with a generic failure rather than say more.
 pub async fn issue_session_with_roles(
     user: &mut AdminUser,
     roles: &[r_data_core_core::permissions::role::Role],
+    origin: SessionOrigin,
     repo: &AdminUserRepository,
     data: &ApiStateWrapper,
 ) -> Option<IssuedSession> {
@@ -204,13 +185,12 @@ pub async fn issue_session_with_roles(
     let refresh_repo = RefreshTokenRepository::new(data.db_pool().clone());
     let mut device_info = serde_json::json!({
         "user_agent": "login",
-        "login_time": OffsetDateTime::now_utc()
+        LOGIN_TIME: OffsetDateTime::now_utc()
     });
-    // An SSO account stores no roles, so the refresh token carries the mapped
-    // ones. Without them a refresh would mint an empty session.
-    if user.is_sso_provisioned {
-        device_info[SSO_ROLE_UUIDS] =
-            serde_json::json!(roles.iter().map(|r| r.base.uuid).collect::<Vec<_>>());
+    // An SSO session's authority is the mapped roles, so the refresh token
+    // carries them; a refresh never reads the account's stored roles.
+    if origin == SessionOrigin::Sso {
+        mark_sso(&mut device_info, roles);
     }
     let device_info = Some(device_info);
     if let Err(e) = refresh_repo
@@ -258,7 +238,7 @@ pub async fn issue_session(
     data: &ApiStateWrapper,
 ) -> Option<IssuedSession> {
     let roles = load_user_roles(user, data, repo).await;
-    issue_session_with_roles(user, &roles, repo, data).await
+    issue_session_with_roles(user, &roles, SessionOrigin::Local, repo, data).await
 }
 
 /// Issue a session and answer with the standard login response.

@@ -7,6 +7,7 @@ pub mod oidc;
 mod oidc_log;
 pub mod password_reset;
 pub mod session;
+pub mod sso_session;
 
 // Re-export everything including utoipa __path_* types needed by docs/mod.rs
 pub use api_key_token::*;
