@@ -191,7 +191,7 @@
                     <!-- Forgot Password Dialog (mail configured) -->
                     <v-dialog
                         v-model="forgotPasswordDialog"
-                        max-width="440"
+                        :max-width="getDialogMaxWidth('small')"
                         persistent
                     >
                         <v-card>
@@ -262,6 +262,7 @@
 </template>
 
 <script setup lang="ts">
+    import { getDialogMaxWidth } from '@/design-system/components'
     import { ref, reactive, onMounted, onUnmounted } from 'vue'
     import { useRouter } from 'vue-router'
     import { useAuthStore } from '@/stores/auth'

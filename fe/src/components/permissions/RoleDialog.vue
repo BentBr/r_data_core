@@ -1,9 +1,8 @@
 <template>
     <v-dialog
-        :model-value="modelValue"
+        v-model="model"
         :max-width="getDialogMaxWidth('form')"
         persistent
-        @update:model-value="$emit('update:modelValue', $event)"
     >
         <v-card>
             <v-card-title class="pa-6">
@@ -116,7 +115,6 @@
     } from '@/types/schemas'
 
     interface Props {
-        modelValue: boolean
         editingRole?: Role | null
         loading?: boolean
         resourceTypes: ResourceNamespace[]
@@ -125,10 +123,9 @@
     }
 
     interface Emits {
-        (e: 'update:modelValue', value: boolean): void
-
         (e: 'save', data: CreateRoleRequest | UpdateRoleRequest): void
     }
+    const model = defineModel<boolean>({ required: true })
 
     const props = withDefaults(defineProps<Props>(), {
         editingRole: null,
@@ -158,9 +155,9 @@
 
     // Reset form when dialog opens/closes or editingRole changes
     watch(
-        () => [props.modelValue, props.editingRole],
+        () => [model.value, props.editingRole],
         () => {
-            if (props.modelValue) {
+            if (model.value) {
                 if (props.editingRole) {
                     formData.value = {
                         name: props.editingRole.name,
@@ -200,7 +197,7 @@
     }
 
     const handleClose = () => {
-        emit('update:modelValue', false)
+        model.value = false
     }
 
     const handleSave = () => {

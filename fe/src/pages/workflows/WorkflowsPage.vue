@@ -198,7 +198,7 @@
 
     const deleteDialogConfig = computed(() => ({
         title: t('workflows.delete.title'),
-        maxWidth: '500px',
+        maxWidth: 'small' as const,
         persistent: false,
     }))
 

@@ -1,9 +1,8 @@
 <template>
     <v-dialog
-        :model-value="modelValue"
+        v-model="model"
         :max-width="getDialogMaxWidth('default')"
         persistent
-        @update:model-value="$emit('update:modelValue', $event)"
     >
         <v-card>
             <v-card-title class="d-flex align-center pa-6">
@@ -55,7 +54,7 @@
                 <v-btn
                     color="primary"
                     variant="flat"
-                    @click="$emit('update:modelValue', false)"
+                    @click="model = false"
                 >
                     {{ t('common.close') }}
                 </v-btn>
@@ -74,15 +73,14 @@
 
     // Props
     interface Props {
-        modelValue: boolean
         apiKey: string
     }
+    const model = defineModel<boolean>({ required: true })
 
     const props = defineProps<Props>()
 
     // Emits
     const emit = defineEmits<{
-        'update:modelValue': [value: boolean]
         'copy-success': []
         'copy-failure': []
     }>()

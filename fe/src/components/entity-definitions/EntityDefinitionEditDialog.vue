@@ -1,6 +1,6 @@
 <template>
     <v-dialog
-        v-model="showDialog"
+        v-model="model"
         :max-width="getDialogMaxWidth('form')"
     >
         <v-card>
@@ -104,21 +104,18 @@
 </template>
 
 <script setup lang="ts">
-    import { ref, computed, watch } from 'vue'
+    import { ref, watch } from 'vue'
     import { useTranslations } from '@/composables/useTranslations'
     import IconPicker from '@/components/common/IconPicker.vue'
     import { getDialogMaxWidth } from '@/design-system/components'
     import type { EntityDefinition, UpdateEntityDefinitionRequest } from '@/types/schemas'
 
     interface Props {
-        modelValue: boolean
         definition: EntityDefinition | null
         loading?: boolean
     }
 
     interface Emits {
-        (e: 'update:modelValue', value: boolean): void
-
         (e: 'update', data: UpdateEntityDefinitionRequest): void
     }
 
@@ -128,11 +125,7 @@
 
     const emit = defineEmits<Emits>()
     const { t } = useTranslations()
-
-    const showDialog = computed({
-        get: () => props.modelValue,
-        set: value => emit('update:modelValue', value),
-    })
+    const model = defineModel<boolean>({ required: true })
 
     const formValid = ref(false)
     const formRef = ref<HTMLFormElement | null>(null)
@@ -149,7 +142,7 @@
     })
 
     const closeDialog = () => {
-        showDialog.value = false
+        model.value = false
     }
 
     const updateEntityDefinition = () => {

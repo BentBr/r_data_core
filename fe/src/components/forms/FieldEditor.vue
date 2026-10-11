@@ -1,6 +1,6 @@
 <template>
     <v-dialog
-        v-model="showDialog"
+        v-model="model"
         :max-width="getDialogMaxWidth('form')"
         persistent
         :retain-focus="false"
@@ -284,24 +284,17 @@
     import { getDialogMaxWidth } from '@/design-system/components'
 
     interface Props {
-        modelValue: boolean
         field?: FieldDefinition
     }
 
     interface Emits {
-        (e: 'update:modelValue', value: boolean): void
-
         (e: 'save', field: FieldDefinition): void
     }
 
     const props = defineProps<Props>()
     const emit = defineEmits<Emits>()
     const { t } = useTranslations()
-
-    const showDialog = computed({
-        get: () => props.modelValue,
-        set: value => emit('update:modelValue', value),
-    })
+    const model = defineModel<boolean>({ required: true })
 
     const isEditing = computed(() => !!props.field)
 
@@ -488,7 +481,7 @@
     )
 
     const closeDialog = () => {
-        showDialog.value = false
+        model.value = false
         resetForm()
     }
 

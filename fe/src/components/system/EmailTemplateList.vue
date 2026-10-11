@@ -122,7 +122,7 @@
         title: t('system.email_templates.delete'),
         confirmText: t('system.email_templates.delete'),
         cancelText: t('common.cancel'),
-        maxWidth: '400px',
+        maxWidth: 'small' as const,
     }))
 
     const load = async () => {

@@ -1,6 +1,6 @@
 <template>
     <v-dialog
-        v-model="dialogVisible"
+        v-model="model"
         :max-width="getDialogMaxWidth('form')"
         persistent
     >
@@ -117,15 +117,12 @@
     import type { DynamicEntity, EntityDefinition, UpdateEntityRequest } from '@/types/schemas'
 
     interface Props {
-        modelValue: boolean
         entity: DynamicEntity | null
         entityDefinition: EntityDefinition | null
         loading?: boolean
     }
 
     interface Emits {
-        (e: 'update:modelValue', value: boolean): void
-
         (e: 'update', data: UpdateEntityRequest): void
     }
 
@@ -151,10 +148,7 @@
     const fieldErrors = ref<Record<string, string>>({})
 
     // Computed properties
-    const dialogVisible = computed({
-        get: () => props.modelValue,
-        set: value => emit('update:modelValue', value),
-    })
+    const model = defineModel<boolean>({ required: true })
 
     const availableParents = computed((): Array<{ title: string; uuid: string }> => {
         if (!props.entity?.entity_type) {
@@ -258,7 +252,7 @@
     })
 
     const closeDialog = () => {
-        dialogVisible.value = false
+        model.value = false
         formData.value = {
             data: {
                 published: false,
@@ -269,7 +263,7 @@
     }
 
     // Watch for dialog visibility changes
-    watch(dialogVisible, visible => {
+    watch(model, visible => {
         if (visible && props.entity) {
             initializeFormData()
         } else if (!visible) {
@@ -281,7 +275,7 @@
     watch(
         () => props.entity,
         entity => {
-            if (entity && dialogVisible.value) {
+            if (entity && model.value) {
                 initializeFormData()
             }
         }

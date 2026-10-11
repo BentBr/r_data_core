@@ -1,9 +1,8 @@
 <template>
     <v-dialog
-        :model-value="modelValue"
+        v-model="model"
         :max-width="getDialogMaxWidth('editor')"
         persistent
-        @update:model-value="$emit('update:modelValue', $event)"
     >
         <v-card data-testid="email-template-editor">
             <v-card-title class="pa-6">
@@ -151,7 +150,7 @@
                 <v-btn
                     variant="text"
                     color="mutedForeground"
-                    @click="$emit('update:modelValue', false)"
+                    @click="model = false"
                 >
                     {{ t('common.cancel') }}
                 </v-btn>
@@ -178,14 +177,13 @@
     import type { EmailTemplate } from '@/api/clients/email-templates'
 
     interface Props {
-        modelValue: boolean
         template: EmailTemplate | null
     }
 
     interface Emits {
-        (e: 'update:modelValue', value: boolean): void
         (e: 'saved'): void
     }
+    const model = defineModel<boolean>({ required: true })
 
     const props = defineProps<Props>()
     const emit = defineEmits<Emits>()
@@ -319,7 +317,7 @@
                 })
                 showSuccess(t('system.email_templates.created'))
             }
-            emit('update:modelValue', false)
+            model.value = false
             emit('saved')
         } catch (err) {
             handleError(err)

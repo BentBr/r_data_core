@@ -1,6 +1,6 @@
 <template>
     <v-dialog
-        v-model="dialogVisible"
+        v-model="model"
         :max-width="getDialogMaxWidth('form')"
         persistent
     >
@@ -227,15 +227,12 @@
     }
 
     interface Props {
-        modelValue: boolean
         entityDefinitions: EntityDefinition[]
         loading?: boolean
         defaultParent?: DynamicEntity | null
     }
 
     interface Emits {
-        (e: 'update:modelValue', value: boolean): void
-
         (e: 'create', data: CreateEntityRequest): void
 
         (e: 'error', error: Error | ValidationError): void
@@ -282,10 +279,7 @@
     const pathSetByParent = ref(false)
 
     // Computed properties
-    const dialogVisible = computed({
-        get: () => props.modelValue,
-        set: value => emit('update:modelValue', value),
-    })
+    const model = defineModel<boolean>({ required: true })
 
     const availableEntityTypes = computed(() => {
         return props.entityDefinitions
@@ -594,7 +588,7 @@
             parentDebounceTimer = null
         }
 
-        dialogVisible.value = false
+        model.value = false
         fieldErrors.value = {}
         formData.value = {
             entity_type: '',
@@ -613,7 +607,7 @@
     }
 
     // Watch for dialog visibility changes
-    watch(dialogVisible, visible => {
+    watch(model, visible => {
         if (!visible) {
             closeDialog()
         }
@@ -636,7 +630,7 @@
         () => props.defaultParent,
         async newParent => {
             // Only prefill if dialog is open AND entity_type is already selected
-            if (newParent && dialogVisible.value && formData.value.entity_type) {
+            if (newParent && model.value && formData.value.entity_type) {
                 pathSetByParent.value = true
                 formData.value.parent_uuid = (newParent.field_data.uuid as string) || null
 
@@ -661,7 +655,7 @@
     )
 
     // Watch for when dialog opens to potentially set default parent if already selected
-    watch(dialogVisible, async visible => {
+    watch(model, async visible => {
         if (visible && props.defaultParent && formData.value.entity_type) {
             pathSetByParent.value = true
             formData.value.parent_uuid = (props.defaultParent.field_data.uuid as string) || null

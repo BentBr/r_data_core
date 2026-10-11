@@ -2,6 +2,7 @@ import { describe, it, expect, afterEach } from 'vitest'
 import { mount, DOMWrapper, type VueWrapper } from '@vue/test-utils'
 import DialogManager from './DialogManager.vue'
 import type { DialogConfig } from '@/types/schemas'
+import { dialogTokens } from '@/design-system/tokens'
 
 describe('DialogManager', () => {
     let wrapper: VueWrapper | undefined
@@ -97,17 +98,87 @@ describe('DialogManager', () => {
     })
 
     it('uses the config max width over the default', () => {
-        wrapper = mountDialog({ config: config({ maxWidth: '1234px' }) })
+        wrapper = mountDialog({ config: config({ maxWidth: 'wide' }) })
 
-        expect(body().html()).toContain('1234px')
+        expect(body().html()).toContain(dialogTokens.maxWidths.wide)
     })
 
     it('falls back to the design-system width when config gives none', () => {
         wrapper = mountDialog()
 
-        // 600px is the 'default' dialog token; a hardcoded literal here would
-        // not survive a token change, which is the point of the helper.
-        expect(body().html()).toContain('600px')
+        expect(body().html()).toContain(dialogTokens.maxWidths.default)
+    })
+
+    // The layout-only variant: a dialog with its own buttons reuses the card,
+    // padding and sizing instead of rebuilding the scaffold around a bare
+    // v-dialog, which is what fifteen components were each doing.
+    describe('layout-only variant', () => {
+        it('replaces the default buttons with the actions slot', () => {
+            wrapper = mount(DialogManager, {
+                props: { modelValue: true, config: config() },
+                slots: {
+                    default: '<p>body</p>',
+                    actions: '<button class="bespoke">Send</button>',
+                },
+                global: { stubs: { teleport: false } },
+            })
+
+            expect(body().find('.bespoke').exists()).toBe(true)
+            // The built-in pair must be gone, not merely hidden behind it.
+            expect(buttonWith('confirm')).toBeUndefined()
+            expect(buttonWith('cancel')).toBeUndefined()
+        })
+
+        it('hands the slot a close function so it need not touch the model', async () => {
+            wrapper = mount(DialogManager, {
+                props: { modelValue: true, config: config() },
+                slots: {
+                    default: '<p>body</p>',
+                    actions: `<template #actions="{ close }">
+                        <button class="bespoke" @click="close">Dismiss</button>
+                    </template>`,
+                },
+                global: { stubs: { teleport: false } },
+            })
+
+            await body().find('.bespoke').trigger('click')
+
+            const emits = wrapper.emitted('update:modelValue') ?? []
+            expect(emits[emits.length - 1]).toEqual([false])
+        })
+
+        it('passes loading and disabled through to the slot', () => {
+            wrapper = mount(DialogManager, {
+                props: { modelValue: true, config: config(), loading: true, disabled: true },
+                slots: {
+                    default: '<p>body</p>',
+                    actions: `<template #actions="{ loading, disabled }">
+                        <span class="flags">{{ loading }}-{{ disabled }}</span>
+                    </template>`,
+                },
+                global: { stubs: { teleport: false } },
+            })
+
+            expect(body().find('.flags').text()).toBe('true-true')
+        })
+
+        it('still renders the default buttons when no slot is given', () => {
+            wrapper = mountDialog()
+
+            expect(buttonWith('confirm')).toBeDefined()
+            expect(buttonWith('cancel')).toBeDefined()
+        })
+
+        it('lets the title be overridden by slot', () => {
+            wrapper = mount(DialogManager, {
+                props: { modelValue: true, config: config() },
+                slots: { default: '<p>body</p>', title: '<span class="t">Custom</span>' },
+                global: { stubs: { teleport: false } },
+            })
+
+            expect(body().find('.t').text()).toBe('Custom')
+            expect(body().text()).not.toContain('Revoke key')
+        })
     })
 
     it('is not persistent unless the config says so', () => {

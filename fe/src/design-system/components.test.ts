@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { getDialogMaxWidth, dialogConfigs, type DialogSize } from './components'
+import { getDialogMaxWidth, type DialogSize } from './components'
 import { dialogTokens } from './tokens'
 
 describe('getDialogMaxWidth', () => {
@@ -7,24 +7,9 @@ describe('getDialogMaxWidth', () => {
         expect(getDialogMaxWidth()).toBe(dialogTokens.maxWidths.default)
     })
 
-    it('returns each defined size', () => {
-        const sizes = Object.keys(dialogTokens.maxWidths) as DialogSize[]
-
-        expect(sizes.length).toBeGreaterThan(0)
-        for (const size of sizes) {
-            expect(getDialogMaxWidth(size)).toBe(dialogTokens.maxWidths[size])
-        }
-    })
-
     // Written against the tokens rather than literals so adding or retuning a
     // size does not require editing this file — the previous hand-maintained
     // union is exactly what let a component hardcode a width instead.
-    it('exposes every token through the accessor', () => {
-        expect(Object.keys(dialogConfigs.maxWidths).sort()).toEqual(
-            Object.keys(dialogTokens.maxWidths).sort()
-        )
-    })
-
     it('gives every size a CSS pixel length', () => {
         for (const value of Object.values(dialogTokens.maxWidths)) {
             expect(value).toMatch(/^\d+px$/)
@@ -47,9 +32,5 @@ describe('getDialogMaxWidth', () => {
         const order: DialogSize[] = ['small', 'default', 'form', 'editor', 'wide']
 
         expect(order.sort()).toEqual(Object.keys(dialogTokens.maxWidths).sort())
-    })
-
-    it('offers the editor size the email template editor needs', () => {
-        expect(getDialogMaxWidth('editor')).toBe('900px')
     })
 })

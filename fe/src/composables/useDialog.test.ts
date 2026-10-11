@@ -11,7 +11,7 @@ describe('useDialog', () => {
         const { dialogConfig } = useDialog()
         expect(dialogConfig.value).toEqual({
             title: '',
-            maxWidth: '600px',
+            maxWidth: 'default' as const,
             persistent: false,
         })
     })
@@ -30,7 +30,7 @@ describe('useDialog', () => {
         const { showDialog, dialogConfig, openDialog } = useDialog()
         const config = {
             title: 'Test Dialog',
-            maxWidth: '800px',
+            maxWidth: 'form' as const,
             persistent: true,
         }
         openDialog(config)
@@ -40,7 +40,7 @@ describe('useDialog', () => {
 
     it('should close dialog and reset state', () => {
         const { showDialog, loading, disabled, openDialog, closeDialog } = useDialog()
-        openDialog({ title: 'Test', maxWidth: '600px', persistent: false })
+        openDialog({ title: 'Test', maxWidth: 'default' as const, persistent: false })
         loading.value = true
         disabled.value = true
         closeDialog()
@@ -67,11 +67,11 @@ describe('useDialog', () => {
 
     it('should update dialog config when opening new dialog', () => {
         const { dialogConfig, openDialog } = useDialog()
-        openDialog({ title: 'First', maxWidth: '600px', persistent: false })
+        openDialog({ title: 'First', maxWidth: 'default' as const, persistent: false })
         expect(dialogConfig.value.title).toBe('First')
-        openDialog({ title: 'Second', maxWidth: '800px', persistent: true })
+        openDialog({ title: 'Second', maxWidth: 'form' as const, persistent: true })
         expect(dialogConfig.value.title).toBe('Second')
-        expect(dialogConfig.value.maxWidth).toBe('800px')
+        expect(dialogConfig.value.maxWidth).toBe('form')
         expect(dialogConfig.value.persistent).toBe(true)
     })
 })

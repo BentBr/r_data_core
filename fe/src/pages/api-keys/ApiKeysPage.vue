@@ -311,7 +311,7 @@
         title: t('api_keys.revoke.title'),
         confirmText: t('api_keys.revoke.button'),
         cancelText: t('common.cancel'),
-        maxWidth: '400px',
+        maxWidth: 'small' as const,
     }))
 
     // Methods

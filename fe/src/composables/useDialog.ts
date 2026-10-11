@@ -5,7 +5,7 @@ export function useDialog() {
     const showDialog = ref(false)
     const dialogConfig = ref<DialogConfig>({
         title: '',
-        maxWidth: '600px',
+        maxWidth: 'default' as const,
         persistent: false,
     })
     const loading = ref(false)

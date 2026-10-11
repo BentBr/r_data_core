@@ -552,14 +552,14 @@
         title: t('permissions.page.roles.delete.title') || 'Delete Role',
         confirmText: t('permissions.page.roles.delete.confirm') || 'Delete',
         cancelText: t('permissions.page.roles.delete.cancel') || 'Cancel',
-        maxWidth: '400px',
+        maxWidth: 'small' as const,
     }))
 
     const deleteUserDialogConfig = computed(() => ({
         title: t('permissions.page.users.delete.title'),
         confirmText: t('permissions.page.users.delete.confirm'),
         cancelText: t('permissions.page.users.delete.cancel'),
-        maxWidth: '400px',
+        maxWidth: 'small' as const,
     }))
 
     // Helper function to get role names for a user
