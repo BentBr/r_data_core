@@ -31,6 +31,9 @@ pub const DEFAULT_MAX_CONNECTIONS: usize = 1024;
 /// which the builder does not do by itself — so without this a connection
 /// that sends half a request line holds its task forever.
 ///
+/// `header_read_timeout` also bounds the time to the first byte: a client that
+/// connects and sends nothing is dropped after the same interval.
+///
 /// `idle_timeout` bounds the whole connection, not the gap between requests:
 /// hyper 1 has no idle timer, so the connection future is wrapped in a timeout.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -122,6 +125,26 @@ pub async fn serve(
         tokio::spawn(async move {
             // Held for the life of the connection; dropped with the task.
             let _permit = permit;
+
+            // The auto builder sniffs the HTTP version from the first bytes
+            // before hyper's header timer starts, so a client that sends
+            // nothing would otherwise hold its slot for `idle_timeout`.
+            // `peek` leaves the byte for hyper to read.
+            match tokio::time::timeout(limits.header_read_timeout, stream.peek(&mut [0u8; 1])).await
+            {
+                Ok(Ok(n)) if n > 0 => {}
+                Ok(_) => {
+                    log::debug!("connection from {peer} closed before sending anything");
+                    return;
+                }
+                Err(_) => {
+                    log::debug!(
+                        "connection from {peer} sent nothing within {:?}",
+                        limits.header_read_timeout
+                    );
+                    return;
+                }
+            }
 
             let service = hyper::service::service_fn(move |req| {
                 let state = Arc::clone(&state);

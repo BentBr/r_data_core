@@ -281,3 +281,5 @@ pub fn log_startup(config: &Config, addr: SocketAddr) {
 
 #[cfg(test)]
 mod http_tests;
+#[cfg(test)]
+mod limits_tests;
