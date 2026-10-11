@@ -56,10 +56,13 @@ async fn signed_in_before(stack: &OauthStack, subject: &str) -> String {
 async fn a_tampered_signature_is_refused() {
     let stack = OauthStack::start(ROLE_MAP).await;
     let mut token = stack.mint_token("tamper", &["rdc-admins"]);
-    // Flip the last signature character; appending would also work but a
-    // same-length change is the harder case for a lazy verifier.
-    let last = token.pop().expect("a token");
-    token.push(if last == 'A' { 'B' } else { 'A' });
+    // Change a character in the middle of the signature segment: the last
+    // character of an RSA signature can carry only padding bits, so changing it
+    // may be rejected as malformed, or accepted by a lenient decoder.
+    let sig_start = token.rfind('.').expect("a signature segment") + 1;
+    let at = sig_start + (token.len() - sig_start) / 2;
+    let original = token.as_bytes()[at] as char;
+    token.replace_range(at..=at, if original == 'A' { "B" } else { "A" });
 
     let (status, body) = exchange(&stack, &token).await;
 

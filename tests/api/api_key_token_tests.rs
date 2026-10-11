@@ -124,6 +124,8 @@ async fn an_unknown_key_is_refused() {
     let resp = test::call_service(&app, with_key("rdc_not_a_key").to_request()).await;
 
     assert_eq!(resp.status(), StatusCode::UNAUTHORIZED);
+    let body = test::read_body(resp).await;
+    assert!(!String::from_utf8_lossy(&body).contains("access_token"));
 }
 
 #[serial]
@@ -141,6 +143,8 @@ async fn a_revoked_key_is_refused() {
     let resp = test::call_service(&app, with_key(&key).to_request()).await;
 
     assert_eq!(resp.status(), StatusCode::UNAUTHORIZED);
+    let body = test::read_body(resp).await;
+    assert!(!String::from_utf8_lossy(&body).contains("access_token"));
 }
 
 #[serial]
@@ -158,6 +162,8 @@ async fn an_expired_key_is_refused() {
     let resp = test::call_service(&app, with_key(&key).to_request()).await;
 
     assert_eq!(resp.status(), StatusCode::UNAUTHORIZED);
+    let body = test::read_body(resp).await;
+    assert!(!String::from_utf8_lossy(&body).contains("access_token"));
 }
 
 #[serial]
@@ -214,14 +220,14 @@ async fn a_jwt_cannot_mint_another_jwt_here() {
     .await;
 
     assert_eq!(resp.status(), StatusCode::UNAUTHORIZED);
+    let body: serde_json::Value = test::read_body_json(resp).await;
+    assert!(body["data"]["access_token"].is_null(), "{body}");
 }
 
 #[serial]
 #[tokio::test]
 async fn minting_is_throttled_at_the_exchange_threshold() {
-    // Only valid keys reach the handler (the extractor refuses the rest first),
-    // so the bucket bounds minting, not guessing. Full loop: the threshold
-    // itself is what is under test.
+    // Full loop: the threshold itself is what is under test.
     let (app, pool, _) = setup_test_app().await.unwrap();
     let (_, _, key) = key_owner(&pool.pool).await;
 
@@ -236,6 +242,12 @@ async fn minting_is_throttled_at_the_exchange_threshold() {
     let resp = test::call_service(&app, with_key(&key).to_request()).await;
 
     assert_eq!(resp.status(), StatusCode::TOO_MANY_REQUESTS);
+    let body: serde_json::Value = test::read_body_json(resp).await;
+    assert_eq!(
+        body["message"],
+        "Too many exchange attempts, try again later"
+    );
+    assert!(body["data"]["access_token"].is_null(), "{body}");
 }
 
 #[serial]
@@ -258,9 +270,12 @@ async fn a_mint_is_audited_without_key_material() {
     .await
     .expect("exactly one audit row for this key");
     assert_eq!(actor, Some(owner));
-    let details = details.expect("details").to_string();
-    assert!(details.contains("api_key_exchange"), "{details}");
-    assert!(details.contains(KEY_NAME), "{details}");
+    let details = details.expect("details");
+    assert_eq!(
+        details,
+        serde_json::json!({ "action": "api_key_exchange", "key": KEY_NAME })
+    );
+    let details = details.to_string();
     assert!(!details.contains(&key), "the key itself must not be logged");
     assert!(!details.contains(&token), "the token must not be logged");
     let key_hash: String = sqlx::query_scalar("SELECT key_hash FROM api_keys WHERE uuid = $1")
@@ -269,4 +284,15 @@ async fn a_mint_is_audited_without_key_material() {
         .await
         .unwrap();
     assert!(!details.contains(&key_hash), "nor its hash");
+}
+
+#[serial]
+#[tokio::test]
+async fn invalid_keys_are_refused_and_never_throttled() {
+    let (app, _pool, _) = setup_test_app().await.unwrap();
+
+    for n in 0..=API_KEY_EXCHANGE_RATE_LIMIT_MAX {
+        let resp = test::call_service(&app, with_key("rdc_not_a_key").to_request()).await;
+        assert_eq!(resp.status(), StatusCode::UNAUTHORIZED, "attempt {n}");
+    }
 }
