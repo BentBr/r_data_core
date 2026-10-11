@@ -223,8 +223,9 @@ pub async fn build_api_state(
 /// operator who sets `RDC_OIDC_ISSUER` and gets a server that quietly ignores
 /// it has no way to tell the feature is off until someone cannot log in.
 ///
-/// Public so the integration tests wire single sign-on the same way the binary
-/// does. A test-only copy of this would be one change away from testing a
+/// The binary calls this. The integration tests share its body through
+/// [`build_oidc_services_from_map`], so they wire single sign-on the same way
+/// the binary does. A test-only copy would be one change away from testing a
 /// configuration the server never builds.
 ///
 /// # Errors

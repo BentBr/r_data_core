@@ -53,11 +53,11 @@ such a token from another credential; see the Authentication table.
 | GET | `/auth/permissions` | Get user's permissions |
 | GET | `/auth/oidc/start` | Begin a browser single sign-on (PKCE + state + nonce); 404 when SSO is not configured; rate-limited (`OidcStart` bucket) |
 | GET | `/auth/oidc/callback` | Provider return; completes the sign-in and redirects with session tokens in the fragment |
-| POST | `/auth/oidc/exchange` | Trade a provider ID token for a local access token (machine callers, e.g. the MCP server) |
+| POST | `/auth/oidc/exchange` | Trade a provider ID token for a local access token (machine callers, e.g. the MCP server); rate-limited (`Login` bucket, failed verifications only) |
 | POST | `/auth/api-key/token` | Trade an API key (`X-API-Key`) for a short-lived access token bounded by the key's owner; no refresh token; rate-limited (`ApiKeyExchange` bucket) |
 
 Rate-limit buckets live in `admin/auth/rate_limit.rs` (`Bucket::{Login, Register, OidcStart, ApiKeyExchange}`).
-`OidcStart` and `ApiKeyExchange` count every call and use their own constants in
+`OidcStart` counts every call; `ApiKeyExchange` counts every call that reaches the handler (valid keys only: invalid keys are rejected by the extractor first). `/auth/oidc/exchange` counts failed verifications only, in the `Login` bucket. The first two use their own constants in
 `core/config/security.rs` (`OIDC_START_RATE_LIMIT_*`, `API_KEY_EXCHANGE_RATE_LIMIT_*`:
 60 per 60 s) rather than the login limits. SSO sessions record `sso_role_uuids`,
 `login_time` and `sso` in `refresh_tokens.device_info` (`routes/sso_session.rs`).

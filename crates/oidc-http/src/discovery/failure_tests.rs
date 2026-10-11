@@ -105,21 +105,11 @@ async fn a_404_is_unreachable() {
 
 #[tokio::test]
 async fn a_provider_that_is_not_listening_is_unreachable() {
-    // Bind to learn a free port, then close it so the connection is refused.
-    let port = TcpListener::bind("127.0.0.1:0")
+    // Port 1 is privileged and unused: nothing listens, so the connection is
+    // refused (no bind-then-drop port-reuse race).
+    let error = fetch(&client().expect("client"), "http://127.0.0.1:1", true)
         .await
-        .unwrap()
-        .local_addr()
-        .unwrap()
-        .port();
-
-    let error = fetch(
-        &client().expect("client"),
-        &format!("http://127.0.0.1:{port}"),
-        true,
-    )
-    .await
-    .expect_err("refused");
+        .expect_err("refused");
 
     assert!(matches!(error, KeySourceError::Unreachable(_)), "{error}");
 }
