@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.4.14](https://github.com/BentBr/r_data_core/compare/core-v0.4.13...core-v0.4.14) (2026-10-11)
+
+
+### Bug Fixes
+
+* **ci:** download only the MCP artefacts in the publish job ([e84b2d7](https://github.com/BentBr/r_data_core/commit/e84b2d7b60c951466756cd576853e1874e44f542))
+
 ## [0.4.13](https://github.com/BentBr/r_data_core/compare/core-v0.4.12...core-v0.4.13) (2026-10-10)
 
 
