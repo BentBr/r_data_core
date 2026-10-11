@@ -51,14 +51,10 @@ pub async fn get_user_roles(
     // Verify user exists
     match repo.find_by_uuid(&user_uuid).await {
         Ok(None) => return ApiResponse::<()>::not_found("User not found"),
-        Ok(Some(user)) => {
-            if let Some(refusal) = super::refuse_sso_role_assignment(&user) {
-                return refusal;
-            }
-        }
+        Ok(Some(_)) => {}
         Err(e) => {
             error!("Failed to get user: {e}");
-            return ApiResponse::<()>::internal_error("Failed to assign roles");
+            return ApiResponse::<()>::internal_error("Failed to retrieve roles");
         }
     }
 

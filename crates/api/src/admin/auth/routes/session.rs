@@ -159,7 +159,7 @@ pub async fn admin_refresh_token(
         let Some(roles) = sso_roles_from_refresh(refresh_token.device_info.as_ref(), &data).await
         else {
             log::warn!("SSO refresh token carries no role snapshot; refusing");
-            return ApiResponse::unauthorized("Re-authentication required");
+            return ApiResponse::unauthorized("Invalid refresh token");
         };
         roles
     } else {

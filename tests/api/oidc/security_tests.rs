@@ -332,3 +332,25 @@ async fn the_roles_endpoint_refuses_a_provisioned_user_too() {
         .expect("count");
     assert_eq!(stored, 0, "a refused assignment must leave nothing behind");
 }
+
+#[actix_web::test]
+async fn reading_a_provisioned_users_roles_still_works() {
+    // The refusal is for writes. A client that loads a user's roles must not
+    // fail just because the account is federated.
+    let (app, pool, _) = setup_test_app().await.expect("test app");
+    let federated = federated_account(&pool, "federated-roles-read").await;
+    let token = get_auth_token(&app, &pool).await;
+
+    let response = test::call_service(
+        &app,
+        test::TestRequest::get()
+            .uri(&format!("/admin/api/v1/users/{federated}/roles"))
+            .insert_header(("Authorization", format!("Bearer {token}")))
+            .to_request(),
+    )
+    .await;
+
+    assert_eq!(response.status(), StatusCode::OK);
+    let body: serde_json::Value = test::read_body_json(response).await;
+    assert_eq!(body["data"], serde_json::json!([]));
+}
