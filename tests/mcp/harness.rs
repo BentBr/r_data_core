@@ -20,7 +20,7 @@ use actix_web::{App, HttpServer};
 use r_data_core_api::api_state::configure_app;
 use r_data_core_mcp::auth::{ApiKeyBackend, CallerContext, Permissions};
 use r_data_core_mcp::client::RdcClient;
-use r_data_core_mcp::config::Config;
+use r_data_core_mcp::config::{Config, Credential};
 use r_data_core_mcp::tools::RdcTools;
 use r_data_core_test_support::TestDatabase;
 
@@ -90,7 +90,10 @@ impl McpTestStack {
         Arc::new(
             RdcClient::new(
                 &config,
-                Arc::new(ApiKeyBackend::new(&config, self.api_key.clone()).expect("auth backend")),
+                Arc::new(
+                    ApiKeyBackend::new(&config, Credential::new(self.api_key.clone()))
+                        .expect("auth backend"),
+                ),
             )
             .expect("client"),
         )

@@ -15,6 +15,10 @@ no_docker_compose = true
         "alias" = "test-fe"
         "execution" = "docker compose exec -T node pnpm test:run"
         "description" = "Runs vitest (single run) for FE testing"
+    [commands.test-npm-pkg]
+        "alias" = "test-npm-pkg"
+        "execution" = "docker compose run --rm --no-deps -T -v \"$(pwd)/mcp-npm-package:/pkg\" -w /pkg node node --test"
+        "description" = "Runs the npm installer's node:test suite inside the node container"
     [commands.clippy]
         "alias" = "clippy"
         "execution" = " cargo +nightly clippy --workspace --all-targets --all-features -- -D clippy::all -D warnings -D clippy::pedantic -D clippy::nursery "

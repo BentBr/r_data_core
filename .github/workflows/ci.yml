@@ -32,14 +32,15 @@ jobs:
             frontend: ${{ steps.filter.outputs.frontend || steps.default.outputs.frontend }}
         steps:
             -   name: Checkout
-                uses: actions/checkout@v7
+                uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7
                 with:
+                    persist-credentials: false
                     # Fetch enough history for paths-filter to work
                     fetch-depth: 0
 
             -   name: Detect changes (PR only)
                 if: ${{ github.event_name == 'pull_request' }}
-                uses: dorny/paths-filter@v4
+                uses: dorny/paths-filter@ceb8a2b8f2d89434be7ff52d3de7ec3738c5cc9d  # v4
                 id: filter
                 with:
                     filters: |
@@ -84,10 +85,12 @@ jobs:
         runs-on: ubuntu-latest
         steps:
             -   name: Checkout
-                uses: actions/checkout@v7
+                uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7
+                with:
+                    persist-credentials: false
 
             -   name: Install Rust (nightly)
-                uses: dtolnay/rust-toolchain@master
+                uses: dtolnay/rust-toolchain@e2a55d2ffb04f378e9626c28d38b36d230d1e12f  # master (Dependabot refreshes this pin)
                 with:
                     toolchain: nightly
                     components: clippy,rustfmt
@@ -96,13 +99,13 @@ jobs:
                 run: rustc -Vv
 
             -   name: Cache cargo registry + build
-                uses: swatinem/rust-cache@v2
+                uses: swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6  # v2
                 with:
                     workspaces: .
 
             -   name: Cache cargo bin directory
                 id: cache-cargo-bin
-                uses: actions/cache@v6
+                uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9  # v6
                 with:
                     path: ~/.cargo/bin
                     key: ${{ runner.os }}-cargo-bin-${{ hashFiles('Cargo.lock') }}
@@ -127,21 +130,23 @@ jobs:
         runs-on: ubuntu-latest
         steps:
             -   name: Checkout
-                uses: actions/checkout@v7
+                uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7
+                with:
+                    persist-credentials: false
 
             -   name: Install Rust (nightly)
-                uses: dtolnay/rust-toolchain@master
+                uses: dtolnay/rust-toolchain@e2a55d2ffb04f378e9626c28d38b36d230d1e12f  # master (Dependabot refreshes this pin)
                 with:
                     toolchain: nightly
                     components: clippy,rustfmt
 
             -   name: Cache cargo registry + build
-                uses: swatinem/rust-cache@v2
+                uses: swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6  # v2
                 with:
                     workspaces: .
 
             -   name: Cache cargo bin directory
-                uses: actions/cache@v6
+                uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9  # v6
                 with:
                     path: ~/.cargo/bin
                     key: ${{ runner.os }}-cargo-bin-${{ hashFiles('Cargo.lock') }}
@@ -161,16 +166,18 @@ jobs:
         runs-on: ubuntu-latest
         steps:
             -   name: Checkout
-                uses: actions/checkout@v7
+                uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7
+                with:
+                    persist-credentials: false
 
             -   name: Install Rust (nightly)
-                uses: dtolnay/rust-toolchain@master
+                uses: dtolnay/rust-toolchain@e2a55d2ffb04f378e9626c28d38b36d230d1e12f  # master (Dependabot refreshes this pin)
                 with:
                     toolchain: nightly
                     components: clippy,rustfmt
 
             -   name: Cache cargo registry + build
-                uses: swatinem/rust-cache@v2
+                uses: swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6  # v2
                 with:
                     workspaces: .
 
@@ -185,21 +192,23 @@ jobs:
         runs-on: ubuntu-latest
         steps:
             -   name: Checkout
-                uses: actions/checkout@v7
+                uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7
+                with:
+                    persist-credentials: false
 
             -   name: Install Rust (nightly)
-                uses: dtolnay/rust-toolchain@master
+                uses: dtolnay/rust-toolchain@e2a55d2ffb04f378e9626c28d38b36d230d1e12f  # master (Dependabot refreshes this pin)
                 with:
                     toolchain: nightly
                     components: clippy,rustfmt
 
             -   name: Cache cargo registry + build
-                uses: swatinem/rust-cache@v2
+                uses: swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6  # v2
                 with:
                     workspaces: .
 
             -   name: Cache cargo bin directory
-                uses: actions/cache@v6
+                uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9  # v6
                 with:
                     path: ~/.cargo/bin
                     key: ${{ runner.os }}-cargo-bin-${{ hashFiles('Cargo.lock') }}
@@ -222,7 +231,9 @@ jobs:
         # Note: Using docker run instead of services: block to support workflow_call (reusable workflows)
         steps:
             -   name: Checkout
-                uses: actions/checkout@v7
+                uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7
+                with:
+                    persist-credentials: false
 
             -   name: Start PostgreSQL
                 run: |
@@ -252,18 +263,18 @@ jobs:
                     done
 
             -   name: Install Rust (nightly)
-                uses: dtolnay/rust-toolchain@master
+                uses: dtolnay/rust-toolchain@e2a55d2ffb04f378e9626c28d38b36d230d1e12f  # master (Dependabot refreshes this pin)
                 with:
                     toolchain: nightly
                     components: clippy,rustfmt
 
             -   name: Cache cargo registry + build
-                uses: swatinem/rust-cache@v2
+                uses: swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6  # v2
                 with:
                     workspaces: .
 
             -   name: Cache cargo bin directory
-                uses: actions/cache@v6
+                uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9  # v6
                 with:
                     path: ~/.cargo/bin
                     key: ${{ runner.os }}-cargo-bin-${{ hashFiles('Cargo.lock') }}
@@ -294,16 +305,18 @@ jobs:
         runs-on: ubuntu-latest
         steps:
             -   name: Checkout
-                uses: actions/checkout@v7
+                uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7
+                with:
+                    persist-credentials: false
 
             -   name: Install Rust (nightly)
-                uses: dtolnay/rust-toolchain@master
+                uses: dtolnay/rust-toolchain@e2a55d2ffb04f378e9626c28d38b36d230d1e12f  # master (Dependabot refreshes this pin)
                 with:
                     toolchain: nightly
                     components: clippy,rustfmt
 
             -   name: Cache cargo registry + build
-                uses: swatinem/rust-cache@v2
+                uses: swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6  # v2
                 with:
                     workspaces: .
 
@@ -319,16 +332,18 @@ jobs:
         runs-on: ubuntu-latest
         steps:
             -   name: Checkout
-                uses: actions/checkout@v7
+                uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7
+                with:
+                    persist-credentials: false
 
             -   name: Install Rust (nightly)
-                uses: dtolnay/rust-toolchain@master
+                uses: dtolnay/rust-toolchain@e2a55d2ffb04f378e9626c28d38b36d230d1e12f  # master (Dependabot refreshes this pin)
                 with:
                     toolchain: nightly
                     components: clippy,rustfmt
 
             -   name: Cache cargo registry + build
-                uses: swatinem/rust-cache@v2
+                uses: swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6  # v2
                 with:
                     workspaces: .
 
@@ -353,7 +368,9 @@ jobs:
         runs-on: ubuntu-latest
         steps:
             -   name: Checkout
-                uses: actions/checkout@v7
+                uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7
+                with:
+                    persist-credentials: false
 
             -   name: SQL boundary (queries stay in persistence)
                 run: ./scripts/check-sql-boundary.sh
@@ -369,15 +386,17 @@ jobs:
         runs-on: ubuntu-latest
         steps:
             -   name: Checkout
-                uses: actions/checkout@v7
+                uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7
+                with:
+                    persist-credentials: false
 
             -   name: Install Rust (nightly)
-                uses: dtolnay/rust-toolchain@master
+                uses: dtolnay/rust-toolchain@e2a55d2ffb04f378e9626c28d38b36d230d1e12f  # master (Dependabot refreshes this pin)
                 with:
                     toolchain: nightly
 
             -   name: Cache cargo bin directory
-                uses: actions/cache@v6
+                uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9  # v6
                 with:
                     path: ~/.cargo/bin
                     key: ${{ runner.os }}-cargo-bin-${{ hashFiles('Cargo.lock') }}
@@ -400,15 +419,17 @@ jobs:
         runs-on: ubuntu-latest
         steps:
             -   name: Checkout
-                uses: actions/checkout@v7
+                uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7
+                with:
+                    persist-credentials: false
 
             -   name: Install Rust (nightly)
-                uses: dtolnay/rust-toolchain@master
+                uses: dtolnay/rust-toolchain@e2a55d2ffb04f378e9626c28d38b36d230d1e12f  # master (Dependabot refreshes this pin)
                 with:
                     toolchain: nightly
 
             -   name: Cache cargo bin directory
-                uses: actions/cache@v6
+                uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9  # v6
                 with:
                     path: ~/.cargo/bin
                     key: ${{ runner.os }}-cargo-bin-${{ hashFiles('Cargo.lock') }}
@@ -431,15 +452,17 @@ jobs:
         runs-on: ubuntu-latest
         steps:
             -   name: Checkout
-                uses: actions/checkout@v7
+                uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7
+                with:
+                    persist-credentials: false
 
             -   name: Install Rust 1.96.0 (MSRV)
-                uses: dtolnay/rust-toolchain@master
+                uses: dtolnay/rust-toolchain@e2a55d2ffb04f378e9626c28d38b36d230d1e12f  # master (Dependabot refreshes this pin)
                 with:
                     toolchain: 1.96.0
 
             -   name: Cache cargo registry + build
-                uses: swatinem/rust-cache@v2
+                uses: swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6  # v2
                 with:
                     workspaces: .
 
@@ -457,20 +480,22 @@ jobs:
         runs-on: ubuntu-latest
         steps:
             -   name: Checkout
-                uses: actions/checkout@v7
+                uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7
+                with:
+                    persist-credentials: false
 
             -   name: Setup pnpm
-                uses: pnpm/action-setup@v6
+                uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86  # v6
                 with:
                     version: 10.33.4
 
             -   name: Setup Node.js
-                uses: actions/setup-node@v7
+                uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1  # v7
                 with:
                     node-version: '22'
 
             -   name: Cache pnpm store
-                uses: actions/cache@v6
+                uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9  # v6
                 with:
                     path: fe/.pnpm-store
                     key: ${{ runner.os }}-pnpm-store-${{ hashFiles('fe/pnpm-lock.yaml') }}
@@ -487,20 +512,22 @@ jobs:
         runs-on: ubuntu-latest
         steps:
             -   name: Checkout
-                uses: actions/checkout@v7
+                uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7
+                with:
+                    persist-credentials: false
 
             -   name: Setup pnpm
-                uses: pnpm/action-setup@v6
+                uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86  # v6
                 with:
                     version: 10.33.4
 
             -   name: Setup Node.js
-                uses: actions/setup-node@v7
+                uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1  # v7
                 with:
                     node-version: '22'
 
             -   name: Cache pnpm store
-                uses: actions/cache@v6
+                uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9  # v6
                 with:
                     path: fe/.pnpm-store
                     key: ${{ runner.os }}-pnpm-store-${{ hashFiles('fe/pnpm-lock.yaml') }}
@@ -521,20 +548,22 @@ jobs:
         runs-on: ubuntu-latest
         steps:
             -   name: Checkout
-                uses: actions/checkout@v7
+                uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7
+                with:
+                    persist-credentials: false
 
             -   name: Setup pnpm
-                uses: pnpm/action-setup@v6
+                uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86  # v6
                 with:
                     version: 10.33.4
 
             -   name: Setup Node.js
-                uses: actions/setup-node@v7
+                uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1  # v7
                 with:
                     node-version: '22'
 
             -   name: Cache pnpm store
-                uses: actions/cache@v6
+                uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9  # v6
                 with:
                     path: fe/.pnpm-store
                     key: ${{ runner.os }}-pnpm-store-${{ hashFiles('fe/pnpm-lock.yaml') }}
@@ -555,20 +584,22 @@ jobs:
         runs-on: ubuntu-latest
         steps:
             -   name: Checkout
-                uses: actions/checkout@v7
+                uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7
+                with:
+                    persist-credentials: false
 
             -   name: Setup pnpm
-                uses: pnpm/action-setup@v6
+                uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86  # v6
                 with:
                     version: 10.33.4
 
             -   name: Setup Node.js
-                uses: actions/setup-node@v7
+                uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1  # v7
                 with:
                     node-version: '22'
 
             -   name: Cache pnpm store
-                uses: actions/cache@v6
+                uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9  # v6
                 with:
                     path: fe/.pnpm-store
                     key: ${{ runner.os }}-pnpm-store-${{ hashFiles('fe/pnpm-lock.yaml') }}
@@ -589,20 +620,22 @@ jobs:
         runs-on: ubuntu-latest
         steps:
             -   name: Checkout
-                uses: actions/checkout@v7
+                uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7
+                with:
+                    persist-credentials: false
 
             -   name: Setup pnpm
-                uses: pnpm/action-setup@v6
+                uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86  # v6
                 with:
                     version: 10.33.4
 
             -   name: Setup Node.js
-                uses: actions/setup-node@v7
+                uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1  # v7
                 with:
                     node-version: '22'
 
             -   name: Cache pnpm store
-                uses: actions/cache@v6
+                uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9  # v6
                 with:
                     path: fe/.pnpm-store
                     key: ${{ runner.os }}-pnpm-store-sharp-${{ hashFiles('fe/pnpm-lock.yaml') }}
@@ -623,7 +656,7 @@ jobs:
                 run: pnpm build
 
             -   name: Upload build artifacts
-                uses: actions/upload-artifact@v7
+                uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9  # v7
                 with:
                     name: frontend-dist
                     path: fe/dist
@@ -638,20 +671,22 @@ jobs:
         runs-on: ubuntu-latest
         steps:
             -   name: Checkout
-                uses: actions/checkout@v7
+                uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7
+                with:
+                    persist-credentials: false
 
             -   name: Setup pnpm
-                uses: pnpm/action-setup@v6
+                uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86  # v6
                 with:
                     version: 10.33.4
 
             -   name: Setup Node.js
-                uses: actions/setup-node@v7
+                uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1  # v7
                 with:
                     node-version: '22'
 
             -   name: Cache pnpm store
-                uses: actions/cache@v6
+                uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9  # v6
                 with:
                     path: fe/.pnpm-store
                     key: ${{ runner.os }}-pnpm-store-${{ hashFiles('fe/pnpm-lock.yaml') }}
@@ -692,17 +727,17 @@ jobs:
                     done
 
             -   name: Install Rust (nightly)
-                uses: dtolnay/rust-toolchain@master
+                uses: dtolnay/rust-toolchain@e2a55d2ffb04f378e9626c28d38b36d230d1e12f  # master (Dependabot refreshes this pin)
                 with:
                     toolchain: nightly
 
             -   name: Cache cargo registry + build
-                uses: swatinem/rust-cache@v2
+                uses: swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6  # v2
                 with:
                     workspaces: .
 
             -   name: Cache cargo bin directory
-                uses: actions/cache@v6
+                uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9  # v6
                 with:
                     path: ~/.cargo/bin
                     key: ${{ runner.os }}-cargo-bin-${{ hashFiles('Cargo.lock') }}
@@ -768,7 +803,7 @@ jobs:
                 run: pnpm exec playwright test --config=e2e/playwright.config.ts
 
             -   name: Upload Playwright report
-                uses: actions/upload-artifact@v7
+                uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9  # v7
                 if: ${{ !cancelled() }}
                 with:
                     name: playwright-report
@@ -776,7 +811,7 @@ jobs:
                     retention-days: 7
 
             -   name: Upload test results
-                uses: actions/upload-artifact@v7
+                uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9  # v7
                 if: ${{ !cancelled() }}
                 with:
                     name: playwright-test-results

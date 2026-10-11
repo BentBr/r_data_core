@@ -40,11 +40,15 @@ on:
 env:
     REGISTRY: ghcr.io
 
+# Nothing by default; every job below declares what it needs.
+permissions: {}
+
 jobs:
     # Determine build configuration (shared by all jobs)
     prepare:
         if: ${{ github.event_name != 'workflow_call' || inputs.build_backend != false }}
         runs-on: ubuntu-latest
+        permissions: {}
         outputs:
             tag: ${{ steps.tag.outputs.tag }}
             is_release: ${{ steps.tag.outputs.is_release }}
@@ -55,19 +59,25 @@ jobs:
                 run: echo "owner_lc=${GITHUB_REPOSITORY_OWNER,,}" >> $GITHUB_OUTPUT
             -   name: Determine tag
                 id: tag
+                env:
+                    INPUT_VERSION: ${{ inputs.version }}
+                    INPUT_TAG: ${{ inputs.tag }}
+                    RELEASE_TAG: ${{ github.event.release.tag_name }}
+                    EVENT_NAME: ${{ github.event_name }}
+                    REF: ${{ github.ref }}
                 run: |
-                    if [ -n "${{ inputs.version }}" ]; then
-                      echo "tag=${{ inputs.version }}" >> $GITHUB_OUTPUT
-                      echo "is_release=true" >> $GITHUB_OUTPUT
-                    elif [ "${{ github.event_name }}" == "release" ]; then
-                      echo "tag=${{ github.event.release.tag_name }}" >> $GITHUB_OUTPUT
-                      echo "is_release=true" >> $GITHUB_OUTPUT
-                    elif [ "${{ github.ref }}" == "refs/heads/develop" ]; then
-                      echo "tag=develop" >> $GITHUB_OUTPUT
-                      echo "is_release=false" >> $GITHUB_OUTPUT
+                    if [ -n "$INPUT_VERSION" ]; then
+                      echo "tag=$INPUT_VERSION" >> "$GITHUB_OUTPUT"
+                      echo "is_release=true" >> "$GITHUB_OUTPUT"
+                    elif [ "$EVENT_NAME" == "release" ]; then
+                      echo "tag=$RELEASE_TAG" >> "$GITHUB_OUTPUT"
+                      echo "is_release=true" >> "$GITHUB_OUTPUT"
+                    elif [ "$REF" == "refs/heads/develop" ]; then
+                      echo "tag=develop" >> "$GITHUB_OUTPUT"
+                      echo "is_release=false" >> "$GITHUB_OUTPUT"
                     else
-                      echo "tag=${{ inputs.tag }}" >> $GITHUB_OUTPUT
-                      echo "is_release=false" >> $GITHUB_OUTPUT
+                      echo "tag=$INPUT_TAG" >> "$GITHUB_OUTPUT"
+                      echo "is_release=false" >> "$GITHUB_OUTPUT"
                     fi
 
     # Build AMD64 backend images on native amd64 runner
@@ -79,17 +89,19 @@ jobs:
             packages: write
         steps:
             -   name: Checkout
-                uses: actions/checkout@v7
+                uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7
+                with:
+                    persist-credentials: false
             -   name: Set up Docker Buildx
-                uses: docker/setup-buildx-action@v4
+                uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069  # v4
             -   name: Log in to GitHub Container Registry
-                uses: docker/login-action@v4
+                uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f  # v4
                 with:
                     registry: ${{ env.REGISTRY }}
                     username: ${{ github.actor }}
                     password: ${{ secrets.GITHUB_TOKEN }}
             -   name: Build and push AMD64 backend images
-                uses: docker/bake-action@v7
+                uses: docker/bake-action@018cb6412ab401ebaa809aa5f85966b74628600f  # v7
                 with:
                     files: .docker/docker-bake.hcl
                     targets: backend-amd64
@@ -111,17 +123,19 @@ jobs:
             packages: write
         steps:
             -   name: Checkout
-                uses: actions/checkout@v7
+                uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7
+                with:
+                    persist-credentials: false
             -   name: Set up Docker Buildx
-                uses: docker/setup-buildx-action@v4
+                uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069  # v4
             -   name: Log in to GitHub Container Registry
-                uses: docker/login-action@v4
+                uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f  # v4
                 with:
                     registry: ${{ env.REGISTRY }}
                     username: ${{ github.actor }}
                     password: ${{ secrets.GITHUB_TOKEN }}
             -   name: Build and push ARM64 backend images
-                uses: docker/bake-action@v7
+                uses: docker/bake-action@018cb6412ab401ebaa809aa5f85966b74628600f  # v7
                 with:
                     files: .docker/docker-bake.hcl
                     targets: backend-arm64
@@ -145,7 +159,7 @@ jobs:
             attestations: write
         steps:
             -   name: Log in to GitHub Container Registry
-                uses: docker/login-action@v4
+                uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f  # v4
                 with:
                     registry: ${{ env.REGISTRY }}
                     username: ${{ github.actor }}
@@ -219,7 +233,7 @@ jobs:
                     fi
                     echo "digest=${DIGEST}" >> "$GITHUB_OUTPUT"
             -   name: Generate artifact attestation for r-data-core
-                uses: actions/attest-build-provenance@v4
+                uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8  # v4
                 with:
                     subject-name: ${{ env.REGISTRY }}/${{ needs.prepare.outputs.owner_lc }}/r-data-core
                     subject-digest: ${{ steps.backend-digest.outputs.digest }}
@@ -237,25 +251,27 @@ jobs:
             attestations: write
         steps:
             -   name: Checkout
-                uses: actions/checkout@v7
+                uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7
+                with:
+                    persist-credentials: false
             -   name: Set lowercase repo owner
                 id: repo
                 run: echo "owner_lc=${GITHUB_REPOSITORY_OWNER,,}" >> $GITHUB_OUTPUT
             -   name: Set up QEMU
-                uses: docker/setup-qemu-action@v4
+                uses: docker/setup-qemu-action@99012661954931238ded8c8b007157a8430204e1  # v4
                 with:
                     platforms: linux/amd64,linux/arm64
             -   name: Set up Docker Buildx
-                uses: docker/setup-buildx-action@v4
+                uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069  # v4
             -   name: Log in to GitHub Container Registry
-                uses: docker/login-action@v4
+                uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f  # v4
                 with:
                     registry: ${{ env.REGISTRY }}
                     username: ${{ github.actor }}
                     password: ${{ secrets.GITHUB_TOKEN }}
             -   name: Extract metadata (tags, labels)
                 id: meta
-                uses: docker/metadata-action@v6
+                uses: docker/metadata-action@dc802804100637a589fabce1cb79ff13a1411302  # v6
                 with:
                     images: ${{ env.REGISTRY }}/${{ steps.repo.outputs.owner_lc }}/r-data-core-admin-fe
                     tags: |
@@ -273,7 +289,7 @@ jobs:
                         type=raw,value=${{ inputs.tag }},enable=${{ github.event_name == 'workflow_dispatch' && inputs.version == '' }}
             -   name: Build and push
                 id: build-push
-                uses: docker/build-push-action@v7
+                uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc  # v7
                 with:
                     context: .
                     file: ./.docker/fe/Dockerfile
@@ -301,7 +317,7 @@ jobs:
                       exit 1
                     fi
             -   name: Generate artifact attestation
-                uses: actions/attest-build-provenance@v4
+                uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8  # v4
                 with:
                     subject-name: ${{ env.REGISTRY }}/${{ steps.repo.outputs.owner_lc }}/r-data-core-admin-fe
                     subject-digest: ${{ steps.build-push.outputs.digest }}
@@ -313,6 +329,7 @@ jobs:
         needs: [ prepare, merge-backend-manifests, build-frontend ]
         runs-on: ubuntu-latest
         if: always() && (needs.merge-backend-manifests.result == 'success' || needs.build-frontend.result == 'success')
+        permissions: {}
         steps:
             -   name: Summary
                 env:
@@ -361,22 +378,20 @@ jobs:
             contents: write
         steps:
             -   name: Checkout
-                uses: actions/checkout@v7
+                uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7
+                with:
+                    persist-credentials: false
             -   name: Setup pnpm
-                uses: pnpm/action-setup@v6
+                uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86  # v6
                 with:
                     version: 10.33.4
             -   name: Setup Node.js
-                uses: actions/setup-node@v7
+                uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1  # v7
                 with:
                     node-version: '22'
-            -   name: Cache pnpm store
-                uses: actions/cache@v6
-                with:
-                    path: fe/.pnpm-store
-                    key: ${{ runner.os }}-pnpm-store-${{ hashFiles('fe/pnpm-lock.yaml') }}
-                    restore-keys: |
-                        ${{ runner.os }}-pnpm-store-
+                    # Release-only job: a cache restored from a branch's run
+                    # could seed the ZIP attached to the release.
+                    package-manager-cache: false
             -   name: Install dependencies
                 working-directory: fe
                 run: pnpm install --frozen-lockfile
@@ -385,20 +400,26 @@ jobs:
                 run: pnpm build
             -   name: Determine version
                 id: version
+                env:
+                    INPUT_VERSION: ${{ inputs.version }}
+                    INPUT_TAG_NAME: ${{ inputs.tag_name }}
+                    RELEASE_TAG: ${{ github.event.release.tag_name }}
                 run: |
-                    if [ -n "${{ inputs.version }}" ]; then
-                      echo "version=${{ inputs.version }}" >> $GITHUB_OUTPUT
-                      echo "tag_name=${{ inputs.tag_name }}" >> $GITHUB_OUTPUT
+                    if [ -n "$INPUT_VERSION" ]; then
+                      echo "version=$INPUT_VERSION" >> "$GITHUB_OUTPUT"
+                      echo "tag_name=$INPUT_TAG_NAME" >> "$GITHUB_OUTPUT"
                     else
-                      echo "version=${{ github.event.release.tag_name }}" >> $GITHUB_OUTPUT
-                      echo "tag_name=${{ github.event.release.tag_name }}" >> $GITHUB_OUTPUT
+                      echo "version=$RELEASE_TAG" >> "$GITHUB_OUTPUT"
+                      echo "tag_name=$RELEASE_TAG" >> "$GITHUB_OUTPUT"
                     fi
             -   name: Create ZIP archive
+                env:
+                    VERSION: ${{ steps.version.outputs.version }}
                 run: |
                     cd fe/dist
-                    zip -r ../../r-data-core-admin-fe-${{ steps.version.outputs.version }}.zip .
+                    zip -r "../../r-data-core-admin-fe-${VERSION}.zip" .
             -   name: Upload to release
-                uses: softprops/action-gh-release@v3
+                uses: softprops/action-gh-release@efb35369e0ad2afab669f228072c1b0d510eae64  # v3
                 with:
                     tag_name: ${{ steps.version.outputs.tag_name }}
                     files: r-data-core-admin-fe-${{ steps.version.outputs.version }}.zip
