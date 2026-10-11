@@ -18,7 +18,7 @@
                     color="mutedForeground"
                     @click="closeDialog"
                 >
-                    {{ cancelText }}
+                    {{ resolvedCancelText }}
                 </v-btn>
                 <v-btn
                     v-if="showConfirmButton"
@@ -28,7 +28,7 @@
                     :disabled="disabled"
                     @click="confirmAction"
                 >
-                    {{ confirmText }}
+                    {{ resolvedConfirmText }}
                 </v-btn>
             </v-card-actions>
         </v-card>
@@ -37,6 +37,7 @@
 
 <script setup lang="ts">
     import { computed } from 'vue'
+    import { useTranslations } from '@/composables/useTranslations'
     import type { DialogConfig } from '@/types/schemas'
     import { getDialogMaxWidth, buttonConfigs } from '@/design-system/components'
 
@@ -56,13 +57,19 @@
         (e: 'confirm'): void
     }
 
+    // confirmText/cancelText deliberately have no literal default. They used
+    // to default to 'Confirm' and 'Cancel', and five of the six callers pass
+    // neither — so those dialogs showed English buttons in a German UI. The
+    // fallback is now a translation, resolved below.
     const props = withDefaults(defineProps<Props>(), {
         loading: false,
         disabled: false,
         showConfirmButton: true,
-        confirmText: 'Confirm',
-        cancelText: 'Cancel',
+        confirmText: undefined,
+        cancelText: undefined,
     })
+
+    const { t } = useTranslations()
 
     const emit = defineEmits<Emits>()
 
@@ -72,6 +79,9 @@
     })
 
     const dialogConfig = computed(() => props.config)
+
+    const resolvedConfirmText = computed(() => props.confirmText ?? t('common.confirm'))
+    const resolvedCancelText = computed(() => props.cancelText ?? t('common.cancel'))
 
     const computedMaxWidth = computed(() => {
         return dialogConfig.value.maxWidth ?? getDialogMaxWidth('default')

@@ -143,7 +143,7 @@
         <!-- Log detail dialog -->
         <v-dialog
             v-model="showDetail"
-            max-width="800px"
+            :max-width="getDialogMaxWidth('form')"
         >
             <v-card v-if="detailLog">
                 <v-card-title class="pa-6">
@@ -285,6 +285,7 @@
 </template>
 
 <script setup lang="ts">
+    import { getDialogMaxWidth } from '@/design-system/components'
     import { ref, computed, onMounted } from 'vue'
     import { useTranslations } from '@/composables/useTranslations'
     import { useErrorHandler } from '@/composables/useErrorHandler'

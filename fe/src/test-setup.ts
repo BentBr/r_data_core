@@ -22,12 +22,24 @@ config.global.plugins = [vuetify]
 // component entirely, kept several dialogs stuck at low coverage, and let a
 // real form bug ship because the <v-form> inside a dialog never rendered.
 //
-// This stub renders the slot in place instead. Branches execute, and unlike
-// `teleport: false` the content stays inside the wrapper, so `wrapper.find()`
-// keeps working and no node leaks into document.body between tests.
+// This stub asks for the slot instead of discarding it, which makes the
+// surrounding component's own render create those child vnodes — so its
+// template lines execute and are measured. That is the win: UserProfileMenu
+// went 58% -> 100% with no test change.
 //
-// A render function rather than a `template`, so this does not require the
-// runtime template compiler.
+// What it does NOT do is give you a queryable DOM. Vue coerces a Teleport's
+// children to a text vnode when they are re-created for a stub component, so
+// the rendered output is the string "[object Object]". A test that asserts on
+// markup *inside* a dialog or menu still needs `stubs: { teleport: false }`
+// on that mount plus `new DOMWrapper(document.body)` to query it, and must
+// unmount in afterEach so the teleported nodes do not leak into later tests.
+// See DialogManager.test.ts for that pattern.
+//
+// `teleport: false` globally is not the answer: it moves every dialog body to
+// document.body and breaks 24 existing tests that query through the wrapper.
+//
+// A render function rather than a `template`, so this needs no runtime
+// compiler.
 config.global.stubs = {
     teleport: defineComponent({
         name: 'TeleportStub',
