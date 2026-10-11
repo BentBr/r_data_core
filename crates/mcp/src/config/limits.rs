@@ -13,11 +13,14 @@ use super::{positive_u64, ConfigError};
 
 /// Seconds a client gets to finish sending request headers.
 pub const DEFAULT_HEADER_READ_TIMEOUT_SECS: u64 = 10;
-/// Seconds a connection may stay open in total.
+/// Seconds a connection may stay open before it is asked to close.
 ///
 /// A bound on the connection, not on idle time between requests: hyper 1 has
-/// no idle timer, so the whole connection future is bounded instead. Above the
-/// longest tool call (`run_workflow` waits at most 55 s) by a wide margin.
+/// no idle timer, so the whole connection is bounded instead. At the deadline
+/// the connection is shut down gracefully — a request in flight still gets its
+/// response — and only cut if it has not finished after a short grace period.
+/// Above the longest tool call (`run_workflow` waits at most 55 s) by a wide
+/// margin.
 pub const DEFAULT_IDLE_TIMEOUT_SECS: u64 = 120;
 /// Connections accepted at once; the rest are refused immediately.
 pub const DEFAULT_MAX_CONNECTIONS: usize = 1024;

@@ -377,7 +377,7 @@ client typically fetches it once per session.
 | `RDC_MCP_ALLOWED_HOSTS` | no | the resource URL's authority | `Host` values permitted |
 | `RDC_MCP_TIMEOUT_SECS` | no | `30` | Outbound HTTP timeout |
 | `RDC_MCP_HEADER_TIMEOUT_SECS` | no | `10` | Seconds a client gets to finish its request headers |
-| `RDC_MCP_IDLE_TIMEOUT_SECS` | no | `120` | Seconds a connection may stay open in total |
+| `RDC_MCP_IDLE_TIMEOUT_SECS` | no | `120` | Seconds a connection may stay open in total; at the limit it finishes the request in flight (up to 5 s more) and closes |
 | `RDC_MCP_MAX_CONNECTIONS` | no | `1024` | Open connections accepted at once; the rest are refused |
 
 Configuration refuses unsafe combinations at startup rather than at first use:

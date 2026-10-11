@@ -7,6 +7,7 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use hyper_util::rt::{TokioExecutor, TokioIo, TokioTimer};
+use hyper_util::server::conn::auto::UpgradeableConnection;
 use tokio::sync::Semaphore;
 
 pub use crate::config::{
@@ -15,6 +16,20 @@ pub use crate::config::{
 };
 
 use super::{routes, ServerState};
+
+mod lifetime;
+
+use lifetime::{run_bounded, Ended};
+
+/// How long a connection asked to close at its deadline may take to finish
+/// the request it is serving before it is cut.
+pub const SHUTDOWN_GRACE: Duration = Duration::from_secs(5);
+/// HTTP/2 keep-alive: how long a ping may go unanswered before the
+/// connection is considered dead.
+const HTTP2_KEEP_ALIVE_TIMEOUT: Duration = Duration::from_secs(20);
+/// Pause after a failed `accept`. The usual cause is running out of file
+/// descriptors, and retrying at once only spins the CPU until one frees up.
+const ACCEPT_BACKOFF: Duration = Duration::from_millis(100);
 
 /// Serve until `shutdown` fires.
 ///
@@ -38,6 +53,7 @@ pub async fn serve(
             Ok(pair) => pair,
             Err(e) => {
                 log::warn!("could not accept a connection: {e}");
+                tokio::time::sleep(ACCEPT_BACKOFF).await;
                 continue;
             }
         };
@@ -96,15 +112,28 @@ pub async fn serve(
                 .http2()
                 .timer(TokioTimer::new())
                 .keep_alive_interval(Some(Duration::from_secs(30)))
-                .keep_alive_timeout(limits.idle_timeout);
+                .keep_alive_timeout(HTTP2_KEEP_ALIVE_TIMEOUT);
 
             let connection = builder.serve_connection_with_upgrades(TokioIo::new(stream), service);
 
-            match tokio::time::timeout(limits.idle_timeout, connection).await {
-                Ok(Ok(())) => {}
-                Ok(Err(e)) => log::debug!("connection from {peer} ended: {e}"),
-                Err(_) => log::debug!(
-                    "connection from {peer} closed after {:?}",
+            // At the deadline the connection is asked to close rather than
+            // dropped: hyper finishes the request in flight, answers it, and
+            // then closes. Only a request still running after the grace
+            // period is cut.
+            match run_bounded(
+                connection,
+                limits.idle_timeout,
+                SHUTDOWN_GRACE,
+                UpgradeableConnection::graceful_shutdown,
+            )
+            .await
+            {
+                Ended::Finished(Ok(())) | Ended::Drained(Ok(())) => {}
+                Ended::Finished(Err(e)) | Ended::Drained(Err(e)) => {
+                    log::debug!("connection from {peer} ended: {e}");
+                }
+                Ended::Cut => log::debug!(
+                    "connection from {peer} cut: still busy {SHUTDOWN_GRACE:?} after its {:?} limit",
                     limits.idle_timeout
                 ),
             }
