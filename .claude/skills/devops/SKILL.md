@@ -87,6 +87,29 @@ blockers with the exact lines to add — never attempt a bypass.
 `.github/workflows/` mirrors the pre-push gate plus `generate-ts-check` and the
 structural guards: `check-sql-boundary.sh`, `check-file-length.sh`, the
 `architecture` layering test, `cargo-deny`, `cargo-machete`, and MSRV.
+`lint-workflows.yml` runs `zizmor`, `actionlint` and
+`.github/scripts/check-app-secret-scope.sh` (plus the bash fixture tests in
+`.github/scripts/tests/`) on any change under `.github/`.
+
+### Release trust anchors
+
+Not in the repo; all must be set on GitHub/npm (details in `docs/MCP.md`
+"Releasing"). The release App's two secrets (`RELEASE_APP_ID` and its private
+key) must exist before the branch adding them merges, or the next core release
+cannot tag the MCP.
+
+1. Release App: `contents: write` only; its secrets are read by
+   `release-please.yml` alone. `PR_APP_*` (pr-management.yml) is reduced to
+   `pull-requests: write` + `contents: read`.
+2. Tag ruleset on `refs/tags/mcp-v*` and `refs/tags/v*`: only the release App
+   may create/update.
+3. Immutable releases enabled.
+4. `release` environment with required reviewers; npm trusted publisher bound
+   to `mcp-release.yml` + environment `release`.
+
+`mcp-release.yml`'s `guard` job runs `check-release-tag.sh`: the tag's commit
+must be on `origin/main` and the release-please manifest there must name the
+tag's version.
 
 ## Security env vars
 

@@ -178,7 +178,12 @@ jobs:
     # Mirror the core tag into the mcp-v* series that mcp-release.yml listens
     # on.
     #
-    # Pushed with a GitHub App token rather than the default GITHUB_TOKEN:
+    # Pushed with the *release* App's token — an App that holds `contents: write`
+    # and is read by this workflow only (see
+    # .github/scripts/check-app-secret-scope.sh). The PR-management App is a
+    # different App with no write access to contents.
+    #
+    # An App token is used rather than the default GITHUB_TOKEN:
     # GitHub suppresses workflow runs for refs pushed by GITHUB_TOKEN to
     # prevent recursion, so that tag would appear and mcp-release.yml would
     # never start. An App-pushed tag is an ordinary push and does trigger it.
@@ -213,8 +218,8 @@ jobs:
                 id: app-token
                 uses: actions/create-github-app-token@v3
                 with:
-                    app-id: ${{ secrets.PR_APP_ID }}
-                    private-key: ${{ secrets.PR_APP_PRIVATE_KEY }}
+                    app-id: ${{ secrets.RELEASE_APP_ID }}
+                    private-key: ${{ secrets.RELEASE_APP_PRIVATE_KEY }}
 
             -   name: Checkout the release commit
                 uses: actions/checkout@v7

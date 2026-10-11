@@ -82,6 +82,42 @@ so a given version's asset list stays verifiable after it is superseded.
 
 ---
 
+## Releasing
+
+A release is cut by release-please on `main`; its `mcp-tag` job pushes the
+matching `mcp-v*` tag with the **release App**'s token, which starts
+`mcp-release.yml`. That workflow refuses any tag whose commit is not a
+release commit on `main` (`.github/scripts/check-release-tag.sh`), builds five
+targets, attests their provenance, uploads them once (an existing release's
+assets are never overwritten), and publishes the npm package. The package
+carries the release's `SHA256SUMS` inside the tarball, so an install verifies
+against sums covered by npm's provenance rather than by the release it is
+verifying.
+
+Settings that live on GitHub and npm rather than in this repository have to be
+in place for the guards above to mean anything. **`RELEASE_APP_ID` and
+`RELEASE_APP_PRIVATE_KEY` must exist before this change merges**, or the next
+core release fails to tag the MCP.
+
+1. **Create the release App** with repository permission `contents: write`
+   and nothing else, install it on this repository, and add its credentials
+   as the secrets `RELEASE_APP_ID` and `RELEASE_APP_PRIVATE_KEY`. Only
+   `release-please.yml` may read them (`check-app-secret-scope.sh` fails CI
+   otherwise).
+2. **Reduce the PR-management App** (`PR_APP_*`, used by `pr-management.yml`
+   on every branch push) to `pull-requests: write`, `contents: read` and
+   `metadata: read`, so it can no longer push a tag.
+3. **Tag ruleset.** A repository ruleset on `refs/tags/mcp-v*` and
+   `refs/tags/v*` restricting creation and update to the release App.
+4. **Immutable releases.** Enable them in the repository's release settings,
+   so a published asset cannot be replaced even by a maintainer.
+5. **`release` environment.** Create it with required reviewers (the
+   `publish` and `npm` jobs use it), and register the npm trusted publisher
+   for `@rdatacore/mcp-server` with workflow `mcp-release.yml` **and**
+   environment `release`.
+
+---
+
 ## Local (stdio)
 
 1. Create an API key in RDataCore: **Settings → API keys**.
