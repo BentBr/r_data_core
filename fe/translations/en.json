@@ -652,6 +652,7 @@
         "loading": "Loading..."
     },
     "common": {
+        "confirm": "Confirm",
         "cancel": "Cancel",
         "close": "Close",
         "save": "Save",
