@@ -16,6 +16,10 @@ pub enum Bucket {
     Login,
     /// Unauthenticated registration requests.
     Register,
+    /// Single-sign-on starts: every one costs a provider round trip.
+    OidcStart,
+    /// API-key → token exchanges.
+    ApiKeyExchange,
 }
 
 impl Bucket {
@@ -23,6 +27,8 @@ impl Bucket {
         match self {
             Self::Login => "login_rl",
             Self::Register => "register_rl",
+            Self::OidcStart => "oidc_start_rl",
+            Self::ApiKeyExchange => "api_key_exchange_rl",
         }
     }
 }
@@ -83,6 +89,16 @@ mod tests {
 
     #[test]
     fn buckets_do_not_share_a_counter() {
-        assert_ne!(Bucket::Login.prefix(), Bucket::Register.prefix());
+        let prefixes = [
+            Bucket::Login.prefix(),
+            Bucket::Register.prefix(),
+            Bucket::OidcStart.prefix(),
+            Bucket::ApiKeyExchange.prefix(),
+        ];
+        for (i, a) in prefixes.iter().enumerate() {
+            for b in &prefixes[i + 1..] {
+                assert_ne!(a, b);
+            }
+        }
     }
 }

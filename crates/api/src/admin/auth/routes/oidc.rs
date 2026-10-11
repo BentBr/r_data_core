@@ -77,12 +77,23 @@ pub struct ExchangeRequest {
 )]
 #[get("/auth/oidc/start")]
 pub async fn oidc_start(
+    req: actix_web::HttpRequest,
     data: web::Data<ApiStateWrapper>,
     query: web::Query<StartQuery>,
 ) -> impl Responder {
     let Some(flow) = configured_flow(&data) else {
         return ApiResponse::<()>::not_found("Single sign-on is not configured");
     };
+
+    // Unauthenticated and not free: each start is a provider round trip and
+    // a cache write. Every call counts, not only failures — there is no
+    // failure to count, and the cost is the same either way.
+    let rl_key = rate_limit::rate_limit_key(&req, rate_limit::Bucket::OidcStart);
+    if rate_limit::is_over_limit(data.cache_manager(), &rl_key).await {
+        log::warn!("Single-sign-on start rate limit hit for key {rl_key}");
+        return ApiResponse::<()>::too_many_requests("Too many sign-in attempts, try again later");
+    }
+    rate_limit::record_failure(data.cache_manager(), &rl_key).await;
 
     match flow.start(query.return_to.as_deref()).await {
         Ok(redirect) => HttpResponse::Found()

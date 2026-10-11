@@ -150,6 +150,7 @@ fn keypair() -> (EncodingKey, serde_json::Value) {
 struct MinimalState {
     pool: PgPool,
     nothing: (),
+    cache: Arc<CacheManager>,
     oidc: Option<Arc<OidcServices>>,
 }
 
@@ -179,7 +180,7 @@ impl ApiStateTrait for MinimalState {
         None
     }
     fn cache_manager_ref(&self) -> &dyn std::any::Any {
-        &self.nothing
+        &self.cache
     }
     fn workflow_service_ref(&self) -> &dyn std::any::Any {
         &self.nothing
@@ -261,6 +262,7 @@ pub fn state(idp: Option<&Idp>) -> ApiStateWrapper {
     ApiStateWrapper::new(MinimalState {
         pool,
         nothing: (),
+        cache,
         oidc,
     })
 }
