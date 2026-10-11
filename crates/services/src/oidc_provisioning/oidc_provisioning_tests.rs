@@ -135,16 +135,13 @@ async fn email_linking_is_refused_when_the_address_is_unverified() {
         .insert("ada@example.com".to_string(), local);
     let users = Arc::new(FakeUsers::with(vec![user(local, "ada", true)]));
 
-    let (resolved, _) = service(Arc::clone(&identities), Arc::clone(&users))
+    let err = service(Arc::clone(&identities), Arc::clone(&users))
         .resolve_or_provision(&claims("ada", &["rdc-ops"], false), &config(None, true))
         .await
-        .expect("should provision a new account instead");
+        .expect_err("an unverified address must neither adopt nor shadow the account");
 
-    assert_ne!(
-        resolved.uuid, local,
-        "an unverified address must not adopt an existing account"
-    );
-    assert_eq!(users.created_count(), 1);
+    assert!(matches!(err, Error::Auth(_)), "got {err:?}");
+    assert_eq!(users.created_count(), 0);
 }
 
 #[tokio::test]

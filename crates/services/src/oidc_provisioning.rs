@@ -97,10 +97,38 @@ impl OidcProvisioningService {
     /// Adopt or create an account for an identity signing in for the first time.
     async fn first_sign_in(&self, claims: &OidcClaims, config: &OidcConfig) -> Result<Uuid> {
         if let Some(existing) = self.adoptable_local_account(claims, config).await? {
+            // A super-admin account is granted inside RDataCore to a named
+            // person. The provider's say-so over an email address must not
+            // be able to hand it over.
+            let adoptee = self.users.find_by_uuid(&existing).await?;
+            if adoptee.is_some_and(|account| account.super_admin) {
+                return Err(Error::Auth(
+                    "a super-admin account cannot be adopted by single sign-on".to_string(),
+                ));
+            }
             return self
                 .identities
                 .link_identity(&claims.issuer, &claims.subject, existing)
                 .await;
+        }
+
+        // An unverified address that a local account already holds is a
+        // collision attempt (or a mistake); refuse it before any row exists.
+        if !claims.email_verified {
+            if let Some(email) = claims.email.as_deref() {
+                if self
+                    .identities
+                    .find_local_user_by_email(email)
+                    .await?
+                    .is_some()
+                {
+                    return Err(Error::Auth(
+                        "an account with this email address already exists; single sign-on \
+                         cannot create a second one"
+                            .to_string(),
+                    ));
+                }
+            }
         }
 
         let created = self.create_provisioned_user(claims).await?;
@@ -131,9 +159,13 @@ impl OidcProvisioningService {
     }
 
     async fn create_provisioned_user(&self, claims: &OidcClaims) -> Result<Uuid> {
+        // Only an address the provider vouches for is written to the
+        // account. An unverified one is attacker-chosen, and an account
+        // displaying it would lend it credibility it has not earned.
         let email = claims
             .email
             .clone()
+            .filter(|_| claims.email_verified)
             .unwrap_or_else(|| format!("{}@sso.invalid", claims.subject));
         let username = self.available_username(&email, claims).await;
         let (first, last) = split_name(claims.name.as_deref());
@@ -155,6 +187,21 @@ impl OidcProvisioningService {
                 creator_uuid: Uuid::nil(),
             })
             .await
+            .map_err(|e| match e {
+                // The address is already held by a local account and linking
+                // is off (or the address is unverified). That is a refusal of
+                // this sign-in, not an outage: report it as one.
+                Error::Database(sqlx::Error::Database(ref db))
+                    if db.code().as_deref() == Some("23505") =>
+                {
+                    Error::Auth(
+                        "an account with this email address already exists; single sign-on \
+                         cannot create a second one"
+                            .to_string(),
+                    )
+                }
+                other => other,
+            })
     }
 
     /// A username not already taken.
@@ -249,3 +296,6 @@ fn split_name(name: Option<&str>) -> (String, String) {
 
 #[cfg(test)]
 mod oidc_provisioning_tests;
+
+#[cfg(test)]
+mod adoption_tests;

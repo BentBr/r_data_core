@@ -264,6 +264,16 @@ unverified email address at a trusted issuer could claim someone else's
 account — including an administrator's. Turn it on only when you trust your
 provider's address verification, and only while migrating.
 
+Even with linking on and the address verified, a local account that holds
+`super_admin` is never adopted: the sign-in is refused. Super-admin is granted
+inside RDataCore, to a named person, and must not be reachable through
+whoever administers addresses at the provider.
+
+A first sign-in whose provider does not vouch for the address (`email_verified`
+absent or false) is provisioned with a placeholder address,
+`<subject>@sso.invalid`, rather than the one it claimed. If that claimed
+address already belongs to a local account, the sign-in is refused instead.
+
 ### Why the audience is required
 
 `RDC_OIDC_ISSUER` without `RDC_OIDC_AUDIENCE` fails startup.
