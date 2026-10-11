@@ -90,6 +90,14 @@ jobs:
                         runner: windows-latest
 
         steps:
+            -   name: Require the verified commit
+                env:
+                    TAG_SHA: ${{ needs.guard.outputs.tag_sha }}
+                shell: bash
+                run: |
+                    # An empty ref would make checkout fall back to the triggering ref.
+                    [ -n "$TAG_SHA" ] || { echo "guard produced no tag_sha" >&2; exit 1; }
+
             -   name: Checkout
                 uses: actions/checkout@v7
                 with:
@@ -156,12 +164,20 @@ jobs:
 
     publish:
         name: Publish release
-        needs: build
+        needs: [guard, build]
         runs-on: ubuntu-latest
         # Required reviewers live on this environment (operator step D7);
         # npm's trusted publisher is bound to it as well.
         environment: release
         steps:
+            -   name: Require the verified commit
+                env:
+                    TAG_SHA: ${{ needs.guard.outputs.tag_sha }}
+                shell: bash
+                run: |
+                    # An empty ref would make checkout fall back to the triggering ref.
+                    [ -n "$TAG_SHA" ] || { echo "guard produced no tag_sha" >&2; exit 1; }
+
             # Needed for .github/scripts/publish-to-pages.sh; the build jobs
             # check out for their own reasons, this job otherwise would not.
             -   name: Checkout
@@ -267,7 +283,7 @@ jobs:
     # exist, or the first `npx` of it fails with "no published mcp-v* release".
     npm:
         name: Publish to npm
-        needs: publish
+        needs: [guard, publish]
         runs-on: ubuntu-latest
         # Required reviewers live on this environment (operator step D7);
         # npm's trusted publisher is bound to it as well.
@@ -281,6 +297,14 @@ jobs:
             # this job cannot authenticate.
             id-token: write
         steps:
+            -   name: Require the verified commit
+                env:
+                    TAG_SHA: ${{ needs.guard.outputs.tag_sha }}
+                shell: bash
+                run: |
+                    # An empty ref would make checkout fall back to the triggering ref.
+                    [ -n "$TAG_SHA" ] || { echo "guard produced no tag_sha" >&2; exit 1; }
+
             -   name: Checkout
                 uses: actions/checkout@v7
                 with:
