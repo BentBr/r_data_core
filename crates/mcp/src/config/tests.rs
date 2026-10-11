@@ -193,3 +193,50 @@ fn an_empty_transport_falls_back_to_stdio() {
     let cfg = Config::from_map(&env(&pairs)).expect("empty transport means unset");
     assert!(matches!(cfg.transport, Transport::Stdio));
 }
+
+// ── server limits ───────────────────────────────────────────────────────────
+
+#[test]
+fn server_limits_have_safe_defaults() {
+    let cfg = Config::from_map(&env(&http_oidc())).expect("valid");
+    assert_eq!(
+        cfg.server_limits.header_read_timeout,
+        Duration::from_secs(10)
+    );
+    assert_eq!(cfg.server_limits.idle_timeout, Duration::from_secs(120));
+    assert_eq!(cfg.server_limits.max_connections, 1024);
+}
+
+#[test]
+fn server_limits_are_read_from_the_environment() {
+    let mut pairs = http_oidc();
+    pairs.push(("RDC_MCP_HEADER_TIMEOUT_SECS", "3"));
+    pairs.push(("RDC_MCP_IDLE_TIMEOUT_SECS", "45"));
+    pairs.push(("RDC_MCP_MAX_CONNECTIONS", "8"));
+    let cfg = Config::from_map(&env(&pairs)).expect("valid");
+    assert_eq!(
+        cfg.server_limits.header_read_timeout,
+        Duration::from_secs(3)
+    );
+    assert_eq!(cfg.server_limits.idle_timeout, Duration::from_secs(45));
+    assert_eq!(cfg.server_limits.max_connections, 8);
+}
+
+#[test]
+fn a_zero_or_non_numeric_limit_is_rejected() {
+    // Zero would mean "no connections" or "no time to read headers": a server
+    // that cannot serve anything is not a configuration to accept quietly.
+    for (key, value) in [
+        ("RDC_MCP_HEADER_TIMEOUT_SECS", "0"),
+        ("RDC_MCP_IDLE_TIMEOUT_SECS", "soon"),
+        ("RDC_MCP_MAX_CONNECTIONS", "-1"),
+    ] {
+        let mut pairs = http_oidc();
+        pairs.push((key, value));
+        let err = Config::from_map(&env(&pairs)).expect_err(key);
+        assert!(
+            matches!(err, ConfigError::InvalidNumber(name, _) if name == key),
+            "{key}={value} gave {err}"
+        );
+    }
+}

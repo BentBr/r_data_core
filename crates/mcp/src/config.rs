@@ -83,6 +83,8 @@ pub struct Config {
     /// `Host` authorities permitted to reach the MCP endpoint.
     pub allowed_hosts: Vec<String>,
     pub timeout: Duration,
+    /// Accept-loop limits; only read in HTTP mode.
+    pub server_limits: crate::http::server::HttpServerLimits,
 }
 
 impl Config {
@@ -141,18 +143,12 @@ impl Config {
             validate_resource_url(resource_url.as_deref())?;
         }
 
-        let timeout = match get(map, "RDC_MCP_TIMEOUT_SECS") {
-            None => Duration::from_secs(DEFAULT_TIMEOUT_SECS),
-            Some(raw) => raw.parse::<u64>().map_or_else(
-                |_| {
-                    Err(ConfigError::InvalidNumber(
-                        "RDC_MCP_TIMEOUT_SECS",
-                        raw.to_string(),
-                    ))
-                },
-                |secs| Ok(Duration::from_secs(secs)),
-            )?,
-        };
+        let timeout = Duration::from_secs(positive_u64(
+            map,
+            "RDC_MCP_TIMEOUT_SECS",
+            DEFAULT_TIMEOUT_SECS,
+        )?);
+        let server_limits = crate::http::server::HttpServerLimits::from_map(map)?;
 
         let allowed_origins = get(map, "RDC_MCP_ALLOWED_ORIGINS").map_or_else(
             || origin_of(resource_url.as_deref()).into_iter().collect(),
@@ -189,6 +185,7 @@ impl Config {
             allowed_origins,
             allowed_hosts,
             timeout,
+            server_limits,
         })
     }
 }
@@ -245,6 +242,22 @@ fn authority_of(raw: Option<&str>) -> Option<String> {
             .port()
             .map_or_else(|| host.to_string(), |port| format!("{host}:{port}")),
     )
+}
+
+/// A positive integer variable, or its default when unset.
+///
+/// Shared by the timeout and the server limits so every numeric variable is
+/// refused the same way. `0` and negatives are refused: none of the values
+/// this reads is meaningful at zero.
+pub(crate) fn positive_u64(
+    map: &HashMap<String, String>,
+    key: &'static str,
+    default: u64,
+) -> Result<u64, ConfigError> {
+    get(map, key).map_or(Ok(default), |raw| match raw.parse::<u64>() {
+        Ok(n) if n > 0 => Ok(n),
+        _ => Err(ConfigError::InvalidNumber(key, raw.to_string())),
+    })
 }
 
 /// Fetch a variable, treating an empty value as absent.

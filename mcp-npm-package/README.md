@@ -69,6 +69,9 @@ the per-user permissions the design rests on.
 | `RDC_OIDC_ISSUER` / `RDC_OIDC_AUDIENCE` | The provider to trust, and the audience to require. Required for HTTP. |
 | `RDC_MCP_ALLOWED_ORIGINS` | Browser origins permitted to reach the server. Defaults to the resource URL's origin. |
 | `RDC_MCP_TIMEOUT_SECS` | Outbound HTTP timeout. Defaults to 30. |
+| `RDC_MCP_HEADER_TIMEOUT_SECS` | HTTP mode: seconds a client gets to finish its request headers. Defaults to 10. |
+| `RDC_MCP_IDLE_TIMEOUT_SECS` | HTTP mode: seconds a connection may stay open in total. Defaults to 120. |
+| `RDC_MCP_MAX_CONNECTIONS` | HTTP mode: open connections accepted at once; the rest are refused. Defaults to 1024. |
 | `RDATACORE_MCP_VERSION` | Install a specific release tag instead of the latest. |
 | `GITHUB_TOKEN` | Optional at install time, and only to raise the GitHub API rate limit. The repository is public, so no token is needed. |
 

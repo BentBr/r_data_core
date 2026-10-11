@@ -237,6 +237,11 @@ impl ServerState {
         &self.config
     }
 
+    /// The accept-loop limits.
+    pub(crate) const fn limits(&self) -> &server::HttpServerLimits {
+        &self.config.server_limits
+    }
+
     /// The `rmcp` transport settings.
     pub(crate) const fn http_config(&self) -> &StreamableHttpServerConfig {
         &self.http_config
