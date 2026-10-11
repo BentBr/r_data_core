@@ -111,15 +111,14 @@
     import type { WorkflowConfig, WorkflowRateLimit } from '@/types/schemas/workflow'
     import { DEFAULT_RATE_LIMIT } from '@/types/schemas/workflow'
     import type { OnComplete } from '@/types/schemas/dsl'
+    const model = defineModel<boolean>({ required: true })
 
-    const props = defineProps<{ modelValue: boolean; workflowUuid: string | null }>()
+    const props = defineProps<{ workflowUuid: string | null }>()
     const emit = defineEmits<{
-        (e: 'update:modelValue', value: boolean): void
         (e: 'updated'): void
     }>()
 
     const { t } = useTranslations()
-    const model = computed({ get: () => props.modelValue, set: v => emit('update:modelValue', v) })
     const loading = ref(false)
     const formRef = ref()
     const activeTab = ref('edit')
@@ -197,7 +196,7 @@
     }
 
     watch(
-        () => props.modelValue,
+        () => model.value,
         open => {
             if (open) {
                 void loadDetails()

@@ -168,10 +168,47 @@ test.describe('API Keys — dialog regressions', () => {
             .first()
             .click()
 
-        // Success is reported through the page snackbar. Before the fix the
-        // click threw before any promise existed and nothing appeared at all.
-        await expect(authenticatedPage.locator('.v-snackbar__content')).toBeVisible({
-            timeout: 5_000,
+        // The success message specifically. Asserting only that *a* snackbar
+        // appears would also pass when the copy failed, because the failure
+        // handler raises one too.
+        const snackbar = authenticatedPage.locator('.v-snackbar__content')
+        await expect(snackbar).toBeVisible({ timeout: 5_000 })
+        await expect(snackbar).toContainText(/copied to clipboard/i)
+        await expect(snackbar).not.toContainText(/failed/i)
+    })
+
+    test('a failing copy says so rather than appearing to work', async ({ authenticatedPage }) => {
+        const apiKeys = new ApiKeysPage(authenticatedPage)
+        await apiKeys.clickCreate()
+
+        const dialog = authenticatedPage.locator('.v-overlay--active .v-card')
+        await expect(dialog).toBeVisible()
+        await dialog.getByLabel(/name/i).fill(`e2e_copyfail_${Date.now()}`)
+        await dialog.getByRole('button', { name: /create/i }).click()
+
+        const createdDialog = authenticatedPage.locator('.v-overlay--active .v-card')
+        await expect(createdDialog.locator('#apiKey')).toBeVisible({ timeout: 10_000 })
+
+        // Break both paths the helper can take, so the failure branch is the
+        // one exercised. The key is shown once, so silence here is the worst
+        // possible outcome.
+        await authenticatedPage.evaluate(() => {
+            Object.defineProperty(navigator, 'clipboard', {
+                value: undefined,
+                configurable: true,
+            })
+            document.execCommand = () => false
         })
+
+        await createdDialog
+            .locator('#apiKey')
+            .locator('xpath=ancestor::*[contains(@class,"v-input")]')
+            .getByRole('button')
+            .first()
+            .click()
+
+        const snackbar = authenticatedPage.locator('.v-snackbar__content')
+        await expect(snackbar).toBeVisible({ timeout: 5_000 })
+        await expect(snackbar).toContainText(/failed to copy/i)
     })
 })

@@ -90,15 +90,12 @@
     import type { OnComplete } from '@/types/schemas/dsl'
     import type { WorkflowRateLimit } from '@/types/schemas/workflow'
     import { DEFAULT_RATE_LIMIT } from '@/types/schemas/workflow'
-
-    const props = defineProps<{ modelValue: boolean }>()
+    const model = defineModel<boolean>({ required: true })
     const emit = defineEmits<{
-        (e: 'update:modelValue', value: boolean): void
         (e: 'created', uuid: string): void
     }>()
 
     const { t } = useTranslations()
-    const model = computed({ get: () => props.modelValue, set: v => emit('update:modelValue', v) })
     const loading = ref(false)
     const formRef = ref()
 

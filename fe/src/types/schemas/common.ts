@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { DIALOG_SIZES } from '@/design-system/tokens'
 
 // Common table/action schemas
 export const TableActionSchema = z.object({
@@ -68,9 +69,12 @@ export const SnackbarConfigSchema = z.object({
 // Dialog schemas
 export const DialogConfigSchema = z.object({
     title: z.string(),
-    width: z.string().optional(),
     persistent: z.boolean().optional(),
-    maxWidth: z.string().optional(),
+    // A semantic size, not a CSS length. As a free string this accepted raw
+    // pixel values and eight call sites duly supplied them — including 500px,
+    // which was never a token — so dialogs of the same kind ended up
+    // different widths. `width` was removed alongside: nothing ever set it.
+    maxWidth: z.enum(DIALOG_SIZES).optional(),
 })
 
 // Form field schemas

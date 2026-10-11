@@ -189,7 +189,7 @@
     const deleteDialogConfig = computed(() => ({
         title: t('entities.delete.title'),
         message: t('entities.delete.message'),
-        maxWidth: '500px',
+        maxWidth: 'small' as const,
         persistent: false,
     }))
 

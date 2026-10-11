@@ -181,7 +181,7 @@ export const vuetifyDefaults = {
         style: 'border-radius: 9999px;',
     },
     VDialog: {
-        maxWidth: '600px',
+        maxWidth: 'default' as const,
         persistent: false,
     },
     VCard: {

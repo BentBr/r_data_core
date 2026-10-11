@@ -1,8 +1,7 @@
 <template>
     <v-dialog
-        :model-value="modelValue"
+        v-model="model"
         :max-width="getDialogMaxWidth('default')"
-        @update:model-value="$emit('update:modelValue', $event)"
         @after-enter="focusNameField"
     >
         <v-card>
@@ -16,9 +15,8 @@
                         ref="nameField"
                         v-model="createForm.name"
                         :label="t('api_keys.create.name_label')"
-                        :rules="[v => !!v || t('api_keys.create.name_required')]"
+                        :rules="[v => !!v?.trim() || t('api_keys.create.name_required')]"
                         required
-                        @input="validateForm"
                     />
                     <v-textarea
                         v-model="createForm.description"
@@ -68,15 +66,14 @@
 
     // Props
     interface Props {
-        modelValue: boolean
         loading: boolean
     }
+    const model = defineModel<boolean>({ required: true })
 
-    const props = defineProps<Props>()
+    defineProps<Props>()
 
     // Emits
     const emit = defineEmits<{
-        'update:modelValue': [value: boolean]
         create: [data: CreateApiKeyRequest]
     }>()
 
@@ -97,7 +94,7 @@
 
     // Watch for dialog state changes
     watch(
-        () => props.modelValue,
+        () => model.value,
         newValue => {
             if (newValue) {
                 // Reset form when dialog opens
@@ -113,15 +110,13 @@
             description: '',
             expires_in_days: undefined,
         }
+        // Vuetify re-validates asynchronously; seeding false keeps the
+        // confirm button disabled for the frame before it does.
         createFormValid.value = false
         // Clearing the model does not clear Vuetify's validation state, so a
         // reopened dialog would show "name is required" over an empty field
         // the user has not touched yet.
         formRef.value?.resetValidation()
-    }
-
-    const validateForm = () => {
-        createFormValid.value = !!createForm.value.name.trim()
     }
 
     const createApiKey = () => {
@@ -140,7 +135,7 @@
     }
 
     const closeDialog = () => {
-        emit('update:modelValue', false)
+        model.value = false
         resetForm()
     }
 

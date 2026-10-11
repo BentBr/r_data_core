@@ -6,6 +6,7 @@
  */
 
 import { buttonTokens, inputTokens, badgeTokens, dialogTokens, formTokens } from './tokens'
+import type { DialogSize as DialogSizeToken } from './tokens'
 
 /**
  * Button component configurations
@@ -142,8 +143,7 @@ export const iconSizes = {
     xl: 32,
 } as const
 
-/** The dialog sizes the design system defines. */
-export type DialogSize = keyof typeof dialogConfigs.maxWidths
+export type { DialogSize } from './tokens'
 
 /**
  * Standard dialog max widths based on content type.
@@ -154,6 +154,6 @@ export type DialogSize = keyof typeof dialogConfigs.maxWidths
  * wanting 900px hardcoded `max-width="900px"` instead: the size it needed was
  * not offered, and nothing pointed at where to add it.
  */
-export function getDialogMaxWidth(type: DialogSize = 'default'): string {
+export function getDialogMaxWidth(type: DialogSizeToken = 'default'): string {
     return dialogConfigs.maxWidths[type]
 }

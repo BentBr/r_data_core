@@ -300,6 +300,17 @@ export const badgeTokens = {
 /**
  * Dialog/Overlay component tokens
  */
+/**
+ * The dialog sizes the system offers, narrowest first.
+ *
+ * A tuple rather than just the record's keys, because the dialog config
+ * schema validates against it — a semantic size is the only thing callers may
+ * ask for, so a raw '500px' cannot creep back in through the config.
+ */
+export const DIALOG_SIZES = ['small', 'default', 'form', 'editor', 'wide'] as const
+
+export type DialogSize = (typeof DIALOG_SIZES)[number]
+
 export const dialogTokens = {
     maxWidths: {
         small: '400px',
@@ -310,7 +321,7 @@ export const dialogTokens = {
         // is cramped at 800 but adrift at 1200.
         editor: '900px',
         wide: '1200px',
-    },
+    } satisfies Record<DialogSize, string>,
     padding: {
         card: spacing.lg,
         actions: spacing.md,

@@ -1,12 +1,11 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
-import { mount, type VueWrapper } from '@vue/test-utils'
+import { mount, DOMWrapper, type VueWrapper } from '@vue/test-utils'
 import ApiKeyCreateDialog from './ApiKeyCreateDialog.vue'
 
 interface Vm {
     createForm: { name: string; description?: string; expires_in_days?: number }
     createFormValid: boolean
     formRef: unknown
-    validateForm: () => void
     createApiKey: () => void
 }
 
@@ -18,6 +17,25 @@ describe('ApiKeyCreateDialog', () => {
     // never renders and its template ref never binds — which is precisely the
     // mechanism of the bug under test. Stubbed, these tests pass against the
     // broken code.
+    // Vuetify's rules resolve across a microtask and a tick; asserting
+    // immediately after setValue reads the previous state.
+    const flushValidation = async (w: VueWrapper) => {
+        await Promise.resolve()
+        await w.vm.$nextTick()
+        await Promise.resolve()
+        await w.vm.$nextTick()
+    }
+
+    const body = () => new DOMWrapper(document.body)
+
+    // Types a value the way a user does and lets Vuetify's rules settle.
+    const typeName = async (w: VueWrapper, value: string) => {
+        const input = body().find('input')
+        await input.setValue(value)
+        await input.trigger('blur')
+        await flushValidation(w)
+    }
+
     const mountDialog = (modelValue = true) =>
         mount(ApiKeyCreateDialog, {
             props: { modelValue, loading: false },
@@ -55,7 +73,6 @@ describe('ApiKeyCreateDialog', () => {
         const vm = wrapper.vm as unknown as Vm
 
         vm.createForm.name = 'my test'
-        vm.validateForm()
         await wrapper.vm.$nextTick()
 
         // Touching another field used to wipe the first one.
@@ -70,9 +87,8 @@ describe('ApiKeyCreateDialog', () => {
         wrapper = mountDialog()
         const vm = wrapper.vm as unknown as Vm
 
-        vm.createForm.name = 'my test'
+        await typeName(wrapper, 'my test')
         vm.createForm.description = 'new field'
-        vm.validateForm()
         await wrapper.vm.$nextTick()
 
         vm.createApiKey()
@@ -88,21 +104,42 @@ describe('ApiKeyCreateDialog', () => {
     it('refuses to emit while the name is empty', () => {
         wrapper = mountDialog()
         const vm = wrapper.vm as unknown as Vm
-
-        vm.validateForm()
         vm.createApiKey()
 
         expect(wrapper.emitted('create')).toBeFalsy()
     })
 
-    it('treats a whitespace-only name as invalid', () => {
+    // Validation had two owners: the field rule (`!!v`, which accepts '   ')
+    // and a validateForm() that rejected it via trim(). Both wrote
+    // createFormValid, so whichever ran last won. Driving the real input and
+    // waiting for Vuetify is the only way to see which.
+    it('rejects a whitespace-only name through the form, not just a helper', async () => {
         wrapper = mountDialog()
         const vm = wrapper.vm as unknown as Vm
 
-        vm.createForm.name = '   '
-        vm.validateForm()
+        await typeName(wrapper, '   ')
 
         expect(vm.createFormValid).toBe(false)
+    })
+
+    it('refuses to submit a whitespace-only name', async () => {
+        wrapper = mountDialog()
+        const vm = wrapper.vm as unknown as Vm
+
+        await typeName(wrapper, '   ')
+
+        vm.createApiKey()
+
+        expect(wrapper.emitted('create')).toBeFalsy()
+    })
+
+    it('accepts a real name typed into the field', async () => {
+        wrapper = mountDialog()
+        const vm = wrapper.vm as unknown as Vm
+
+        await typeName(wrapper, 'my test')
+
+        expect(vm.createFormValid).toBe(true)
     })
 
     it('clears the form when the dialog is reopened', async () => {

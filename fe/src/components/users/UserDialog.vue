@@ -1,9 +1,8 @@
 <template>
     <v-dialog
-        :model-value="modelValue"
+        v-model="model"
         :max-width="getDialogMaxWidth('default')"
         persistent
-        @update:model-value="$emit('update:modelValue', $event)"
     >
         <v-card>
             <v-card-title class="pa-6">
@@ -148,15 +147,14 @@
     const { loadRoles, roles, loading: loadingRoles } = useRoles()
 
     interface Props {
-        modelValue: boolean
         editingUser: UserResponse | null
         loading: boolean
     }
+    const model = defineModel<boolean>({ required: true })
 
     const props = defineProps<Props>()
 
     const emit = defineEmits<{
-        'update:modelValue': [value: boolean]
         save: [data: CreateUserRequest | UpdateUserRequest]
     }>()
 
@@ -205,7 +203,7 @@
 
     // Watch for dialog opening to reload roles
     watch(
-        () => props.modelValue,
+        () => model.value,
         async newValue => {
             if (newValue) {
                 // Reload roles when dialog opens
@@ -269,7 +267,7 @@
     )
 
     const handleClose = () => {
-        emit('update:modelValue', false)
+        model.value = false
         resetForm()
     }
 
