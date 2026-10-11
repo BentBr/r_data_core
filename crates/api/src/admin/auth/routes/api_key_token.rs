@@ -59,8 +59,9 @@ pub async fn exchange_api_key(
     };
 
     // The key's owner decides what the token can do. A key is never more
-    // powerful than the account behind it.
-    if !user.is_active {
+    // powerful than the account behind it — and a locked or deactivated
+    // account has no power to lend.
+    if r_data_core_services::ensure_may_sign_in(&user).is_err() {
         return ApiResponse::<()>::forbidden("This account is not permitted to sign in");
     }
 

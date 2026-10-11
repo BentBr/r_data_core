@@ -50,6 +50,7 @@ pub use entity_definition::{EntityDefinitionService, ServiceEntityFieldInfo};
 pub use license::LicenseService;
 pub use mail::MailService;
 pub use oidc_flow::{CompletedLogin, FlowError, OidcFlow, OidcServices};
+pub use oidc_provisioning::ensure_may_sign_in;
 pub use oidc_runtime::{OidcAuthError, OidcRuntime, Resolution};
 pub use password_reset::PasswordResetService;
 pub use query_validation::{

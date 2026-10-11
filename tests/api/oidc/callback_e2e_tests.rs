@@ -77,6 +77,9 @@ async fn callback(stack: &OauthStack, state: &str, cookie: &str, id_token: &str)
         .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
             "id_token": id_token,
         })))
+        // One exchange per callback: a later sign-in in the same test must
+        // reach its own token, not this one.
+        .up_to_n_times(1)
         .mount(stack.idp())
         .await;
 
@@ -157,5 +160,57 @@ async fn an_id_token_minted_for_another_attempt_is_refused() {
     assert!(
         location.contains("sso_error=invalid_token"),
         "a token not bound to this attempt must be refused: {location}"
+    );
+}
+
+#[tokio::test]
+#[serial]
+async fn a_deactivation_inside_the_cache_window_still_refuses_the_callback() {
+    // The resolution cache is keyed on the identity and is only evicted by
+    // the admin user-update route. A deactivation that bypasses that route
+    // — a direct update, a future bulk endpoint — must not hand out a fresh
+    // thirty-day refresh token on the next sign-in.
+    let stack = OauthStack::start("rdc-ops:sso-editor").await;
+
+    // First sign-in: provisions the account and warms the cache.
+    let (state, nonce, cookie) = start(&stack).await;
+    let first = callback(
+        &stack,
+        &state,
+        &cookie,
+        &stack.mint_id_token("carol", &["rdc-ops"], &nonce),
+    )
+    .await;
+    assert!(!first.contains("sso_error"), "{first}");
+
+    sqlx::query("UPDATE admin_users SET is_active = false WHERE email = 'carol@example.com'")
+        .execute(stack.pool())
+        .await
+        .expect("deactivate");
+
+    // Second sign-in, well inside the 60-second window.
+    let (state, nonce, cookie) = start(&stack).await;
+    let second = callback(
+        &stack,
+        &state,
+        &cookie,
+        &stack.mint_id_token("carol", &["rdc-ops"], &nonce),
+    )
+    .await;
+
+    assert!(
+        second.contains("sso_error=not_permitted"),
+        "a deactivated account must be refused however fresh the cache: {second}"
+    );
+    let refresh_tokens: i64 = sqlx::query_scalar(
+        "SELECT count(*) FROM refresh_tokens rt JOIN admin_users u ON u.uuid = rt.user_id \
+         WHERE u.email = 'carol@example.com'",
+    )
+    .fetch_one(stack.pool())
+    .await
+    .expect("count");
+    assert_eq!(
+        refresh_tokens, 1,
+        "the refused sign-in must not have issued a second one"
     );
 }

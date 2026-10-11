@@ -177,6 +177,12 @@ pub async fn oidc_callback(
     let Ok(Some(mut user)) = repo.find_by_uuid(&uuid).await else {
         return failed_login(&landing, "unresolved_identity");
     };
+    // Checked again here, after the cache: a resolution cached before a
+    // deactivation would otherwise sign a deactivated account in.
+    if let Err(e) = r_data_core_services::ensure_may_sign_in(&user) {
+        log::warn!("Single-sign-on callback refused after resolution: {e}");
+        return failed_login(&landing, "not_permitted");
+    }
 
     let Some(session) = issue_session_with_roles(&mut user, &completed.roles, &repo, &data).await
     else {
@@ -270,6 +276,9 @@ pub async fn oidc_exchange(
     let Ok(Some(user)) = repo.find_by_uuid(&uuid).await else {
         return ApiResponse::internal_error("Authentication failed");
     };
+    if let Err(e) = r_data_core_services::ensure_may_sign_in(&user) {
+        return refusal(&e);
+    }
 
     let access_token = match r_data_core_core::admin_jwt::generate_access_token(
         &user,

@@ -12,6 +12,7 @@ use std::sync::Arc;
 use rand::Rng as _;
 use uuid::Uuid;
 
+use crate::oidc_runtime::OidcAuthError;
 use r_data_core_core::admin_user::AdminUser;
 use r_data_core_core::error::{Error, Result};
 use r_data_core_core::oidc::keys::OidcClaims;
@@ -88,7 +89,7 @@ impl OidcProvisioningService {
         // they may act. Without this, deactivating a compromised account here
         // would have no effect for as long as the provider kept issuing
         // tokens — exactly backwards.
-        ensure_may_sign_in(&user)?;
+        ensure_may_sign_in(&user).map_err(|e| Error::Auth(e.to_string()))?;
 
         Ok((user, roles))
     }
@@ -206,15 +207,22 @@ impl OidcProvisioningService {
 }
 
 /// Refuse an account that exists but may not sign in.
-fn ensure_may_sign_in(user: &AdminUser) -> Result<()> {
+///
+/// Public because the sign-in routes call it again after loading the
+/// account themselves: a cached resolution skips the lookup this check sits
+/// behind, and a deactivation that bypassed cache eviction must still bite.
+///
+/// # Errors
+/// `OidcAuthError::Denied` when the account is deactivated or currently locked.
+pub fn ensure_may_sign_in(user: &AdminUser) -> std::result::Result<(), OidcAuthError> {
     if !user.is_active {
-        return Err(Error::Auth(
+        return Err(OidcAuthError::Denied(
             "this account is deactivated in RDataCore".to_string(),
         ));
     }
     if let Some(until) = user.locked_until {
         if until > time::OffsetDateTime::now_utc() {
-            return Err(Error::Auth("this account is locked".to_string()));
+            return Err(OidcAuthError::Denied("this account is locked".to_string()));
         }
     }
     Ok(())
