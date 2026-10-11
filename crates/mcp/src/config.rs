@@ -14,6 +14,17 @@ use std::time::Duration;
 use thiserror::Error;
 use url::Url;
 
+mod credential;
+mod limits;
+mod numbers;
+
+pub use credential::Credential;
+pub use limits::{
+    HttpServerLimits, DEFAULT_HEADER_READ_TIMEOUT_SECS, DEFAULT_IDLE_TIMEOUT_SECS,
+    DEFAULT_MAX_CONNECTIONS,
+};
+pub(crate) use numbers::positive_u64;
+
 /// Outbound HTTP timeout when unset.
 const DEFAULT_TIMEOUT_SECS: u64 = 30;
 /// Listen address when unset. Loopback, so an unconfigured server is not
@@ -62,33 +73,6 @@ pub enum Transport {
     Http { bind: String },
 }
 
-/// A secret read from the environment.
-///
-/// `Debug` prints a placeholder. Nothing prints `Config` today, but the one
-/// time someone adds `{config:?}` to a startup log is the one time it would
-/// matter, and this makes that line safe before it is written.
-#[derive(Clone, PartialEq, Eq)]
-pub struct Credential(String);
-
-impl Credential {
-    #[must_use]
-    pub fn new(raw: impl Into<String>) -> Self {
-        Self(raw.into())
-    }
-
-    /// The secret itself, for the one place that sends it.
-    #[must_use]
-    pub fn expose(&self) -> &str {
-        &self.0
-    }
-}
-
-impl std::fmt::Debug for Credential {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.write_str("Credential(\"***\")")
-    }
-}
-
 #[derive(Debug, Clone)]
 pub struct Config {
     pub base_url: Url,
@@ -111,7 +95,7 @@ pub struct Config {
     pub allowed_hosts: Vec<String>,
     pub timeout: Duration,
     /// Accept-loop limits; only read in HTTP mode.
-    pub server_limits: crate::http::server::HttpServerLimits,
+    pub server_limits: HttpServerLimits,
 }
 
 impl Config {
@@ -175,7 +159,7 @@ impl Config {
             "RDC_MCP_TIMEOUT_SECS",
             DEFAULT_TIMEOUT_SECS,
         )?);
-        let server_limits = crate::http::server::HttpServerLimits::from_map(map)?;
+        let server_limits = HttpServerLimits::from_map(map)?;
 
         let allowed_origins = get(map, "RDC_MCP_ALLOWED_ORIGINS").map_or_else(
             || origin_of(resource_url.as_deref()).into_iter().collect(),
@@ -269,22 +253,6 @@ fn authority_of(raw: Option<&str>) -> Option<String> {
             .port()
             .map_or_else(|| host.to_string(), |port| format!("{host}:{port}")),
     )
-}
-
-/// A positive integer variable, or its default when unset.
-///
-/// Shared by the timeout and the server limits so every numeric variable is
-/// refused the same way. `0` and negatives are refused: none of the values
-/// this reads is meaningful at zero.
-pub(crate) fn positive_u64(
-    map: &HashMap<String, String>,
-    key: &'static str,
-    default: u64,
-) -> Result<u64, ConfigError> {
-    get(map, key).map_or(Ok(default), |raw| match raw.parse::<u64>() {
-        Ok(n) if n > 0 => Ok(n),
-        _ => Err(ConfigError::InvalidNumber(key, raw.to_string())),
-    })
 }
 
 /// Fetch a variable, treating an empty value as absent.
