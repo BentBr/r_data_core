@@ -163,6 +163,10 @@ impl ApiKeyBackend {
 
 #[async_trait::async_trait]
 impl AuthBackend for ApiKeyBackend {
+    fn credential_hint(&self) -> &'static str {
+        "Create a new API key in the admin panel under API Keys and update RDC_API_KEY."
+    }
+
     async fn outbound_headers(
         &self,
         _ctx: &CallerContext,

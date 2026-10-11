@@ -183,6 +183,11 @@ impl OidcBackend {
 
 #[async_trait::async_trait]
 impl AuthBackend for OidcBackend {
+    fn credential_hint(&self) -> &'static str {
+        "Sign in again with your identity provider: RDataCore refused the exchanged token, \
+         which usually means the session expired or the account was deactivated."
+    }
+
     async fn outbound_headers(
         &self,
         ctx: &CallerContext,

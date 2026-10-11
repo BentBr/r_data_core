@@ -139,6 +139,17 @@ pub trait AuthBackend: Send + Sync {
         &self,
         ctx: &CallerContext,
     ) -> Result<Vec<(String, String)>, AuthError>;
+
+    /// What a person should do when `RDataCore` refuses this backend's
+    /// credential.
+    ///
+    /// Rendered into the 401 message a model sees. Backends differ: a static
+    /// key is replaced in the admin panel, an OIDC session is renewed at the
+    /// identity provider, and telling the OIDC user to create an API key sends
+    /// them somewhere that cannot help.
+    fn credential_hint(&self) -> &'static str {
+        "Re-authenticate and try again."
+    }
 }
 
 #[cfg(test)]
