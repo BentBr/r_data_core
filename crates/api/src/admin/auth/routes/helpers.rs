@@ -113,7 +113,7 @@ pub async fn handle_password_failure(
     {
         log::error!("Failed to persist lockout state: {e:?}");
     }
-    rate_limit::record_failure(data.cache_manager(), rl_key).await;
+    rate_limit::record_failure(data.cache_manager(), rate_limit::Bucket::Login, rl_key).await;
     log::debug!("Password verification failed for user: {username}");
     if let Some(log_svc) = data.system_log_service() {
         log_svc

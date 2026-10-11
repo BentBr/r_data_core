@@ -61,11 +61,22 @@ pub async fn exchange_api_key(
     // has already refused unknown, revoked and expired ones with a 401 before
     // the handler runs, so this bounds minting, not key guessing.
     let rl_key = rate_limit::rate_limit_key(&req, rate_limit::Bucket::ApiKeyExchange);
-    if rate_limit::is_over_limit(data.cache_manager(), &rl_key).await {
+    if rate_limit::is_over_limit(
+        data.cache_manager(),
+        rate_limit::Bucket::ApiKeyExchange,
+        &rl_key,
+    )
+    .await
+    {
         log::warn!("API-key exchange rate limit hit for key {rl_key}");
         return ApiResponse::<()>::too_many_requests("Too many exchange attempts, try again later");
     }
-    rate_limit::record_failure(data.cache_manager(), &rl_key).await;
+    rate_limit::record_failure(
+        data.cache_manager(),
+        rate_limit::Bucket::ApiKeyExchange,
+        &rl_key,
+    )
+    .await;
 
     let repo = AdminUserRepository::new(Arc::new(data.db_pool().clone()));
     let Ok(Some(user)) = repo.find_by_uuid(&key.user_uuid).await else {

@@ -271,7 +271,12 @@ async fn start_is_throttled_per_client() {
     // provider and a filler aimed at Redis.
     let idp = Idp::start().await;
     let app = app_with!(Some(&idp));
-    let max = r_data_core_core::config::SecurityConfig::global().rate_limit_max_attempts;
+    // Every start counts, so the bucket has its own, higher threshold.
+    let max = r_data_core_core::config::security::OIDC_START_RATE_LIMIT_MAX;
+    assert!(
+        max > r_data_core_core::config::SecurityConfig::global().rate_limit_max_attempts,
+        "a NAT full of colleagues must not hit the failed-login limit by signing in"
+    );
 
     for _ in 0..max {
         let response = test::call_service(

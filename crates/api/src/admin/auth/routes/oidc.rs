@@ -90,11 +90,12 @@ pub async fn oidc_start(
     // a cache write. Every call counts, not only failures — there is no
     // failure to count, and the cost is the same either way.
     let rl_key = rate_limit::rate_limit_key(&req, rate_limit::Bucket::OidcStart);
-    if rate_limit::is_over_limit(data.cache_manager(), &rl_key).await {
+    if rate_limit::is_over_limit(data.cache_manager(), rate_limit::Bucket::OidcStart, &rl_key).await
+    {
         log::warn!("Single-sign-on start rate limit hit for key {rl_key}");
         return ApiResponse::<()>::too_many_requests("Too many sign-in attempts, try again later");
     }
-    rate_limit::record_failure(data.cache_manager(), &rl_key).await;
+    rate_limit::record_failure(data.cache_manager(), rate_limit::Bucket::OidcStart, &rl_key).await;
 
     match flow.start(query.return_to.as_deref()).await {
         Ok(redirect) => HttpResponse::Found()
@@ -258,7 +259,7 @@ pub async fn oidc_exchange(
     // Every call costs a provider round trip and a database lookup, and it is
     // reachable without a local credential. Throttle it like login.
     let rl_key = rate_limit::rate_limit_key(&req, rate_limit::Bucket::Login);
-    if rate_limit::is_over_limit(data.cache_manager(), &rl_key).await {
+    if rate_limit::is_over_limit(data.cache_manager(), rate_limit::Bucket::Login, &rl_key).await {
         log::warn!("Token-exchange rate limit hit for key {rl_key}");
         return ApiResponse::too_many_requests("Too many exchange attempts, try again later");
     }
@@ -267,7 +268,8 @@ pub async fn oidc_exchange(
     let claims = match oidc.runtime().verify(&body.token, now).await {
         Ok(claims) => claims,
         Err(e) => {
-            rate_limit::record_failure(data.cache_manager(), &rl_key).await;
+            rate_limit::record_failure(data.cache_manager(), rate_limit::Bucket::Login, &rl_key)
+                .await;
             return refusal(&e);
         }
     };
