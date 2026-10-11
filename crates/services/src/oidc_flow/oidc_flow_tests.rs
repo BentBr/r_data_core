@@ -330,7 +330,7 @@ async fn provider_without_token_endpoint() -> MockServer {
 }
 
 /// Start a sign-in and complete it, returning whatever the flow decided.
-async fn round_trip(flow: &OidcFlow) -> Result<(OidcClaims, Option<String>), FlowError> {
+async fn round_trip(flow: &OidcFlow) -> Result<CompletedLogin, FlowError> {
     let redirect = flow.start(None).await.expect("start");
     flow.complete(&redirect.state, "an-authorization-code", 1800)
         .await

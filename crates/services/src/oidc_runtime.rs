@@ -33,6 +33,7 @@ use r_data_core_core::cache::CacheManager;
 use r_data_core_core::error::Error as CoreError;
 use r_data_core_core::oidc::keys::{KeySource, KeySourceError, OidcClaims};
 use r_data_core_core::oidc::{validate_token, OidcConfig, ValidationError};
+use r_data_core_core::permissions::role::Role;
 
 use crate::oidc_provisioning::OidcProvisioningService;
 
@@ -68,9 +69,24 @@ impl From<CoreError> for OidcAuthError {
 }
 
 /// What gets cached between requests: the outcome of resolving an identity.
+///
+/// The roles are cached next to the claims because the session is minted
+/// from them on every sign-in. Caching only the claims would mint a
+/// powerless session the second time round.
 #[derive(Serialize, Deserialize)]
 struct CachedResolution {
     claims: AuthUserClaims,
+    roles: Vec<Role>,
+}
+
+/// A verified identity, resolved to the account and roles it acts with.
+#[derive(Debug, Clone)]
+pub struct Resolution {
+    pub claims: AuthUserClaims,
+    /// The roles the token's groups mapped to. This — not `user_roles` — is
+    /// what an SSO session is minted from; see `docs/SSO.md`, "Roles are not
+    /// stored".
+    pub roles: Vec<Role>,
 }
 
 /// Everything the OIDC paths need, wired together once at startup.
@@ -135,7 +151,7 @@ impl OidcRuntime {
         }
     }
 
-    /// Resolve verified claims into the claims an `RDataCore` session carries.
+    /// Resolve verified claims into the account and roles a session carries.
     ///
     /// This is the shared tail. The bearer path reaches it through
     /// [`Self::authenticate`]; the login callback and the token exchange call
@@ -145,15 +161,18 @@ impl OidcRuntime {
     /// Returns `OidcAuthError::Denied` when the identity maps to no role or
     /// the account may not sign in, and `Unavailable` when the database is
     /// not reachable.
-    pub async fn session_claims(
+    pub async fn resolve(
         &self,
         claims: &OidcClaims,
         session_seconds: u64,
-    ) -> Result<AuthUserClaims, OidcAuthError> {
+    ) -> Result<Resolution, OidcAuthError> {
         let key = resolution_key(&claims.issuer, &claims.subject);
 
         if let Ok(Some(hit)) = self.cache.get::<CachedResolution>(&key).await {
-            return Ok(hit.claims);
+            return Ok(Resolution {
+                claims: hit.claims,
+                roles: hit.roles,
+            });
         }
 
         let (user, roles) = self
@@ -171,6 +190,7 @@ impl OidcRuntime {
                 &key,
                 &CachedResolution {
                     claims: minted.clone(),
+                    roles: roles.clone(),
                 },
                 Some(self.config.resolution_cache_ttl.as_secs()),
             )
@@ -179,7 +199,24 @@ impl OidcRuntime {
             log::warn!("could not cache the resolved OIDC identity: {e}");
         }
 
-        Ok(minted)
+        Ok(Resolution {
+            claims: minted,
+            roles,
+        })
+    }
+
+    /// The claims half of [`Self::resolve`], for the bearer middleware.
+    ///
+    /// # Errors
+    /// As [`Self::resolve`].
+    pub async fn session_claims(
+        &self,
+        claims: &OidcClaims,
+        session_seconds: u64,
+    ) -> Result<AuthUserClaims, OidcAuthError> {
+        self.resolve(claims, session_seconds)
+            .await
+            .map(|resolution| resolution.claims)
     }
 
     /// Verify a bearer token and resolve it to session claims.

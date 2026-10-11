@@ -152,7 +152,7 @@ pub async fn oidc_callback(
         .complete(state, code, ACCESS_TOKEN_EXPIRY_SECONDS)
         .await
     {
-        Ok(resolved) => resolved,
+        Ok(done) => (done.identity, done.return_to),
         Err(e) => {
             log::warn!("Single-sign-on callback failed: {e}");
             return failed_login(&flow.landing_path(None), reason_for(&e));

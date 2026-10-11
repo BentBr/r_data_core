@@ -33,9 +33,11 @@ use serde::{Deserialize, Serialize};
 use sha2::{Digest as _, Sha256};
 use thiserror::Error;
 
+use r_data_core_core::admin_jwt::AuthUserClaims;
 use r_data_core_core::cache::CacheManager;
 use r_data_core_core::oidc::keys::OidcClaims;
 use r_data_core_core::oidc::{is_local_redirect_path, OidcConfig};
+use r_data_core_core::permissions::role::Role;
 
 use crate::oidc_runtime::{OidcAuthError, OidcRuntime};
 use r_data_core_oidc_http::discovery as oidc_discovery;
@@ -90,6 +92,20 @@ struct PendingLogin {
 pub struct Redirect {
     pub url: String,
     pub state: String,
+}
+
+/// A finished sign-in: who it was, and what their session carries.
+#[derive(Debug)]
+pub struct CompletedLogin {
+    /// The claims an `RDataCore` session for this person carries.
+    pub claims: AuthUserClaims,
+    /// The roles the token's groups mapped to. The session is minted from
+    /// these; nothing is read from `user_roles` for an SSO sign-in.
+    pub roles: Vec<Role>,
+    /// The verified identity, for reading the link back.
+    pub identity: OidcClaims,
+    /// Where to land afterwards, already validated as a local path.
+    pub return_to: Option<String>,
 }
 
 /// Drives the authorization-code flow.
@@ -198,7 +214,7 @@ impl OidcFlow {
         state: &str,
         code: &str,
         session_seconds: u64,
-    ) -> Result<(OidcClaims, Option<String>), FlowError> {
+    ) -> Result<CompletedLogin, FlowError> {
         // Atomic, and first: a replay must lose the race rather than be
         // noticed afterwards. A cache that is disabled or unreachable counts
         // as "not claimed", which refuses the sign-in — the safe direction.
@@ -228,12 +244,17 @@ impl OidcFlow {
         let verified = self.runtime.verify(&id_token, now).await?;
 
         // The same refusals as the bearer path: unmapped, deactivated, locked.
-        // Reached through the shared tail so it cannot diverge.
-        self.runtime
-            .session_claims(&verified, session_seconds)
-            .await?;
+        // Reached through the shared tail so it cannot diverge — and the
+        // roles come back from it, because they are what the session is
+        // minted from.
+        let resolution = self.runtime.resolve(&verified, session_seconds).await?;
 
-        Ok((verified, pending.return_to))
+        Ok(CompletedLogin {
+            claims: resolution.claims,
+            roles: resolution.roles,
+            identity: verified,
+            return_to: pending.return_to,
+        })
     }
 
     /// Trade an authorization code for tokens at the provider.
@@ -375,5 +396,7 @@ impl OidcServices {
     }
 }
 
+#[cfg(test)]
+mod completion_tests;
 #[cfg(test)]
 mod oidc_flow_tests;
