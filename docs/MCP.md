@@ -249,7 +249,9 @@ published on `http://localhost:8931` — loopback rather than a
 `.docker` hostname behind the proxy, because the resource URL must be https
 or loopback and the server refuses to start otherwise. Bearer tokens must not
 cross plaintext; localhost is the one exemption, and it is the right one for
-a developer machine.
+a developer machine. The port is bound to loopback only; other machines on the
+network cannot reach it, which is the condition under which plaintext is
+acceptable.
 
 Check it answers:
 
