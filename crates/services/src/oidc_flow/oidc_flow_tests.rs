@@ -190,7 +190,10 @@ async fn the_flow_is_refused_when_no_client_is_configured() {
         Arc::new(OidcProvisioningService::new(
             Arc::new(FakeIdentities::default()),
             Arc::new(FakeUsers::default()),
-            Arc::new(crate::oidc_test_fakes::FakeRoles { roles: vec![] }),
+            Arc::new(crate::oidc_test_fakes::FakeRoles {
+                roles: vec![],
+                user_roles: vec![],
+            }),
         )),
         Arc::clone(&cache),
     ));

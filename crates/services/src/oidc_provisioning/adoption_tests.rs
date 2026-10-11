@@ -8,7 +8,7 @@ use uuid::Uuid;
 
 use super::*;
 use crate::oidc_test_fakes::{
-    claims, config, service, super_admin, user, FakeIdentities, FakeUsers,
+    claims, config, service, service_with_user_roles, super_admin, user, FakeIdentities, FakeUsers,
 };
 
 #[tokio::test]
@@ -86,6 +86,36 @@ async fn a_super_admin_account_is_never_adopted_by_email() {
         .resolve_or_provision(&claims("root", &["rdc-ops"], true), &config(None, true))
         .await
         .expect_err("refused");
+
+    assert!(matches!(err, Error::Auth(_)), "got {err:?}");
+    assert_eq!(users.created_count(), 0, "and no shadow account either");
+    assert!(identities.links.lock().expect("lock").is_empty());
+}
+
+#[tokio::test]
+async fn an_account_super_admin_through_a_role_is_never_adopted_by_email() {
+    // The flag is not the only way to be super-admin: `admin_jwt` honours a
+    // role with `super_admin` too, and an adopted account's first password
+    // session would carry it.
+    let local = Uuid::now_v7();
+    let identities = Arc::new(FakeIdentities::default());
+    identities
+        .local_by_email
+        .lock()
+        .expect("lock")
+        .insert("ops@example.com".to_string(), local);
+    let users = Arc::new(FakeUsers::with(vec![user(local, "ops", true)]));
+    let mut root_role = Role::new("root".to_string());
+    root_role.super_admin = true;
+
+    let err = service_with_user_roles(
+        Arc::clone(&identities),
+        Arc::clone(&users),
+        vec![(local, root_role)],
+    )
+    .resolve_or_provision(&claims("ops", &["rdc-ops"], true), &config(None, true))
+    .await
+    .expect_err("refused");
 
     assert!(matches!(err, Error::Auth(_)), "got {err:?}");
     assert_eq!(users.created_count(), 0, "and no shadow account either");

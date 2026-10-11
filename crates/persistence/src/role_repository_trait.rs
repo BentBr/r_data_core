@@ -79,4 +79,10 @@ pub trait RoleRepositoryTrait: Send + Sync {
     /// # Errors
     /// Returns an error if database query fails
     async fn count_all(&self) -> Result<i64>;
+
+    /// The roles stored for a user in `user_roles`.
+    ///
+    /// # Errors
+    /// Returns an error if database query fails
+    async fn list_for_user(&self, user_uuid: Uuid) -> Result<Vec<Role>>;
 }

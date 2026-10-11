@@ -99,9 +99,9 @@ impl OidcProvisioningService {
         if let Some(existing) = self.adoptable_local_account(claims, config).await? {
             // A super-admin account is granted inside RDataCore to a named
             // person. The provider's say-so over an email address must not
-            // be able to hand it over.
-            let adoptee = self.users.find_by_uuid(&existing).await?;
-            if adoptee.is_some_and(|account| account.super_admin) {
+            // be able to hand it over — whether super-admin comes from the
+            // account's flag or from a role stored for it.
+            if self.is_super_admin(existing).await? {
                 return Err(Error::Auth(
                     "a super-admin account cannot be adopted by single sign-on".to_string(),
                 ));
@@ -246,6 +246,16 @@ impl OidcProvisioningService {
         self.identities
             .find_identities_for_user(admin_user_uuid)
             .await
+    }
+
+    /// Whether an account is super-admin by flag or through a stored role.
+    async fn is_super_admin(&self, user_uuid: Uuid) -> Result<bool> {
+        let adoptee = self.users.find_by_uuid(&user_uuid).await?;
+        if adoptee.is_some_and(|account| account.super_admin) {
+            return Ok(true);
+        }
+        let stored = self.roles.list_for_user(user_uuid).await?;
+        Ok(stored.iter().any(|role| role.super_admin))
     }
 
     async fn available_roles(&self) -> Result<Vec<Role>> {
