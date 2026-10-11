@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.4.15](https://github.com/BentBr/r_data_core/compare/core-v0.4.14...core-v0.4.15) (2026-10-11)
+
+
+### Bug Fixes
+
+* **ci:** give the npm job an npm that can do trusted publishing ([e8e8602](https://github.com/BentBr/r_data_core/commit/e8e860206fd5151a35c19fd5acc7bd91c796951f))
+* **fe:** repair the API key create form and copy button ([a264dad](https://github.com/BentBr/r_data_core/commit/a264dad25d6c72296ca43e6aef57e11fa44f6988))
+
 ## [0.4.14](https://github.com/BentBr/r_data_core/compare/core-v0.4.13...core-v0.4.14) (2026-10-11)
 
 
