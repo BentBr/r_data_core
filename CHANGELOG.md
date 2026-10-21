@@ -1,5 +1,42 @@
 # Changelog
 
+## [0.4.17](https://github.com/BentBr/r_data_core/compare/core-v0.4.16...core-v0.4.17) (2026-10-21)
+
+
+### Bug Fixes
+
+* **api:** keep repository errors out of 500 bodies ([f80e22e](https://github.com/BentBr/r_data_core/commit/f80e22e216fce31893b5f9e66ec9c3af9a0d1e3a))
+* **api:** keep SSO roles across refresh and the roles endpoint ([9fd9739](https://github.com/BentBr/r_data_core/commit/9fd9739431919ad866309b2be8b7008b5381c980))
+* **api:** let the roles of an SSO user be read again ([369d4aa](https://github.com/BentBr/r_data_core/commit/369d4aa2e31e5a812f385d9c88f49d6da4c97154))
+* **api:** mint SSO sessions from the claim-mapped roles ([2dd1cc3](https://github.com/BentBr/r_data_core/commit/2dd1cc3715a84c0e3db4a139b3ce5f69c5e62e53))
+* **api:** stop the entity-definition update 500 echoing the lookup error ([244775e](https://github.com/BentBr/r_data_core/commit/244775e455ca51a027673ed89a2de02c93e2c58d))
+* **auth:** bind an SSO refresh chain to its sign-in snapshot ([f4d4388](https://github.com/BentBr/r_data_core/commit/f4d43887016032871dc736c0f16384588459f3a9))
+* **auth:** bind the OIDC ID token to its sign-in attempt with a nonce ([9e24d83](https://github.com/BentBr/r_data_core/commit/9e24d83688080496cf9360f1e95fad908d522fe8))
+* **auth:** give SSO start and API-key exchange their own rate limits ([1d53541](https://github.com/BentBr/r_data_core/commit/1d535416d064a0de703142d33cea3809d548787f))
+* **auth:** harden OIDC single sign-on (hardening Part A) ([56585a7](https://github.com/BentBr/r_data_core/commit/56585a7c7ceeaac9ab2c6f70fe05de07c3758274))
+* **auth:** refuse deactivated and locked accounts on every SSO sign-in path ([92c2b11](https://github.com/BentBr/r_data_core/commit/92c2b114c40dc4d09e49934e69b4bdaa4ad00cbb))
+* **auth:** sanitise provider errors in logs and audit the token exchanges ([e6fc5f4](https://github.com/BentBr/r_data_core/commit/e6fc5f4cdcc7c00d7f81a34acbec000870191a7d))
+* **auth:** throttle the OIDC start endpoint ([6ea70ec](https://github.com/BentBr/r_data_core/commit/6ea70ec350ae50adac71e17194faae81e57ab83a))
+* **compose:** bind the MCP HTTP port to loopback ([0dc379c](https://github.com/BentBr/r_data_core/commit/0dc379c8934516e5d26a82e4fddc04c95a9764e6))
+* **core:** make a missing is_sso_provisioned column a hard error ([c651d04](https://github.com/BentBr/r_data_core/commit/c651d04ce5a09e93292d5fbc44edc31bf245eee0))
+* **mcp-npm:** drop the release-tag override from the installer ([9211da1](https://github.com/BentBr/r_data_core/commit/9211da16961dac1979a340dbb6f48d6d779f8a5c))
+* **mcp-npm:** install exactly the release the package version names ([2654f5e](https://github.com/BentBr/r_data_core/commit/2654f5e075a3bac38b53b52a495633f5376d156a))
+* **mcp:** bound HTTP connections with timers, an idle limit and a connection cap ([5f8f54c](https://github.com/BentBr/r_data_core/commit/5f8f54c616dd799fdb27e9994cbcb256c07af751))
+* **mcp:** cap the per-caller token and permission caches ([5a2b57f](https://github.com/BentBr/r_data_core/commit/5a2b57f83edfbadb43202abeafee6be813e78f2f))
+* **mcp:** drain a request in flight when a connection reaches its limit ([0989546](https://github.com/BentBr/r_data_core/commit/0989546bf52bb5319768b2565fbf212a6efbeff0))
+* **mcp:** drop connections that send no bytes within the header timeout ([2cdeb99](https://github.com/BentBr/r_data_core/commit/2cdeb99c215964d60003164afd11c8563766848a))
+* **mcp:** keep the API-key credential out of Debug output ([3d5b54d](https://github.com/BentBr/r_data_core/commit/3d5b54dbd2ad7a07c75d5154f9cfb1c1de613d8e))
+* **mcp:** serve protected-resource metadata under the resource path ([79ccfba](https://github.com/BentBr/r_data_core/commit/79ccfbafd7061e77e72c9bd9667a7b602d3aff8f))
+* **mcp:** tell each auth backend's caller how to renew a rejected credential ([50fa3c4](https://github.com/BentBr/r_data_core/commit/50fa3c40659ec0b8e66a7d978bd05f78bb49c050))
+* **oidc:** apply the azp rule to the browser ID-token path only ([eadc5d5](https://github.com/BentBr/r_data_core/commit/eadc5d5f30220d5cc71b79d462d3b821bf8239d3))
+* **oidc:** close the userinfo loopback bypass and stream-cap provider bodies ([9b167f6](https://github.com/BentBr/r_data_core/commit/9b167f6d9a07e800b060af2c97b2a3aba22d963f))
+* **oidc:** require azp for multi-audience tokens and reject future iat ([fa861ed](https://github.com/BentBr/r_data_core/commit/fa861ed2b7fc4ac5ac07f2b0219cde263ae551ce))
+* **oidc:** validate and cache the discovery document and require https ([877b7a9](https://github.com/BentBr/r_data_core/commit/877b7a902a129146ebad1df1fc64d6e6dc3cea6f))
+* **services:** hand the mapped roles out of OIDC resolution ([a48ba32](https://github.com/BentBr/r_data_core/commit/a48ba320644a53d0250c02b98ca27c259a9154c5))
+* **sso:** refuse to adopt an account that is super-admin through a role ([24043e9](https://github.com/BentBr/r_data_core/commit/24043e9e0cb4f9abc936d01f73087e74f8c6b88d))
+* **sso:** trust only verified emails when provisioning and never adopt a super-admin ([9649bcf](https://github.com/BentBr/r_data_core/commit/9649bcf470990feddeb834019a934d8e4149c487))
+* **users:** let admins edit and deactivate SSO users again ([20b3f96](https://github.com/BentBr/r_data_core/commit/20b3f96f94cdb2b9e7b1a428ba09c03ef208bfb1))
+
 ## [0.4.16](https://github.com/BentBr/r_data_core/compare/core-v0.4.15...core-v0.4.16) (2026-10-11)
 
 
