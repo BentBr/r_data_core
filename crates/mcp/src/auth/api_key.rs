@@ -24,7 +24,7 @@ use tokio::sync::RwLock;
 
 use super::{AuthBackend, AuthError, CallerContext};
 use crate::auth::oidc::{Clock, SystemClock};
-use crate::config::Config;
+use crate::config::{Config, Credential};
 
 /// The header `RDataCore` reads an API key from.
 ///
@@ -61,7 +61,7 @@ struct HeldToken {
 
 /// Authenticates with a single static API key, exchanged for admin tokens.
 pub struct ApiKeyBackend {
-    credential: String,
+    credential: Credential,
     exchange_url: String,
     http: reqwest::Client,
     held: RwLock<Option<HeldToken>>,
@@ -71,7 +71,7 @@ pub struct ApiKeyBackend {
 impl ApiKeyBackend {
     /// # Errors
     /// Returns `AuthError` if the HTTP client cannot be built.
-    pub fn new(config: &Config, credential: String) -> Result<Self, AuthError> {
+    pub fn new(config: &Config, credential: Credential) -> Result<Self, AuthError> {
         Self::with_clock(config, credential, Arc::new(SystemClock))
     }
 
@@ -79,7 +79,7 @@ impl ApiKeyBackend {
     /// As [`Self::new`].
     pub fn with_clock(
         config: &Config,
-        credential: String,
+        credential: Credential,
         clock: Arc<dyn Clock>,
     ) -> Result<Self, AuthError> {
         let http = reqwest::Client::builder()
@@ -105,7 +105,7 @@ impl ApiKeyBackend {
     /// anything pointing at the omission.
     #[cfg(test)]
     pub(crate) fn holding(config: &Config, token: &str) -> Result<Self, AuthError> {
-        let backend = Self::new(config, "unused-in-this-mode".to_string())?;
+        let backend = Self::new(config, Credential::new("unused-in-this-mode"))?;
         *backend
             .held
             .try_write()
@@ -129,7 +129,7 @@ impl ApiKeyBackend {
         let response = self
             .http
             .post(&self.exchange_url)
-            .header(API_KEY_HEADER, &self.credential)
+            .header(API_KEY_HEADER, self.credential.expose())
             .send()
             .await
             .map_err(|e| {
@@ -163,6 +163,10 @@ impl ApiKeyBackend {
 
 #[async_trait::async_trait]
 impl AuthBackend for ApiKeyBackend {
+    fn credential_hint(&self) -> &'static str {
+        "Create a new API key in the admin panel under API Keys and update RDC_API_KEY."
+    }
+
     async fn outbound_headers(
         &self,
         _ctx: &CallerContext,

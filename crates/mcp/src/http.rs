@@ -37,17 +37,11 @@
 //! user's tool visibility leak to the next connection.
 
 use std::collections::HashMap;
-use std::convert::Infallible;
 use std::net::SocketAddr;
 use std::sync::Arc;
 use std::time::Duration;
 
-use bytes::Bytes;
-use http_body_util::{BodyExt as _, Full};
-use hyper::body::Incoming;
-use hyper::{Request, Response, StatusCode};
-use rmcp::transport::streamable_http_server::session::never::NeverSessionManager;
-use rmcp::transport::streamable_http_server::{StreamableHttpServerConfig, StreamableHttpService};
+use rmcp::transport::streamable_http_server::StreamableHttpServerConfig;
 use tokio::sync::RwLock;
 
 use r_data_core_core::oidc::keys::KeySource;
@@ -57,7 +51,12 @@ use r_data_core_oidc_http::HttpKeySource;
 use crate::auth::{metadata, CallerContext, OidcBackend, Permissions};
 use crate::client::RdcClient;
 use crate::config::Config;
-use crate::tools::RdcTools;
+
+mod guards;
+mod routes;
+pub mod server;
+
+pub use server::serve;
 
 /// Where the MCP endpoint lives.
 pub const MCP_PATH: &str = "/mcp";
@@ -70,9 +69,6 @@ pub const HEALTH_PATH: &str = "/health";
 /// visibility is only ergonomics — `RDataCore` re-checks every call — so this
 /// is a latency trade, not a security one.
 const PERMISSIONS_TTL: Duration = Duration::from_secs(60);
-
-/// The body type `rmcp`'s tower service produces.
-type ResponseBody = http_body_util::combinators::BoxBody<Bytes, Infallible>;
 
 /// Permissions held for one caller.
 struct CachedPermissions {
@@ -87,6 +83,7 @@ pub struct ServerState {
     keys: Arc<dyn KeySource>,
     client: Arc<RdcClient>,
     permissions: RwLock<HashMap<String, CachedPermissions>>,
+    permissions_capacity: usize,
     http_config: StreamableHttpServerConfig,
 }
 
@@ -143,6 +140,7 @@ impl ServerState {
             keys,
             client,
             permissions: RwLock::new(HashMap::new()),
+            permissions_capacity: crate::auth::oidc::CACHE_MAX_ENTRIES,
             http_config,
         })
     }
@@ -152,7 +150,7 @@ impl ServerState {
     /// Validation happens here, exactly once per request. The resulting
     /// context is marked validated, and the auth backend refuses to act on one
     /// that is not.
-    async fn authenticate(&self, token: &str) -> Result<CallerContext, String> {
+    pub(super) async fn authenticate(&self, token: &str) -> Result<CallerContext, String> {
         let now = time::OffsetDateTime::now_utc().unix_timestamp();
         let keys = self
             .keys
@@ -187,8 +185,11 @@ impl ServerState {
     }
 
     /// What this caller may do, from cache when it is fresh.
-    async fn permissions_for(&self, ctx: &CallerContext) -> Permissions {
-        let key = ctx.bearer.as_deref().map_or_else(String::new, digest);
+    pub(super) async fn permissions_for(&self, ctx: &CallerContext) -> Permissions {
+        let key = ctx
+            .bearer
+            .as_deref()
+            .map_or_else(String::new, guards::digest);
 
         {
             let cache = self.permissions.read().await;
@@ -219,6 +220,18 @@ impl ServerState {
         // one per distinct token seen since startup would grow without bound
         // on a long-running server.
         cache.retain(|_, held| held.fetched_at.elapsed() < PERMISSIONS_TTL);
+        // Then bound it: a flood of distinct valid tokens must not outgrow
+        // the cap before anything ages out. O(n) per eviction, on a miss only.
+        while cache.len() >= self.permissions_capacity {
+            let Some(oldest) = cache
+                .iter()
+                .min_by_key(|(_, held)| held.fetched_at)
+                .map(|(key, _)| key.clone())
+            else {
+                break;
+            };
+            cache.remove(&oldest);
+        }
         cache.insert(
             key,
             CachedPermissions {
@@ -232,44 +245,36 @@ impl ServerState {
     }
 }
 
-/// Serve until `shutdown` fires.
-///
-/// # Errors
-/// Returns an error if the listener cannot be bound.
-pub async fn serve(
-    state: Arc<ServerState>,
-    listener: tokio::net::TcpListener,
-    shutdown: tokio_util::sync::CancellationToken,
-) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
-    loop {
-        let accepted = tokio::select! {
-            () = shutdown.cancelled() => return Ok(()),
-            accepted = listener.accept() => accepted,
-        };
+impl ServerState {
+    #[cfg(test)]
+    pub(crate) const fn with_permissions_capacity(mut self, capacity: usize) -> Self {
+        self.permissions_capacity = capacity;
+        self
+    }
 
-        let (stream, peer) = match accepted {
-            Ok(pair) => pair,
-            Err(e) => {
-                log::warn!("could not accept a connection: {e}");
-                continue;
-            }
-        };
+    #[cfg(test)]
+    pub(crate) async fn permissions_cache_len(&self) -> usize {
+        self.permissions.read().await.len()
+    }
 
-        let state = Arc::clone(&state);
-        tokio::spawn(async move {
-            let service = hyper::service::service_fn(move |req| {
-                let state = Arc::clone(&state);
-                async move { Ok::<_, Infallible>(route(state, req).await) }
-            });
+    /// The configuration this server was built from.
+    pub(crate) const fn config(&self) -> &Config {
+        &self.config
+    }
 
-            if let Err(e) =
-                hyper_util::server::conn::auto::Builder::new(hyper_util::rt::TokioExecutor::new())
-                    .serve_connection_with_upgrades(hyper_util::rt::TokioIo::new(stream), service)
-                    .await
-            {
-                log::debug!("connection from {peer} ended: {e}");
-            }
-        });
+    /// The accept-loop limits.
+    pub(crate) const fn limits(&self) -> &server::HttpServerLimits {
+        &self.config.server_limits
+    }
+
+    /// The `rmcp` transport settings.
+    pub(crate) const fn http_config(&self) -> &StreamableHttpServerConfig {
+        &self.http_config
+    }
+
+    /// The client every request's tools share.
+    pub(crate) const fn client(&self) -> &Arc<RdcClient> {
+        &self.client
     }
 }
 
@@ -279,187 +284,6 @@ pub async fn serve(
 /// Returns an error if the address is unusable.
 pub async fn bind(addr: &str) -> Result<tokio::net::TcpListener, std::io::Error> {
     tokio::net::TcpListener::bind(addr).await
-}
-
-/// Route one request.
-async fn route(state: Arc<ServerState>, req: Request<Incoming>) -> Response<ResponseBody> {
-    let path = req.uri().path().to_string();
-
-    // Before anything else, including the unauthenticated endpoints: a
-    // DNS-rebinding attack aims a browser at a server it should not be able to
-    // reach, and discovery metadata is exactly what it would want to read.
-    if !origin_allowed(&state.config.allowed_origins, &req) {
-        return text_response(StatusCode::FORBIDDEN, "origin not allowed");
-    }
-    if !host_allowed(&state.config.allowed_hosts, &req) {
-        return text_response(StatusCode::FORBIDDEN, "host not allowed");
-    }
-
-    if path == metadata::METADATA_PATH {
-        return json_response(
-            StatusCode::OK,
-            &metadata::protected_resource_document(&state.config),
-        );
-    }
-    if path == HEALTH_PATH {
-        return text_response(StatusCode::OK, "ok");
-    }
-    if path != MCP_PATH {
-        return text_response(StatusCode::NOT_FOUND, "not found");
-    }
-
-    let Some(token) = bearer_of(&req) else {
-        return challenge(&state);
-    };
-
-    let ctx = match state.authenticate(&token).await {
-        Ok(ctx) => ctx,
-        Err(reason) => {
-            // Logged in full, answered with almost nothing: which part of a
-            // forgery was wrong is not something to hand back.
-            log::warn!("rejected an MCP caller: {reason}");
-            return challenge(&state);
-        }
-    };
-
-    let permissions = state.permissions_for(&ctx).await;
-    let client = Arc::clone(&state.client);
-
-    // A fresh tool instance per request, holding this caller's context and
-    // permissions. This is what Task 11a's `caller()` accessor made possible:
-    // no tool body knows the transport changed.
-    let service = StreamableHttpService::new(
-        move || {
-            Ok(RdcTools::new(
-                Arc::clone(&client),
-                permissions.clone(),
-                ctx.clone(),
-            ))
-        },
-        Arc::new(NeverSessionManager::default()),
-        state.http_config.clone(),
-    );
-
-    service.handle(req).await
-}
-
-/// A `401` carrying the discovery challenge.
-///
-/// The challenge is the whole point: without it a client knows only that it
-/// needs a token, not where to obtain one.
-fn challenge(state: &ServerState) -> Response<ResponseBody> {
-    Response::builder()
-        .status(StatusCode::UNAUTHORIZED)
-        .header(
-            "WWW-Authenticate",
-            metadata::challenge_header(&state.config),
-        )
-        .header("Content-Type", "text/plain")
-        .body(boxed("authentication required"))
-        .unwrap_or_else(|_| Response::new(boxed("authentication required")))
-}
-
-/// Whether a request's `Origin` is one this server serves.
-///
-/// An empty allowlist means the check is off, matching `rmcp`'s own
-/// behaviour — a non-browser deployment has no `Origin` to check and should
-/// not have to invent one. A request carrying no `Origin` passes: that is a
-/// non-browser client, which the header exists to distinguish from.
-///
-/// Comparison is exact on the whole `scheme://host[:port]` string. Matching a
-/// suffix would let `https://evil-example.com` past an allowlist naming
-/// `https://example.com`, which is the classic way this check is got wrong.
-fn origin_allowed(allowed: &[String], req: &Request<Incoming>) -> bool {
-    if allowed.is_empty() {
-        return true;
-    }
-    let Some(origin) = req
-        .headers()
-        .get(hyper::header::ORIGIN)
-        .and_then(|v| v.to_str().ok())
-    else {
-        return true;
-    };
-    allowed.iter().any(|permitted| permitted == origin)
-}
-
-/// Whether a request's `Host` is one this server answers to.
-///
-/// An empty allowlist means the check is off, matching `rmcp`. A request with
-/// no `Host` is refused rather than waved through: HTTP/1.1 requires one, and
-/// its absence on a request that reached this far is not something to
-/// interpret generously.
-///
-/// An entry may name a bare host or a `host:port`, as `rmcp`'s own does. A
-/// bare entry matches any port, since an ephemeral or proxied port is not the
-/// thing being defended against; an entry with a port matches only that port.
-///
-/// Comparison is whole-string either way. A suffix match would let
-/// `evil-mcp.example.com` past an allowlist naming `mcp.example.com`, which is
-/// the usual way this check is got wrong.
-fn host_allowed(allowed: &[String], req: &Request<Incoming>) -> bool {
-    if allowed.is_empty() {
-        return true;
-    }
-    let Some(host) = req
-        .headers()
-        .get(hyper::header::HOST)
-        .and_then(|v| v.to_str().ok())
-    else {
-        return false;
-    };
-    // `[::1]:8080` -> `[::1]`; `example.com:80` -> `example.com`.
-    let without_port = host
-        .rsplit_once(':')
-        .filter(|(head, _)| !head.ends_with(':') && !head.is_empty())
-        .map_or(host, |(head, _)| head);
-
-    allowed
-        .iter()
-        .any(|permitted| permitted == host || permitted == without_port)
-}
-
-/// The bearer token on a request, if there is a well-formed one.
-fn bearer_of(req: &Request<Incoming>) -> Option<String> {
-    req.headers()
-        .get(hyper::header::AUTHORIZATION)?
-        .to_str()
-        .ok()?
-        .strip_prefix("Bearer ")
-        .map(str::trim)
-        .filter(|t| !t.is_empty())
-        .map(str::to_string)
-}
-
-fn json_response(status: StatusCode, body: &serde_json::Value) -> Response<ResponseBody> {
-    Response::builder()
-        .status(status)
-        .header("Content-Type", "application/json")
-        .body(boxed(&body.to_string()))
-        .unwrap_or_else(|_| Response::new(boxed("{}")))
-}
-
-fn text_response(status: StatusCode, body: &str) -> Response<ResponseBody> {
-    Response::builder()
-        .status(status)
-        .header("Content-Type", "text/plain")
-        .body(boxed(body))
-        .unwrap_or_else(|_| Response::new(boxed(body)))
-}
-
-fn boxed(body: &str) -> ResponseBody {
-    Full::new(Bytes::from(body.to_string()))
-        .map_err(|never| match never {})
-        .boxed()
-}
-
-/// A digest of a caller's token, for use as a cache key.
-///
-/// Never the token itself: a cache key ends up in logs and metrics far more
-/// readily than a value does.
-fn digest(token: &str) -> String {
-    use sha2::{Digest as _, Sha256};
-    format!("{:x}", Sha256::digest(token.as_bytes()))
 }
 
 /// The address the server should listen on.
@@ -482,3 +306,5 @@ pub fn log_startup(config: &Config, addr: SocketAddr) {
 
 #[cfg(test)]
 mod http_tests;
+#[cfg(test)]
+mod limits_tests;

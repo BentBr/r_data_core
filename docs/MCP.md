@@ -82,6 +82,61 @@ so a given version's asset list stays verifiable after it is superseded.
 
 ---
 
+## Releasing
+
+A release is cut by release-please on `main`; its `mcp-tag` job pushes the
+matching `mcp-v*` tag with the **release App**'s token, which starts
+`mcp-release.yml`. That workflow refuses any tag whose commit is not a
+release commit on `main`, or is not the commit the run was started for
+(`.github/scripts/check-release-tag.sh`), builds five targets, attests their
+provenance, uploads them once (an existing release's assets are never
+overwritten), and publishes the npm package. The package carries the
+release's `SHA256SUMS` inside the tarball, so an install verifies against
+sums covered by npm's provenance rather than by the release it is verifying.
+
+That guard stops a mistaken or misdirected tag. It is not what stops a
+malicious one — it constrains which commit is published, not who may start a
+release. The boundary is the GitHub configuration below: the tag ruleset, the
+release App's key being readable only from `main` (an environment secret of
+`release-tag`), and the `release` environment that the publishing jobs run
+in being limited to `mcp-v*` tags with required reviewers.
+
+Settings that live on GitHub and npm rather than in this repository have to be
+in place for any of this to mean anything. **Both environments, and the two
+secrets in `release-tag`, must exist before this change merges.** If
+`release-tag` is missing, GitHub creates it on first use with no secrets, and
+the next core release fails to tag the MCP (it fails closed, but it fails).
+
+1. **Create the release App** with repository permission `contents: write`
+   and nothing else, and install it on this repository. Create the
+   environment **`release-tag`**: deployment branches `main` only, **no**
+   required reviewers (tagging runs unattended). Store the App's ID and
+   private key as **environment secrets of `release-tag`** named
+   `RELEASE_APP_ID` and `RELEASE_APP_PRIVATE_KEY` — never as repository
+   secrets, which any branch's workflow can read. Only `release-please.yml`'s
+   `mcp-tag` job, which declares `environment: release-tag`, may name them
+   (`check-app-secret-scope.sh` fails CI otherwise).
+2. **Reduce the PR-management App** (`PR_APP_*`, used by `pr-management.yml`
+   on every branch push) to `pull-requests: write`, `contents: read` and
+   `metadata: read`, so it can no longer push a tag. The workflow also asks
+   for only those permissions when it mints the token.
+3. **Tag ruleset.** A repository ruleset on `refs/tags/mcp-v*` and
+   `refs/tags/v*` restricting creation and update to the release App.
+4. **Immutable releases.** Enable them in the repository's release settings,
+   so a published asset cannot be replaced even by a maintainer.
+5. **`release` environment.** Create it with required reviewers and
+   deployment refs limited to tags matching `mcp-v*` (the `publish`, `pages`
+   and `npm` jobs use it), and register the npm trusted publisher for
+   `@rdatacore/mcp-server` with workflow `mcp-release.yml` **and**
+   environment `release`.
+
+`check-app-secret-scope.sh` is a drift detector, not a boundary: it greps for
+the name of the key, so it does not catch `secrets: inherit` or
+`toJSON(secrets)`. What makes the key unreadable from a branch is step 1's
+environment and its `main`-only deployment policy.
+
+---
+
 ## Local (stdio)
 
 1. Create an API key in RDataCore: **Settings → API keys**.
@@ -249,7 +304,9 @@ published on `http://localhost:8931` — loopback rather than a
 `.docker` hostname behind the proxy, because the resource URL must be https
 or loopback and the server refuses to start otherwise. Bearer tokens must not
 cross plaintext; localhost is the one exemption, and it is the right one for
-a developer machine.
+a developer machine. The port is bound to loopback only; other machines on the
+network cannot reach it, which is the condition under which plaintext is
+acceptable.
 
 Check it answers:
 
@@ -332,6 +389,9 @@ client typically fetches it once per session.
 | `RDC_MCP_ALLOWED_ORIGINS` | no | the resource URL's origin | Browser origins permitted to connect |
 | `RDC_MCP_ALLOWED_HOSTS` | no | the resource URL's authority | `Host` values permitted |
 | `RDC_MCP_TIMEOUT_SECS` | no | `30` | Outbound HTTP timeout |
+| `RDC_MCP_HEADER_TIMEOUT_SECS` | no | `10` | Seconds a client gets to finish its request headers |
+| `RDC_MCP_IDLE_TIMEOUT_SECS` | no | `120` | Seconds a connection may stay open in total; at the limit it finishes the request in flight (up to 5 s more) and closes |
+| `RDC_MCP_MAX_CONNECTIONS` | no | `1024` | Open connections accepted at once; the rest are refused |
 
 Configuration refuses unsafe combinations at startup rather than at first use:
 stdio without a credential, HTTP without an issuer, HTTP with a static key, an

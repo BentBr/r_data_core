@@ -179,7 +179,7 @@ async fn never_falls_back_to_a_static_credential() {
     // The guarantee the whole permission model rests on: with no valid caller
     // the backend produces nothing — it does not reach for a configured key.
     let mut cfg = config();
-    cfg.credential = Some("a-service-key".to_string());
+    cfg.credential = Some(crate::config::Credential::new("a-service-key"));
     let backend = OidcBackend::new(&cfg).expect("backend");
 
     let result = backend.outbound_headers(&CallerContext::default()).await;
@@ -383,5 +383,36 @@ async fn a_live_entry_is_not_evicted_by_another_callers_arrival() {
         backend.cache.read().await.len(),
         2,
         "both callers are within their token's life and should both be held"
+    );
+}
+
+#[tokio::test]
+async fn the_cache_never_grows_past_its_capacity() {
+    // Every validly signed token a long-lived server ever sees would
+    // otherwise leave an entry until it aged out — minutes each, and an
+    // identity provider can mint thousands a minute.
+    let server = MockServer::start().await;
+    mock_exchange(&server, "local", 3_600).await;
+    let backend = OidcBackend::with_clock(&config_for(&server.uri()), TestClock::new())
+        .expect("backend")
+        .with_cache_capacity(3);
+
+    for caller in ["one", "two", "three", "four"] {
+        backend
+            .outbound_headers(&validated_ctx(caller))
+            .await
+            .expect("exchange");
+    }
+
+    assert_eq!(backend.cached_entries().await, 3);
+    // The oldest entry went, so the first caller exchanges again.
+    backend
+        .outbound_headers(&validated_ctx("one"))
+        .await
+        .expect("exchange");
+    assert_eq!(
+        server.received_requests().await.expect("requests").len(),
+        5,
+        "four first exchanges plus one re-exchange for the evicted caller"
     );
 }

@@ -244,3 +244,25 @@ async fn a_base_url_with_a_path_prefix_is_preserved() {
         Vec::<serde_json::Value>::new()
     );
 }
+
+#[tokio::test]
+async fn a_401_from_the_server_is_rendered_with_the_api_key_hint() {
+    let server = MockServer::start().await;
+    Mock::given(method("GET"))
+        .and(path("/admin/api/v1/workflows"))
+        .respond_with(ResponseTemplate::new(401).set_body_json(json!({"message": "expired"})))
+        .mount(&server)
+        .await;
+    let client = client_for(&server);
+
+    let err = client
+        .get_json::<serde_json::Value>("/admin/api/v1/workflows", &CallerContext::default())
+        .await
+        .expect_err("401");
+
+    assert!(
+        err.to_tool_message().contains("RDC_API_KEY"),
+        "{}",
+        err.to_tool_message()
+    );
+}

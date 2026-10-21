@@ -198,3 +198,20 @@ fn legal_values_are_empty_for_an_unrelated_message() {
         Vec::<String>::new()
     );
 }
+
+#[test]
+fn an_unauthorized_error_carries_the_backend_hint() {
+    let err = ClientError::Unauthorized {
+        hint: "Sign in again with your identity provider.".to_string(),
+    };
+    let message = err.to_tool_message();
+    assert!(
+        message.starts_with("Credential invalid or expired."),
+        "{message}"
+    );
+    assert!(message.contains("identity provider"), "{message}");
+    assert!(
+        !message.contains("API Keys"),
+        "an OIDC caller must not be told to create an API key: {message}"
+    );
+}

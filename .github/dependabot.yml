@@ -1,0 +1,16 @@
+# Keeps the SHA pins in .github/workflows current. A pinned action that is
+# never updated is a pinned vulnerability; Dependabot moves the SHA and the
+# `# vX` comment together.
+version: 2
+updates:
+    -   package-ecosystem: github-actions
+        directory: /
+        schedule:
+            interval: weekly
+        # A release younger than a week has had the least scrutiny; most
+        # compromised action releases are caught within days.
+        cooldown:
+            default-days: 7
+        groups:
+            actions:
+                patterns: [ '*' ]

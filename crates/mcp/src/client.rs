@@ -122,6 +122,20 @@ impl RdcClient {
         })
     }
 
+    fn unauthorized(&self) -> ClientError {
+        ClientError::Unauthorized {
+            hint: self.auth.credential_hint().to_string(),
+        }
+    }
+
+    /// Fill in the backend's advice on a bare 401.
+    fn with_hint(&self, err: ClientError) -> ClientError {
+        match err {
+            ClientError::Unauthorized { hint } if hint.is_empty() => self.unauthorized(),
+            other => other,
+        }
+    }
+
     async fn send<B: Serialize + Sync, T: DeserializeOwned>(
         &self,
         method: reqwest::Method,
@@ -136,7 +150,7 @@ impl RdcClient {
             .auth
             .outbound_headers(ctx)
             .await
-            .map_err(|_| ClientError::Unauthorized)?
+            .map_err(|_| self.unauthorized())?
         {
             req = req.header(name, value);
         }
@@ -162,11 +176,11 @@ impl RdcClient {
         if !status.is_success() {
             let parsed = serde_json::from_str::<serde_json::Value>(&text)
                 .unwrap_or_else(|_| serde_json::json!({ "message": text }));
-            return Err(ClientError::from_api_body(
+            return Err(self.with_hint(ClientError::from_api_body(
                 status.as_u16(),
                 &parsed,
                 url.as_str(),
-            ));
+            )));
         }
 
         serde_json::from_str::<T>(&text).map_err(|e| ClientError::Decode {
