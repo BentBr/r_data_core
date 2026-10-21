@@ -35,7 +35,9 @@ struct Cached {
 pub struct HttpKeySource {
     client: reqwest::Client,
     issuer: String,
+    allow_insecure: bool,
     ttl: Duration,
+    discovery: discovery::DiscoveryCache,
     cached: RwLock<Option<Cached>>,
 }
 
@@ -46,22 +48,26 @@ impl HttpKeySource {
         Ok(Self {
             client: discovery::client()?,
             issuer: config.issuer.trim_end_matches('/').to_string(),
+            allow_insecure: config.allow_insecure_issuer,
             ttl: config.jwks_ttl,
+            discovery: discovery::DiscoveryCache::new(),
             cached: RwLock::new(None),
         })
     }
 
     /// Discover the key-set URL, then fetch it.
     async fn fetch(&self) -> Result<JwkSet, KeySourceError> {
-        let discovery = discovery::fetch(&self.client, &self.issuer).await?;
-
-        self.client
-            .get(&discovery.jwks_uri)
-            .send()
-            .await
-            .map_err(|e| KeySourceError::Unreachable(format!("{}: {e}", discovery.jwks_uri)))?
-            .json::<JwkSet>()
-            .await
+        let discovery = self
+            .discovery
+            .get(&self.client, &self.issuer, self.allow_insecure)
+            .await?;
+        let body = discovery::read_capped(
+            self.client.get(&discovery.jwks_uri),
+            discovery::JWKS_MAX_BYTES,
+            &discovery.jwks_uri,
+        )
+        .await?;
+        serde_json::from_slice::<JwkSet>(&body)
             .map_err(|e| KeySourceError::Malformed(format!("{}: {e}", discovery.jwks_uri)))
     }
 

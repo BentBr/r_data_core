@@ -33,9 +33,11 @@ use serde::{Deserialize, Serialize};
 use sha2::{Digest as _, Sha256};
 use thiserror::Error;
 
+use r_data_core_core::admin_jwt::AuthUserClaims;
 use r_data_core_core::cache::CacheManager;
 use r_data_core_core::oidc::keys::OidcClaims;
 use r_data_core_core::oidc::{is_local_redirect_path, OidcConfig};
+use r_data_core_core::permissions::role::Role;
 
 use crate::oidc_runtime::{OidcAuthError, OidcRuntime};
 use r_data_core_oidc_http::discovery as oidc_discovery;
@@ -82,6 +84,10 @@ struct TokenResponse {
 struct PendingLogin {
     /// The PKCE verifier. Never leaves this server until the code exchange.
     verifier: String,
+    /// Sent to the provider with the request and expected back inside the ID
+    /// token. Binds the token to this attempt: a token obtained any other way
+    /// does not carry it.
+    nonce: String,
     /// Where to land afterwards, already validated as a local path.
     return_to: Option<String>,
 }
@@ -92,11 +98,26 @@ pub struct Redirect {
     pub state: String,
 }
 
+/// A finished sign-in: who it was, and what their session carries.
+#[derive(Debug)]
+pub struct CompletedLogin {
+    /// The claims an `RDataCore` session for this person carries.
+    pub claims: AuthUserClaims,
+    /// The roles the token's groups mapped to. The session is minted from
+    /// these; nothing is read from `user_roles` for an SSO sign-in.
+    pub roles: Vec<Role>,
+    /// The verified identity, for reading the link back.
+    pub identity: OidcClaims,
+    /// Where to land afterwards, already validated as a local path.
+    pub return_to: Option<String>,
+}
+
 /// Drives the authorization-code flow.
 pub struct OidcFlow {
     runtime: Arc<OidcRuntime>,
     cache: Arc<CacheManager>,
     http: reqwest::Client,
+    discovery: oidc_discovery::DiscoveryCache,
     /// Where the admin interface is served, when it is not the same origin as
     /// the API. The callback runs on the API's origin, so redirecting to a
     /// bare path would land the browser on a host that serves no interface —
@@ -118,6 +139,7 @@ impl OidcFlow {
             runtime,
             cache,
             http: oidc_discovery::client().map_err(|e| FlowError::Provider(e.to_string()))?,
+            discovery: oidc_discovery::DiscoveryCache::new(),
             frontend_base_url: frontend_base_url.filter(|base| !base.is_empty()),
         })
     }
@@ -144,7 +166,13 @@ impl OidcFlow {
             return Err(FlowError::NotConfigured);
         };
 
-        let discovery = oidc_discovery::fetch(&self.http, &self.config().issuer)
+        let discovery = self
+            .discovery
+            .get(
+                &self.http,
+                &self.config().issuer,
+                self.config().allow_insecure_issuer,
+            )
             .await
             .map_err(|e| FlowError::Provider(e.to_string()))?;
         let authorize = discovery
@@ -154,12 +182,14 @@ impl OidcFlow {
         let verifier = random_token();
         let challenge = URL_SAFE_NO_PAD.encode(Sha256::digest(verifier.as_bytes()));
         let state = random_token();
+        let nonce = random_token();
 
         self.cache
             .set(
                 &format!("{STATE_PREFIX}{state}"),
                 &PendingLogin {
                     verifier,
+                    nonce: nonce.clone(),
                     // Anything that is not a local path is dropped rather than
                     // rejected: a stale bookmark should still log someone in,
                     // just to the default place.
@@ -178,6 +208,7 @@ impl OidcFlow {
             ("redirect_uri", redirect_uri.as_str()),
             ("scope", "openid profile email"),
             ("state", state.as_str()),
+            ("nonce", nonce.as_str()),
             ("code_challenge", challenge.as_str()),
             ("code_challenge_method", "S256"),
         ];
@@ -198,7 +229,7 @@ impl OidcFlow {
         state: &str,
         code: &str,
         session_seconds: u64,
-    ) -> Result<(OidcClaims, Option<String>), FlowError> {
+    ) -> Result<CompletedLogin, FlowError> {
         // Atomic, and first: a replay must lose the race rather than be
         // noticed afterwards. A cache that is disabled or unreachable counts
         // as "not claimed", which refuses the sign-in — the safe direction.
@@ -225,15 +256,23 @@ impl OidcFlow {
 
         let id_token = self.exchange_code(code, &pending.verifier).await?;
         let now = time::OffsetDateTime::now_utc().unix_timestamp();
-        let verified = self.runtime.verify(&id_token, now).await?;
-
-        // The same refusals as the bearer path: unmapped, deactivated, locked.
-        // Reached through the shared tail so it cannot diverge.
-        self.runtime
-            .session_claims(&verified, session_seconds)
+        let verified = self
+            .runtime
+            .verify_id_token(&id_token, now, Some(&pending.nonce))
             .await?;
 
-        Ok((verified, pending.return_to))
+        // The same refusals as the bearer path: unmapped, deactivated, locked.
+        // Reached through the shared tail so it cannot diverge — and the
+        // roles come back from it, because they are what the session is
+        // minted from.
+        let resolution = self.runtime.resolve(&verified, session_seconds).await?;
+
+        Ok(CompletedLogin {
+            claims: resolution.claims,
+            roles: resolution.roles,
+            identity: verified,
+            return_to: pending.return_to,
+        })
     }
 
     /// Trade an authorization code for tokens at the provider.
@@ -244,7 +283,13 @@ impl OidcFlow {
             return Err(FlowError::NotConfigured);
         };
 
-        let discovery = oidc_discovery::fetch(&self.http, &self.config().issuer)
+        let discovery = self
+            .discovery
+            .get(
+                &self.http,
+                &self.config().issuer,
+                self.config().allow_insecure_issuer,
+            )
             .await
             .map_err(|e| FlowError::Provider(e.to_string()))?;
         let token_endpoint = discovery
@@ -375,5 +420,7 @@ impl OidcServices {
     }
 }
 
+#[cfg(test)]
+mod completion_tests;
 #[cfg(test)]
 mod oidc_flow_tests;

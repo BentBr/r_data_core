@@ -20,6 +20,22 @@ pub const DEFAULT_RATE_LIMIT_MAX_ATTEMPTS: u32 = 10;
 /// Default rate-limit window, seconds (15 minutes).
 pub const DEFAULT_RATE_LIMIT_WINDOW_SECS: u64 = 900;
 
+/// Single-sign-on starts per client IP per window.
+///
+/// Every start counts, not only failures, so this sits well above the
+/// failed-login limit: a whole office behind one NAT signing in at nine
+/// o'clock must not hit it.
+pub const OIDC_START_RATE_LIMIT_MAX: u32 = 60;
+/// Window for [`OIDC_START_RATE_LIMIT_MAX`], seconds.
+pub const OIDC_START_RATE_LIMIT_WINDOW_SECS: u64 = 60;
+/// API-key exchanges per client IP per window.
+///
+/// Every exchange counts, not only failures, for the same reason as
+/// [`OIDC_START_RATE_LIMIT_MAX`].
+pub const API_KEY_EXCHANGE_RATE_LIMIT_MAX: u32 = 60;
+/// Window for [`API_KEY_EXCHANGE_RATE_LIMIT_MAX`], seconds.
+pub const API_KEY_EXCHANGE_RATE_LIMIT_WINDOW_SECS: u64 = 60;
+
 static GLOBAL: OnceLock<SecurityConfig> = OnceLock::new();
 
 /// Authentication-hardening settings.

@@ -54,7 +54,7 @@ pub async fn admin_login(
 
     // Per-client-IP rate limit pre-check
     let rl_key = rate_limit::rate_limit_key(&req, rate_limit::Bucket::Login);
-    if rate_limit::is_over_limit(data.cache_manager(), &rl_key).await {
+    if rate_limit::is_over_limit(data.cache_manager(), rate_limit::Bucket::Login, &rl_key).await {
         log::warn!("Login rate limit hit for key {rl_key}");
         return ApiResponse::too_many_requests("Too many login attempts, try again later");
     }
@@ -68,7 +68,8 @@ pub async fn admin_login(
             // does not answer "does this username exist?".
             r_data_core_core::crypto::verify_dummy_password(&login_req.password);
             // Count username-enumeration probes against the IP, too.
-            rate_limit::record_failure(data.cache_manager(), &rl_key).await;
+            rate_limit::record_failure(data.cache_manager(), rate_limit::Bucket::Login, &rl_key)
+                .await;
             return ApiResponse::unauthorized("Invalid credentials");
         }
         Err(e) => {
@@ -153,7 +154,10 @@ pub async fn admin_register(
     // lookups and an Argon2 hash — throttle it per client IP like login.
     let anonymous = auth.0.is_none();
     let rl_key = rate_limit::rate_limit_key(&req, rate_limit::Bucket::Register);
-    if anonymous && rate_limit::is_over_limit(data.cache_manager(), &rl_key).await {
+    if anonymous
+        && rate_limit::is_over_limit(data.cache_manager(), rate_limit::Bucket::Register, &rl_key)
+            .await
+    {
         log::warn!("Registration rate limit hit for key {rl_key}");
         return ApiResponse::too_many_requests("Too many registration attempts, try again later");
     }
@@ -172,7 +176,8 @@ pub async fn admin_register(
     }
 
     if anonymous {
-        rate_limit::record_failure(data.cache_manager(), &rl_key).await;
+        rate_limit::record_failure(data.cache_manager(), rate_limit::Bucket::Register, &rl_key)
+            .await;
     }
 
     // Get authentication info from the OptionalAuth extractor

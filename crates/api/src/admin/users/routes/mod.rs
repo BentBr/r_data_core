@@ -9,6 +9,28 @@ pub use read::*;
 pub use roles::*;
 pub use write::*;
 
+/// Refuse a stored-role assignment for an SSO account.
+///
+/// An SSO account's roles are re-derived from its token on every sign-in and
+/// never stored (docs/SSO.md, "Roles are not stored"). Accepting them would
+/// create a second, silent authority that group removal at the provider could
+/// never narrow, so every path that writes `user_roles` asks this first.
+///
+/// An empty list is allowed: it clears any stored roles, which only removes
+/// that second authority (and is what an edit dialog sends for an SSO user).
+#[must_use]
+pub fn refuse_sso_role_assignment(
+    user: &r_data_core_core::admin_user::AdminUser,
+    role_uuids: &[uuid::Uuid],
+) -> Option<actix_web::HttpResponse> {
+    (user.is_sso_provisioned && !role_uuids.is_empty()).then(|| {
+        crate::response::ApiResponse::<()>::bad_request(
+            "This user signs in through single sign-on; roles come from the identity \
+             provider's groups and cannot be assigned here.",
+        )
+    })
+}
+
 /// Register user routes
 pub fn register_routes(cfg: &mut actix_web::web::ServiceConfig) {
     cfg.service(list_users)

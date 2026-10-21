@@ -30,6 +30,7 @@ async fn provider() -> MockServer {
     Mock::given(method("GET"))
         .and(path("/.well-known/openid-configuration"))
         .respond_with(ResponseTemplate::new(200).set_body_json(json!({
+            "issuer": uri,
             "jwks_uri": format!("{uri}/jwks"),
             "authorization_endpoint": format!("{uri}/authorize"),
             "token_endpoint": format!("{uri}/token"),
@@ -122,6 +123,7 @@ async fn start_sends_the_browser_to_the_provider_with_pkce_and_state() {
         "PKCE is mandatory, and plain is not PKCE"
     );
     assert!(q.contains_key("code_challenge"));
+    assert!(q.contains_key("nonce"));
     assert_eq!(
         q.get("state").map(String::as_str),
         Some(redirect.state.as_str())
@@ -188,7 +190,10 @@ async fn the_flow_is_refused_when_no_client_is_configured() {
         Arc::new(OidcProvisioningService::new(
             Arc::new(FakeIdentities::default()),
             Arc::new(FakeUsers::default()),
-            Arc::new(crate::oidc_test_fakes::FakeRoles { roles: vec![] }),
+            Arc::new(crate::oidc_test_fakes::FakeRoles {
+                roles: vec![],
+                user_roles: vec![],
+            }),
         )),
         Arc::clone(&cache),
     ));
@@ -321,6 +326,7 @@ async fn provider_without_token_endpoint() -> MockServer {
     Mock::given(method("GET"))
         .and(path("/.well-known/openid-configuration"))
         .respond_with(ResponseTemplate::new(200).set_body_json(json!({
+            "issuer": uri,
             "jwks_uri": format!("{uri}/jwks"),
             "authorization_endpoint": format!("{uri}/authorize"),
         })))
@@ -330,7 +336,7 @@ async fn provider_without_token_endpoint() -> MockServer {
 }
 
 /// Start a sign-in and complete it, returning whatever the flow decided.
-async fn round_trip(flow: &OidcFlow) -> Result<(OidcClaims, Option<String>), FlowError> {
+async fn round_trip(flow: &OidcFlow) -> Result<CompletedLogin, FlowError> {
     let redirect = flow.start(None).await.expect("start");
     flow.complete(&redirect.state, "an-authorization-code", 1800)
         .await
