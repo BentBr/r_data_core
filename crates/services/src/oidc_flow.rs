@@ -423,4 +423,4 @@ impl OidcServices {
 #[cfg(test)]
 mod completion_tests;
 #[cfg(test)]
-mod oidc_flow_tests;
+mod tests;

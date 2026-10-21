@@ -1,4 +1,5 @@
 #![allow(clippy::expect_used, clippy::unwrap_used)]
+#![allow(clippy::missing_panics_doc, clippy::must_use_candidate)]
 // The Actix test service is Rc-based, so futures holding it are not Send.
 #![allow(clippy::future_not_send)]
 
@@ -24,7 +25,7 @@ use crate::api::workflows::common::build_app_state;
 use crate::mcp::oauth_harness::OauthStack;
 
 /// The claims of an access token.
-fn claims_of(access: &str) -> serde_json::Value {
+pub fn claims_of(access: &str) -> serde_json::Value {
     let payload = access.split('.').nth(1).expect("a payload segment");
     let decoded = base64::engine::general_purpose::URL_SAFE_NO_PAD
         .decode(payload)
@@ -32,7 +33,7 @@ fn claims_of(access: &str) -> serde_json::Value {
     serde_json::from_slice(&decoded).expect("json")
 }
 
-fn permissions_of(claims: &serde_json::Value) -> Vec<String> {
+pub fn permissions_of(claims: &serde_json::Value) -> Vec<String> {
     claims["permissions"]
         .as_array()
         .expect("permissions")
@@ -42,7 +43,7 @@ fn permissions_of(claims: &serde_json::Value) -> Vec<String> {
 }
 
 /// Undo the callback's fragment encoding (`%XX` only).
-fn percent_decode(value: &str) -> String {
+pub fn percent_decode(value: &str) -> String {
     let bytes = value.as_bytes();
     let mut out = Vec::with_capacity(bytes.len());
     let mut i = 0;
@@ -134,8 +135,8 @@ async fn a_role_made_super_admin_after_sign_in_is_dropped_on_refresh() {
 async fn an_adopted_accounts_refresh_keeps_the_mapped_roles_not_the_stored_ones() {
     // Adoption keeps `is_sso_provisioned = false`, so keying the snapshot on
     // that flag let the first refresh fall back to the stored roles.
-    std::env::set_var("RDC_OIDC_LINK_BY_EMAIL", "true");
-    let stack = OauthStack::start("rdc-ops:sso-editor").await;
+    let stack =
+        OauthStack::start_with("rdc-ops:sso-editor", &[("RDC_OIDC_LINK_BY_EMAIL", "true")]).await;
     stack
         .grant_permission("sso-editor", "Workflows", "Read")
         .await;

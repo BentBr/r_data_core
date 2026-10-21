@@ -206,4 +206,6 @@ impl DiscoveryCache {
 }
 
 #[cfg(test)]
+mod failure_tests;
+#[cfg(test)]
 mod tests;

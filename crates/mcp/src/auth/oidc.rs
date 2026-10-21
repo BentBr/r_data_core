@@ -211,6 +211,9 @@ impl AuthBackend for OidcBackend {
 
         let (token, lifetime) = self.exchange(bearer).await?;
 
+        // Precision loss is irrelevant for a refresh deadline, and the f64 to u64
+        // cast saturates (never wraps), so even a hostile `expires_in` cannot
+        // overflow. `* 0.8` keeps the value non-negative.
         #[allow(
             clippy::cast_precision_loss,
             clippy::cast_possible_truncation,
