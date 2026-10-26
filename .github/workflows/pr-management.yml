@@ -2,8 +2,14 @@ name: 'PR management'
 
 # On push to a feature branch, open (or refresh) a draft PR to main with a
 # title + changelog derived from the branch's conventional commits, and apply
-# one label per commit type present. release-please owns its own PR, so its
-# branches are excluded.
+# one label per commit type present. release-please and Dependabot own their
+# own PRs, so their branches are excluded.
+#
+# Dependabot additionally cannot run this job at all: its runs read from the
+# Dependabot secret store, not the Actions one, so secrets.PR_APP_ID resolves
+# to an empty string and the App-token step fails the workflow before any of
+# the work starts. Excluding the branch is the fix rather than duplicating the
+# secrets, since there is nothing here Dependabot's own PR text needs.
 
 on:
     push:
@@ -11,6 +17,7 @@ on:
             - main
             - develop
             - 'release-please--**'
+            - 'dependabot/**'
 
     workflow_dispatch:
         inputs:
