@@ -17,7 +17,7 @@ description: Domain models, configuration, cache abstraction, field types, versi
 | `domain/` | Core domain models: `DynamicEntity`, `AbstractRDataEntity` |
 | `entity_definition/` | Entity schema definitions with field types, validation rules, UI settings |
 | `field/` | Field type definitions, constraints, and value handling |
-| `admin_user/` | Admin user models and operations |
+| `admin_user/` | Admin user models and operations (incl. `is_sso_provisioned`, which closes every password path) |
 | `admin_jwt/` | JWT generation/validation for admin auth |
 | `entity_jwt/` | JWT generation/validation for entity/public auth |
 | `cache/` | Cache abstraction (Redis + in-memory backends via `CacheManager`, incl. atomic `increment`) |
@@ -28,6 +28,8 @@ description: Domain models, configuration, cache abstraction, field types, versi
 | `versioning/` | Entity versioning support |
 | `crypto/` | Argon2 hashing/verification, plus `verify_dummy_password` for constant-cost misses |
 | `maintenance/` | Maintenance utilities |
+| `oidc/` | `OidcConfig` (`RDC_OIDC_*`, incl. `allow_insecure_issuer`), token `validation`, `role_mapping`, `keys` (`KeySource`) |
+| `dto/` | DTOs shared by the API and the MCP client: `workflow.rs`, `dsl.rs` (validate, options, dry-run) |
 | `error.rs` | Custom error types with `thiserror` |
 
 ## Key Exports

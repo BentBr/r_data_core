@@ -4,6 +4,15 @@ type-complexity-threshold = 250
 max-struct-bools = 4
 too-many-lines-threshold = 120
 
+# actix-web 4.18 grew HttpResponse to exactly 128 bytes, which is also
+# clippy's default large-error-threshold, so every internal helper returning
+# Result<_, HttpResponse> started failing the build on a dependency bump. The
+# type is upstream and cannot be shrunk, and boxing it would add an allocation
+# to the error path of nine helpers to satisfy a lint about a size we do not
+# control. One byte higher keeps the lint meaningful for anything genuinely
+# larger than a bare HttpResponse.
+large-error-threshold = 129
+
 # Restriction lints (unwrap_used / expect_used / panic) are denied in production
 # code via the per-crate crate-root attributes, but `.unwrap()` / `.expect()` /
 # `panic!` are idiomatic and acceptable inside tests.

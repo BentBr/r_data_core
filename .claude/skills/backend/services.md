@@ -7,7 +7,7 @@ description: Business logic layer — service implementations, adapters, validat
 
 **Path**: `crates/services/`
 **Role**: Business logic layer — orchestrates domain operations.
-**Depends on**: core, persistence, workflow, license
+**Depends on**: core, license, oidc-http, persistence, workflow
 
 ## Key Modules
 
@@ -29,6 +29,11 @@ description: Business logic layer — service implementations, adapters, validat
 | `worker.rs` | Worker task service (reconciliation logic) |
 | `bootstrap.rs` | Service initialization |
 | `adapters/` | Repository pattern adapters |
+| `oidc_runtime.rs` | `OidcRuntime`: verifies provider tokens, resolves `(issuer, subject)` to a user + mapped roles (`Resolution`), caches the resolution |
+| `oidc_flow.rs` | `OidcFlow`: browser authorization-code flow (PKCE, state, nonce, `return_to`), yields a `CompletedLogin`; `OidcServices` bundles runtime + flow |
+| `oidc_provisioning.rs` | `OidcProvisioningService`: first-login provisioning, role mapping, optional verified-email linking; `ensure_may_sign_in` |
+| `oidc_test_fakes.rs` | In-memory identity/user/role fakes for tests |
+| `workflow/dry_run/` | Dry-run: in-memory entity overlay (`repository.rs`), per-step trace, suppressed side effects (`service.rs`) |
 | `query_validation.rs` | Query parameter validation |
 
 ## Dynamic Entity Service

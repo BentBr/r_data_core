@@ -200,7 +200,7 @@ impl EntityDefinition {
 
     /// Create a new entity type definition (deprecated: use `from_params` instead)
     #[must_use]
-    #[deprecated(note = "Use EntityDefinition::from_params instead")]
+    #[deprecated(since = "0.1.0", note = "Use EntityDefinition::from_params instead")]
     #[allow(clippy::too_many_arguments)]
     pub fn new(
         entity_type: String,

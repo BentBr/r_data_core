@@ -34,6 +34,25 @@ pub async fn setup_test_app() -> Result<(
     r_data_core_test_support::TestDatabase,
     Uuid, // user_uuid
 )> {
+    setup_test_app_with_audit(false).await
+}
+
+/// Like [`setup_test_app`], optionally with the system-log service wired so
+/// routes that write audit rows do so.
+///
+/// # Errors
+/// Returns an error if database setup or service initialization fails
+pub async fn setup_test_app_with_audit(
+    audit: bool,
+) -> Result<(
+    impl actix_web::dev::Service<
+        actix_http::Request,
+        Response = actix_web::dev::ServiceResponse,
+        Error = actix_web::Error,
+    >,
+    r_data_core_test_support::TestDatabase,
+    Uuid, // user_uuid
+)> {
     let pool = setup_test_db().await;
     clear_test_db(&pool).await?;
 
@@ -91,7 +110,11 @@ pub async fn setup_test_app() -> Result<(
         queue: test_queue_client_async().await,
         license_service,
         password_reset_service: None,
-        system_log_service: None,
+        system_log_service: audit.then(|| {
+            Arc::new(r_data_core_services::SystemLogService::new(Arc::new(
+                r_data_core_persistence::SystemLogRepository::new(pool.pool.clone()),
+            )))
+        }),
         oidc: None,
     };
 

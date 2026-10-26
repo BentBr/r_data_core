@@ -12,6 +12,8 @@
 //! token minted here really does resolve to a real user row, with real roles,
 //! through the real provisioning path. That is the point: anything less would
 //! be testing the mock.
+//!
+//! The settings are passed in, so nothing here touches the process environment.
 
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -28,7 +30,7 @@ use r_data_core_mcp::config::Config;
 use r_data_core_mcp::http::{self, ServerState};
 use r_data_core_test_support::TestDatabase;
 
-use crate::api::workflows::common::build_app_state;
+use crate::api::workflows::common::build_app_state_with_oidc_and_audit;
 
 const KID: &str = "mcp-e2e-key";
 const AUDIENCE: &str = "rdc-mcp";
@@ -45,9 +47,6 @@ pub struct OauthStack {
     idp: MockServer,
     _rdc: ServerGuard,
     _mcp: ShutdownGuard,
-    /// Declared last so it drops last, after everything that reads the
-    /// variables it removes.
-    _env: EnvGuard,
 }
 
 struct ServerGuard(tokio::task::JoinHandle<()>);
@@ -66,29 +65,6 @@ impl Drop for ShutdownGuard {
     }
 }
 
-/// Removes the OIDC variables this harness set.
-///
-/// `build_app_state` reads them from the process environment, so leaving them
-/// behind would give every later test in this binary a server configured
-/// against a mock provider that has since stopped. Dropped last, after the
-/// servers that read them.
-struct EnvGuard;
-
-impl Drop for EnvGuard {
-    fn drop(&mut self) {
-        for key in [
-            "RDC_OIDC_ISSUER",
-            "RDC_OIDC_AUDIENCE",
-            "RDC_OIDC_ROLE_MAP",
-            "RDC_OIDC_CLIENT_ID",
-            "RDC_OIDC_REDIRECT_URI",
-            "RDC_OIDC_LINK_BY_EMAIL",
-        ] {
-            std::env::remove_var(key);
-        }
-    }
-}
-
 impl OauthStack {
     /// Start all three, wired together.
     ///
@@ -96,6 +72,24 @@ impl OauthStack {
     /// Panics if any of them cannot start. A broken test environment should
     /// fail loudly here rather than as a confusing connection error later.
     pub async fn start(role_map: &str) -> Self {
+        Self::start_with(role_map, &[]).await
+    }
+
+    /// Like [`Self::start`], with extra `RDC_OIDC_*` settings for this stack
+    /// only (for example `RDC_OIDC_LINK_BY_EMAIL`).
+    ///
+    /// # Panics
+    /// As [`Self::start`].
+    pub async fn start_with(role_map: &str, extra: &[(&str, &str)]) -> Self {
+        Self::start_with_audit(role_map, extra, false).await
+    }
+
+    /// Like [`Self::start_with`], optionally with the system-log service
+    /// wired so routes that write audit rows do so.
+    ///
+    /// # Panics
+    /// As [`Self::start`].
+    pub async fn start_with_audit(role_map: &str, extra: &[(&str, &str)], audit: bool) -> Self {
         let (encoding, jwk) = keypair();
         let idp = MockServer::start().await;
         let issuer = idp.uri();
@@ -121,21 +115,27 @@ impl OauthStack {
         let rdc_port = listener.local_addr().expect("the bound port").port();
         let rdc_url = format!("http://127.0.0.1:{rdc_port}");
 
-        // RDataCore reads its OIDC settings from the process environment at
-        // startup, so they must be set before the state is built. Tests using
-        // this harness are serialised for that reason.
-        std::env::set_var("RDC_OIDC_ISSUER", &issuer);
-        std::env::set_var("RDC_OIDC_AUDIENCE", AUDIENCE);
-        std::env::set_var("RDC_OIDC_ROLE_MAP", role_map);
-        // The browser flow too, so the callback can be driven end to end.
-        std::env::set_var("RDC_OIDC_CLIENT_ID", "rdc-browser");
-        std::env::set_var(
-            "RDC_OIDC_REDIRECT_URI",
+        let mut oidc: HashMap<String, String> = [
+            ("RDC_OIDC_ISSUER", issuer.as_str()),
+            ("RDC_OIDC_AUDIENCE", AUDIENCE),
+            ("RDC_OIDC_ROLE_MAP", role_map),
+            // The browser flow too, so the callback can be driven end to end.
+            ("RDC_OIDC_CLIENT_ID", "rdc-browser"),
+        ]
+        .into_iter()
+        .map(|(k, v)| (k.to_string(), v.to_string()))
+        .collect();
+        oidc.insert(
+            "RDC_OIDC_REDIRECT_URI".to_string(),
             format!("{rdc_url}/admin/api/v1/auth/oidc/callback"),
         );
-
+        for (key, value) in extra {
+            oidc.insert((*key).to_string(), (*value).to_string());
+        }
         let (app_data, pool, _token, _api_key) =
-            build_app_state().await.expect("build application state");
+            build_app_state_with_oidc_and_audit(Some(&oidc), audit)
+                .await
+                .expect("build application state");
 
         // Nothing seeds roles, and a mapping naming a role that does not exist
         // has no effect — every identity would then map to nothing and be
@@ -201,7 +201,6 @@ impl OauthStack {
             idp,
             _rdc: rdc,
             _mcp: ShutdownGuard(shutdown),
-            _env: EnvGuard,
         }
     }
 
