@@ -169,7 +169,7 @@ jobs:
                     TAG: ${{ needs.prepare.outputs.tag }}
                     OWNER: ${{ needs.prepare.outputs.owner_lc }}
                 run: |
-                    for image in r-data-core r-data-core-worker r-data-core-maintenance; do
+                    for image in r-data-core r-data-core-worker r-data-core-maintenance r-data-core-mcp; do
                       echo "Creating multi-arch manifest for ${image}:${TAG}..."
                       docker buildx imagetools create -t ${{ env.REGISTRY }}/${OWNER}/${image}:${TAG} \
                         ${{ env.REGISTRY }}/${OWNER}/${image}:${TAG}-amd64 \
@@ -181,7 +181,7 @@ jobs:
                     TAG: ${{ needs.prepare.outputs.tag }}
                     OWNER: ${{ needs.prepare.outputs.owner_lc }}
                 run: |
-                    for image in r-data-core r-data-core-worker r-data-core-maintenance; do
+                    for image in r-data-core r-data-core-worker r-data-core-maintenance r-data-core-mcp; do
                       echo "Creating multi-arch manifest for ${image}:latest..."
                       docker buildx imagetools create -t ${{ env.REGISTRY }}/${OWNER}/${image}:latest \
                         ${{ env.REGISTRY }}/${OWNER}/${image}:${TAG}-amd64 \
@@ -193,7 +193,7 @@ jobs:
                     OWNER: ${{ needs.prepare.outputs.owner_lc }}
                 run: |
                     echo "Verifying multi-arch manifests for backend images..."
-                    for image in r-data-core r-data-core-worker r-data-core-maintenance; do
+                    for image in r-data-core r-data-core-worker r-data-core-maintenance r-data-core-mcp; do
                       echo "Checking $image:${TAG}..."
                       docker buildx imagetools inspect ${{ env.REGISTRY }}/${OWNER}/${image}:${TAG}
                       # Verify both architectures are present
@@ -346,10 +346,12 @@ jobs:
                       echo "| \`ghcr.io/${OWNER_LC}/r-data-core\` | \`${TAG}\` | ✅ |" >> $GITHUB_STEP_SUMMARY
                       echo "| \`ghcr.io/${OWNER_LC}/r-data-core-worker\` | \`${TAG}\` | ✅ |" >> $GITHUB_STEP_SUMMARY
                       echo "| \`ghcr.io/${OWNER_LC}/r-data-core-maintenance\` | \`${TAG}\` | ✅ |" >> $GITHUB_STEP_SUMMARY
+                      echo "| \`ghcr.io/${OWNER_LC}/r-data-core-mcp\` | \`${TAG}\` | ✅ |" >> $GITHUB_STEP_SUMMARY
                     elif [ "$BACKEND_RESULT" == "skipped" ]; then
                       echo "| \`ghcr.io/${OWNER_LC}/r-data-core\` | - | ⏭️ skipped |" >> $GITHUB_STEP_SUMMARY
                       echo "| \`ghcr.io/${OWNER_LC}/r-data-core-worker\` | - | ⏭️ skipped |" >> $GITHUB_STEP_SUMMARY
                       echo "| \`ghcr.io/${OWNER_LC}/r-data-core-maintenance\` | - | ⏭️ skipped |" >> $GITHUB_STEP_SUMMARY
+                      echo "| \`ghcr.io/${OWNER_LC}/r-data-core-mcp\` | - | ⏭️ skipped |" >> $GITHUB_STEP_SUMMARY
                     fi
                     if [ "$FRONTEND_RESULT" == "success" ]; then
                       echo "| \`ghcr.io/${OWNER_LC}/r-data-core-admin-fe\` | \`${TAG}\` | ✅ |" >> $GITHUB_STEP_SUMMARY
