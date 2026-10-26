@@ -12,4 +12,20 @@
 #   of an actix-web major that has not been released. Mitigated in practice by
 #   terminating client connections at the reverse proxy and speaking HTTP/1.1
 #   to the application. Drop this the moment actix-web ships on h2 0.4.
-ignore = ["RUSTSEC-2023-0071", "RUSTSEC-2026-0258"]
+#
+# RUSTSEC-2026-0367 / -0368 / -0369 — `zip` 3.0.0 extracts archives unsafely
+#   (SUID/SGID bits preserved, symlinks escaping the destination). Fixed in
+#   zip >= 9, but utoipa-swagger-ui 9.0.2 pins `zip = "^3.0"` and the first
+#   release that moves to zip 9 is utoipa-swagger-ui 10, which requires
+#   utoipa >= 6 while this workspace is on utoipa 5.4. Unreachable regardless:
+#   zip is a *build*-dependency used once, by that crate's build script, to
+#   unpack the Swagger UI bundle vendored inside the crate itself. No
+#   attacker-controlled archive is ever extracted, and zip ships in no binary
+#   we produce. Drop these three when the utoipa 5 -> 6 upgrade lands.
+ignore = [
+    "RUSTSEC-2023-0071",
+    "RUSTSEC-2026-0258",
+    "RUSTSEC-2026-0367",
+    "RUSTSEC-2026-0368",
+    "RUSTSEC-2026-0369",
+]
