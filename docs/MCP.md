@@ -222,6 +222,76 @@ set `RDC_BASE_URL` and `RDC_API_KEY` in its `env`.
 
 ---
 
+## Several instances at once
+
+One checkout, several RDataCore deployments — local, demo, production. Each
+`mcpServers` entry is its own process with its own environment, so run one
+per instance and name them for the instance they reach:
+
+```bash
+claude mcp add rdatacore-demo --scope user \
+    --env RDC_BASE_URL=https://demo.rdatacore.eu \
+    --env 'RDC_API_KEY=${RDC_MCP_API_KEY_DEMO}' \
+    -- npx -y @rdatacore/mcp-server
+
+claude mcp add rdatacore-prod --scope user \
+    --env RDC_BASE_URL=https://production.rdatacore.eu \
+    --env 'RDC_API_KEY=${RDC_MCP_API_KEY_PROD}' \
+    -- npx -y @rdatacore/mcp-server
+```
+
+Single quotes matter: the `${...}` has to reach the config file unexpanded,
+so the client resolves it per launch. A key written literally there is a key
+committed to a dotfile.
+
+`--scope user` puts them in `~/.claude.json`, where they are available in
+every directory. Leave the local server in this repository's `.mcp.json`
+instead: it is tied to this checkout's compose stack and means nothing
+elsewhere.
+
+### The variable names
+
+The binary reads **`RDC_API_KEY`** and nothing else. The `RDC_MCP_*` spelling
+is a host-side convention, mapped in the server entry the same way
+`compose.yaml` maps it for the container:
+
+| Instance | Shell variable | Mapped to |
+|---|---|---|
+| local (compose) | `RDC_MCP_API_KEY` | `RDC_API_KEY`, by `compose.yaml` |
+| demo | `RDC_MCP_API_KEY_DEMO` | `RDC_API_KEY`, by the server entry |
+| production | `RDC_MCP_API_KEY_PROD` | `RDC_API_KEY`, by the server entry |
+
+So keep exporting `RDC_MCP_*` and let the mapping do the renaming:
+
+```bash
+# ~/.zshrc -- then restart the client so it inherits them
+export RDC_MCP_API_KEY='...'        # local
+export RDC_MCP_API_KEY_DEMO='...'   # demo
+export RDC_MCP_API_KEY_PROD='...'   # production
+```
+
+A key belongs to one instance; there is no shared credential across
+deployments.
+
+### Knowing which instance you are talking to
+
+The assistant names the server when it calls a tool, and that name is the
+only signal distinguishing demo from production — identical tools, identical
+arguments, different data. Hence `rdatacore-prod` rather than `rdatacore2`.
+
+Everything the assistant does happens as the owner of that key, with no
+confirmation step inside the MCP layer. Give the production key the
+narrowest role that is useful; a read-only key is a reasonable default, and
+an assistant that can author workflows there can also run them. When only
+one instance should be reachable in a session, remove the others rather than
+relying on care:
+
+```bash
+claude mcp remove rdatacore-prod --scope user
+```
+
+---
+
 ## Hosted (HTTP + OAuth)
 
 The server is an OAuth 2.1 **resource server**. A client that knows only its
@@ -288,6 +358,157 @@ Terminate TLS at your proxy and forward to `RDC_MCP_BIND`. Endpoints:
 ### 5. Point the assistant at the URL
 
 `https://mcp.example.com/mcp`. It should discover everything else.
+
+---
+
+## For a customer's users
+
+A customer runs RDataCore in their own network and their people want to reach
+it from Claude or ChatGPT. Nothing above fits them: they will not clone a
+repository, run a container, or paste an API key into a JSON file.
+
+### What gets deployed, and where
+
+**The MCP server is part of the customer's installation, not a service we
+host.** It runs beside their RDataCore, behind their TLS, on their hostname,
+against their identity provider. There is nothing for their users to download
+and no address of ours for them to point at.
+
+It has to be theirs, because it is theirs that it talks to: the server
+validates every token against `RDC_OIDC_ISSUER` — the customer's provider —
+and then exchanges it at the customer's own RDataCore. A server we hosted
+would have neither, and could only fall back to one shared key, which is the
+thing this design exists to avoid.
+
+The npm package and the published binaries are for developers running stdio
+on their own machine. A customer's users never meet them.
+
+### The flow, once it is deployed
+
+```
+user's browser          Claude                MCP server            RDataCore
+     |                     |                       |                     |
+     |                     |--- GET /mcp --------->|                     |
+     |                     |<-- 401 + challenge ---|                     |
+     |                     |--- GET metadata ----->|                     |
+     |                     |<-- authz server ------|                     |
+     |<-- sign in (PKCE) --|                       |                     |
+     |--- work account --->| (customer's IdP)      |                     |
+     |                     |--- /mcp + bearer ---->|                     |
+     |                     |                       |-- verify (JWKS)     |
+     |                     |                       |-- POST exchange --->|
+     |                     |                       |<-- token for *them* |
+     |                     |<-- result ------------|--- API as them ---->|
+```
+
+The exchange is the point of the whole arrangement. The provider token is
+never forwarded to RDataCore as-is — the MCP authorization specification
+names that pattern and disallows it. What comes back is a short-lived token
+RDataCore minted for that same person, carrying the roles their IdP groups
+map to through `RDC_OIDC_ROLE_MAP`. No service account exists anywhere along
+the path, and nothing long-lived is stored.
+
+### What has to be reachable
+
+**The assistant's servers open the connection, not the user's machine.** So
+`https://mcp.customer.example/mcp` must resolve and answer from the public
+internet. For an instance deployed inside a corporate network this is the
+only hard part of the whole exercise, and it is worth raising with the
+customer early rather than late.
+
+Two things make it a smaller ask than it first sounds:
+
+- **Only the MCP endpoint is exposed.** RDataCore itself stays internal; the
+  MCP server reaches it over the internal network.
+- **The exposed component stores nothing worth stealing.** It validates
+  tokens and forwards none of them. Its unauthenticated surface is a
+  discovery document and a health check.
+
+### When the network forbids it
+
+Some customers will not expose anything, and then remote connectors are out —
+for ChatGPT as much as for Claude, since both connect the same way.
+
+The fallback is per-user stdio. It runs on the user's own machine, which is
+already inside the network, so it reaches the internal instance without
+anything being published. The price is real and should be stated rather than
+discovered:
+
+| | remote connector | per-user stdio |
+|---|---|---|
+| Needs a public endpoint | yes | no |
+| User installs something | no | yes |
+| What each person holds | nothing; a token per request | a long-lived API key |
+| Acts as | the person | the key's owner |
+| Removing one person | disable them at the provider | rotate the key for everyone |
+| "Who changed that workflow?" | answerable | not answerable |
+
+### What the customer's administrator configures
+
+The server ships as a container image, published on the core release cycle
+alongside the API, worker and maintenance images:
+
+```
+ghcr.io/bentbr/r-data-core-mcp:0.4.18
+```
+
+Multi-arch (`linux/amd64`, `linux/arm64`), so it runs on a Graviton node as
+readily as an Intel one. Its entrypoint is the HTTP transport; the stdio
+binary ships in the same image for anyone who wants to exec it. `:latest`
+tracks the newest release, but pin the version in anything you deploy — the
+tag the rest of the stack uses is the tag this should use.
+
+Nothing is built on the customer's side, and nothing is downloaded by their
+users. For Kubernetes it is an ordinary `Deployment` plus a `Service`: one
+replica is enough to start with, the process is stateless, and `/health`
+answers unauthenticated for a liveness probe.
+
+Configure it with the same values as **Hosted (HTTP + OAuth)** above:
+
+```bash
+RDC_MCP_TRANSPORT=http
+RDC_BASE_URL=https://rdatacore.internal.customer.example
+RDC_MCP_BIND=0.0.0.0:8931
+RDC_MCP_RESOURCE_URL=https://mcp.customer.example
+RDC_OIDC_ISSUER=https://id.customer.example/realms/main
+RDC_OIDC_AUDIENCE=https://mcp.customer.example
+RDC_MCP_ALLOWED_ORIGINS=https://claude.ai
+```
+
+`RDC_MCP_BIND` must be `0.0.0.0` in a container: the default binds loopback,
+which inside a pod means nothing outside it can connect, including the
+ingress.
+
+`RDC_OIDC_AUDIENCE` must equal `RDC_MCP_RESOURCE_URL`, and RDataCore must
+trust the same issuer ([SSO.md](./SSO.md)). If the two disagree, a client that
+does everything correctly is rejected with a 401 explaining nothing; the
+server warns at startup, so read its first lines after any change here.
+
+Route the whole host to the container, not just `/mcp`. The discovery
+document sits at the root, and an ingress rule matching only `/mcp` leaves
+`/.well-known/oauth-protected-resource` answering with the ingress's own 404
+— at which point clients cannot discover the authorization server and fail
+with nothing useful to show for it.
+
+Their provider also has to let the assistant register as a public client with
+PKCE. Providers supporting dynamic client registration handle that on their
+own; the rest need the client created by hand, with the redirect URI the
+assistant documents.
+
+### What the end user does
+
+> 1. Open Claude → Settings → Connectors → *Add custom connector*.
+> 2. Paste the URL your administrator gave you, ending in `/mcp`.
+> 3. Sign in with your usual work account when the browser opens.
+>
+> If sign-in is refused, your account is probably not in the RDataCore group
+> at your identity provider yet. Ask an administrator — retrying will not
+> help.
+
+Nothing is issued to them and nothing is installed, and the server is
+upgraded centrally by whoever runs the instance. Availability of custom
+connectors varies by Claude plan, so confirm that before promising it to a
+team.
 
 ---
 
