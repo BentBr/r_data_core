@@ -237,7 +237,7 @@ impl AdminUser {
     /// This method is deprecated. Use `AdminUserBuilder` instead.
     #[must_use]
     #[allow(clippy::too_many_arguments)]
-    #[deprecated(note = "Use AdminUserBuilder::new().build() instead")]
+    #[deprecated(since = "0.1.0", note = "Use AdminUserBuilder::new().build() instead")]
     pub fn new(
         username: String,
         email: String,
