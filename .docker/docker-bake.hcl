@@ -29,20 +29,20 @@ variable "ARCH_SUFFIX" {
 }
 
 group "default" {
-  targets = ["r-data-core", "r-data-core-worker", "r-data-core-maintenance"]
+  targets = ["r-data-core", "r-data-core-worker", "r-data-core-maintenance", "r-data-core-mcp"]
 }
 
 group "backend" {
-  targets = ["r-data-core", "r-data-core-worker", "r-data-core-maintenance"]
+  targets = ["r-data-core", "r-data-core-worker", "r-data-core-maintenance", "r-data-core-mcp"]
 }
 
 # Architecture-specific groups for parallel CI builds
 group "backend-amd64" {
-  targets = ["r-data-core-amd64", "r-data-core-worker-amd64", "r-data-core-maintenance-amd64"]
+  targets = ["r-data-core-amd64", "r-data-core-worker-amd64", "r-data-core-maintenance-amd64", "r-data-core-mcp-amd64"]
 }
 
 group "backend-arm64" {
-  targets = ["r-data-core-arm64", "r-data-core-worker-arm64", "r-data-core-maintenance-arm64"]
+  targets = ["r-data-core-arm64", "r-data-core-worker-arm64", "r-data-core-maintenance-arm64", "r-data-core-mcp-arm64"]
 }
 
 # Shared target configuration
@@ -90,6 +90,15 @@ target "r-data-core-maintenance" {
   output   = ["type=image,push=true,annotation-index.org.opencontainers.image.description=r_data_core maintenance/ops image for administrative and one-off tasks."]
 }
 
+# Entrypoint is the HTTP transport (r-data-core-mcp-serve); the stdio binary
+# ships alongside it for anyone who wants to exec it inside the container.
+target "r-data-core-mcp" {
+  inherits = ["_common"]
+  target   = "r-data-core-mcp"
+  tags     = ["${REGISTRY}/${REPO_OWNER}/r-data-core-mcp:${TAG}"]
+  output   = ["type=image,push=true,annotation-index.org.opencontainers.image.description=r_data_core MCP server (HTTP transport) for AI assistants."]
+}
+
 # =============================================================================
 # AMD64 targets (for parallel CI on amd64 runners)
 # =============================================================================
@@ -114,6 +123,13 @@ target "r-data-core-maintenance-amd64" {
   output   = ["type=image,push=true"]
 }
 
+target "r-data-core-mcp-amd64" {
+  inherits = ["_common_amd64"]
+  target   = "r-data-core-mcp"
+  tags     = ["${REGISTRY}/${REPO_OWNER}/r-data-core-mcp:${TAG}-amd64"]
+  output   = ["type=image,push=true"]
+}
+
 # =============================================================================
 # ARM64 targets (for parallel CI on arm64 runners)
 # =============================================================================
@@ -135,5 +151,12 @@ target "r-data-core-maintenance-arm64" {
   inherits = ["_common_arm64"]
   target   = "r-data-core-maintenance"
   tags     = ["${REGISTRY}/${REPO_OWNER}/r-data-core-maintenance:${TAG}-arm64"]
+  output   = ["type=image,push=true"]
+}
+
+target "r-data-core-mcp-arm64" {
+  inherits = ["_common_arm64"]
+  target   = "r-data-core-mcp"
+  tags     = ["${REGISTRY}/${REPO_OWNER}/r-data-core-mcp:${TAG}-arm64"]
   output   = ["type=image,push=true"]
 }
