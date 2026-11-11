@@ -99,7 +99,7 @@ jobs:
                 run: rustc -Vv
 
             -   name: Cache cargo registry + build
-                uses: swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6  # v2
+                uses: swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0  # v2
                 with:
                     workspaces: .
 
@@ -141,7 +141,7 @@ jobs:
                     components: clippy,rustfmt
 
             -   name: Cache cargo registry + build
-                uses: swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6  # v2
+                uses: swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0  # v2
                 with:
                     workspaces: .
 
@@ -177,7 +177,7 @@ jobs:
                     components: clippy,rustfmt
 
             -   name: Cache cargo registry + build
-                uses: swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6  # v2
+                uses: swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0  # v2
                 with:
                     workspaces: .
 
@@ -203,7 +203,7 @@ jobs:
                     components: clippy,rustfmt
 
             -   name: Cache cargo registry + build
-                uses: swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6  # v2
+                uses: swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0  # v2
                 with:
                     workspaces: .
 
@@ -269,7 +269,7 @@ jobs:
                     components: clippy,rustfmt
 
             -   name: Cache cargo registry + build
-                uses: swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6  # v2
+                uses: swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0  # v2
                 with:
                     workspaces: .
 
@@ -316,7 +316,7 @@ jobs:
                     components: clippy,rustfmt
 
             -   name: Cache cargo registry + build
-                uses: swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6  # v2
+                uses: swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0  # v2
                 with:
                     workspaces: .
 
@@ -343,7 +343,7 @@ jobs:
                     components: clippy,rustfmt
 
             -   name: Cache cargo registry + build
-                uses: swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6  # v2
+                uses: swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0  # v2
                 with:
                     workspaces: .
 
@@ -462,7 +462,7 @@ jobs:
                     toolchain: 1.96.0
 
             -   name: Cache cargo registry + build
-                uses: swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6  # v2
+                uses: swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0  # v2
                 with:
                     workspaces: .
 
@@ -485,7 +485,7 @@ jobs:
                     persist-credentials: false
 
             -   name: Setup pnpm
-                uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413  # v6.1.0
+                uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115  # v6.1.1
                 with:
                     version: 10.33.4
 
@@ -517,7 +517,7 @@ jobs:
                     persist-credentials: false
 
             -   name: Setup pnpm
-                uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413  # v6.1.0
+                uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115  # v6.1.1
                 with:
                     version: 10.33.4
 
@@ -553,7 +553,7 @@ jobs:
                     persist-credentials: false
 
             -   name: Setup pnpm
-                uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413  # v6.1.0
+                uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115  # v6.1.1
                 with:
                     version: 10.33.4
 
@@ -589,7 +589,7 @@ jobs:
                     persist-credentials: false
 
             -   name: Setup pnpm
-                uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413  # v6.1.0
+                uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115  # v6.1.1
                 with:
                     version: 10.33.4
 
@@ -625,7 +625,7 @@ jobs:
                     persist-credentials: false
 
             -   name: Setup pnpm
-                uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413  # v6.1.0
+                uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115  # v6.1.1
                 with:
                     version: 10.33.4
 
@@ -676,7 +676,7 @@ jobs:
                     persist-credentials: false
 
             -   name: Setup pnpm
-                uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413  # v6.1.0
+                uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115  # v6.1.1
                 with:
                     version: 10.33.4
 
@@ -732,7 +732,7 @@ jobs:
                     toolchain: nightly
 
             -   name: Cache cargo registry + build
-                uses: swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6  # v2
+                uses: swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0  # v2
                 with:
                     workspaces: .
 
